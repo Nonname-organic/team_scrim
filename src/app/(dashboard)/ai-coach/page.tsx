@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useMemo } from 'react'
 import {
-  Bot, AlertTriangle, Loader2, Map,
+  Bot, AlertTriangle, Loader2, Map, FileDown,
   CheckSquare, Square, Target, TrendingUp, BarChart2, User,
   ShieldAlert, Zap, List, XCircle, ArrowRight, MessageSquare,
   AlertCircle, CheckCircle2, Trophy, Swords, Brain,
@@ -172,6 +172,20 @@ export default function AICoachPage() {
       {/* ═══════════════ REPORT ═══════════════ */}
       {report && !loading && (
         <div className="space-y-5">
+
+          {/* Export button */}
+          <div className="flex justify-end">
+            <button
+              onClick={() => {
+                sessionStorage.setItem('ai_export_report', JSON.stringify(report))
+                window.open('/export/ai', '_blank')
+              }}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-xs font-medium text-muted-foreground hover:text-white hover:border-white/30 transition-colors"
+            >
+              <FileDown className="w-3.5 h-3.5" />
+              PDFエクスポート
+            </button>
+          </div>
 
           {/* ① チームスタイル分析 */}
           {report.team_style && (
