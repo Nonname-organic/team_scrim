@@ -45,14 +45,14 @@ export async function getDashboardSummary(teamId: string, mapFilter?: string): P
   const defenseWR = mapStats.reduce((sum, s) => sum + (s.defense_win_rate ?? 0), 0) / (mapStats.length || 1)
 
   return {
-    team: team as DashboardSummary['team'],
-    recent_matches: recentMatches as DashboardSummary['recent_matches'],
+    team: team as unknown as DashboardSummary['team'],
+    recent_matches: recentMatches as unknown as DashboardSummary['recent_matches'],
     overall_win_rate: overallWinRate,
     attack_win_rate: attackWR,
     defense_win_rate: defenseWR,
     map_stats: mapStats,
     top_performers: topPerformers,
-    last_ai_report: lastReport as DashboardSummary['last_ai_report'],
+    last_ai_report: lastReport as unknown as DashboardSummary['last_ai_report'],
   }
 }
 
