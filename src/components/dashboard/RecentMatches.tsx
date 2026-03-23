@@ -25,7 +25,7 @@ export function RecentMatches({ matches }: { matches: Record<string, unknown>[] 
   return (
     <div className="space-y-2">
       {matches.map(m => {
-        const match = m as Match
+        const match = m as unknown as Match
         const isWin = match.result === 'win'
         const isLoss = match.result === 'loss'
         const atkWR = match.attack_rounds_played > 0
