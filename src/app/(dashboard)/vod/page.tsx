@@ -225,7 +225,7 @@ function MatchRow({
   editUrl: string
   saving: boolean
   saved: boolean
-  inputRef?: React.RefObject<HTMLInputElement>
+  inputRef?: React.RefObject<HTMLInputElement | null>
   onPlay: () => void
   onEdit: () => void
   onEditUrl: (v: string) => void

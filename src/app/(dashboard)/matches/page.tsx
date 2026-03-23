@@ -193,7 +193,7 @@ function MatchItem({
   isVodEdit: boolean
   vodInput: string
   vodSaving: boolean
-  vodInputRef?: React.RefObject<HTMLInputElement>
+  vodInputRef?: React.RefObject<HTMLInputElement | null>
   onOpenVideo: (m: Match, e: React.MouseEvent) => void
   onOpenVodEdit: (m: Match, e: React.MouseEvent) => void
   onVodInputChange: (v: string) => void
