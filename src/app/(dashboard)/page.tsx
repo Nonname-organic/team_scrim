@@ -8,7 +8,7 @@ import { SiteWinRates } from '@/components/dashboard/SiteWinRates'
 import { RecentMatches } from '@/components/dashboard/RecentMatches'
 import { RoundWinRates } from '@/components/dashboard/RoundWinRates'
 import { TimingWinRates } from '@/components/dashboard/TimingWinRates'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, FileDown } from 'lucide-react'
 import { MAPS } from '@/types'
 
 const TEAM_ID = process.env.NEXT_PUBLIC_DEFAULT_TEAM_ID ?? 'YOUR_TEAM_UUID'
@@ -74,6 +74,13 @@ export default function DashboardPage() {
               リセット
             </button>
           )}
+          <button
+            onClick={() => window.open('/export', '_blank')}
+            className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:text-white hover:border-white/30 transition-colors"
+          >
+            <FileDown className="w-3.5 h-3.5" />
+            PDFエクスポート
+          </button>
         </div>
       </div>
 
