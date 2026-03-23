@@ -198,7 +198,7 @@ export default function SettingsPage() {
                     <input value={editForm.ign} onChange={e => setEditForm(f => ({ ...f, ign: e.target.value }))}
                       className={inputCls} placeholder="IGN" />
                     <input value={editForm.real_name} onChange={e => setEditForm(f => ({ ...f, real_name: e.target.value }))}
-                      className={inputCls} placeholder="本名（任意）" />
+                      className={inputCls} placeholder="読み方（任意）" />
                   </div>
                   <select value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value as Role }))}
                     className={inputCls}>
@@ -246,7 +246,7 @@ export default function SettingsPage() {
               <input value={newPlayer.ign} onChange={e => setNewPlayer(p => ({ ...p, ign: e.target.value }))}
                 className={inputCls} placeholder="IGN *" />
               <input value={newPlayer.real_name} onChange={e => setNewPlayer(p => ({ ...p, real_name: e.target.value }))}
-                className={inputCls} placeholder="本名（任意）" />
+                className={inputCls} placeholder="読み方（任意）" />
             </div>
             <select value={newPlayer.role} onChange={e => setNewPlayer(p => ({ ...p, role: e.target.value as Role }))}
               className={inputCls}>
