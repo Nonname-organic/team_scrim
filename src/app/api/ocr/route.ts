@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { writeFile } from 'fs/promises'
-import { join } from 'path'
-import { randomUUID } from 'crypto'
 
 const client = new Anthropic()
 
@@ -26,11 +23,6 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(bytes)
     const base64 = buffer.toString('base64')
     const mediaType = file.type as 'image/jpeg' | 'image/png' | 'image/webp'
-
-    // Save to disk for reference
-    const filename = `${randomUUID()}-${file.name}`
-    const uploadPath = join(process.cwd(), 'public', 'uploads', filename)
-    await writeFile(uploadPath, buffer)
 
     // Use Claude Vision to extract scoreboard data
     const message = await client.messages.create({
@@ -93,23 +85,14 @@ export async function POST(req: NextRequest) {
     const jsonMatch = rawText.match(/```json\n([\s\S]*?)\n```/)
     if (!jsonMatch) {
       return NextResponse.json(
-        {
-          success: false,
-          error: 'Could not parse scoreboard',
-          raw_text: rawText,
-          image_url: `/uploads/${filename}`,
-        },
+        { success: false, error: 'Could not parse scoreboard', raw_text: rawText },
         { status: 422 }
       )
     }
 
     const parsed = JSON.parse(jsonMatch[1])
 
-    return NextResponse.json({
-      success: true,
-      image_url: `/uploads/${filename}`,
-      ...parsed,
-    })
+    return NextResponse.json({ success: true, ...parsed })
   } catch (err) {
     console.error('[OCR]', err)
     return NextResponse.json(

@@ -16,8 +16,8 @@ export async function POST(req: NextRequest) {
         await client.query(
           `INSERT INTO rounds
              (match_id, round_number, side, result, economy_type,
-              planted, plant_site, plant_x, plant_y, first_blood_team)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+              planted, plant_site, plant_x, plant_y, first_blood_team, contact_timing)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
           [
             match_id,
             r.round_number,
@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
             r.plant_x ?? null,
             r.plant_y ?? null,
             r.fb_team === '' ? null : r.fb_team,
+            r.contact_timing || null,
           ]
         )
       }

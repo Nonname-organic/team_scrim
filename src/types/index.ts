@@ -11,6 +11,7 @@ export type EconomyType = 'pistol' | 'eco' | 'semi_eco' | 'semi_buy' | 'full_buy
 export type EventType = 'kill' | 'death' | 'assist' | 'plant' | 'defuse' | 'ultimate' | 'ability'
 export type WinCondition = 'elimination' | 'defuse' | 'detonate' | 'time'
 export type PlantSite = 'A' | 'B' | 'C'
+export type ContactTiming = 'early' | 'mid' | 'late'
 export type ReportType = 'post_match' | 'weekly' | 'player' | 'tactical'
 
 // ============================================================
@@ -75,6 +76,7 @@ export interface Round {
   team_kills: number
   opp_kills: number
   first_blood_team?: boolean
+  contact_timing?: ContactTiming
   created_at: string
 }
 

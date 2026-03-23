@@ -6,6 +6,25 @@ import { query } from '@/lib/db'
 
 const client = new Anthropic()
 
+function extractJSON(text: string): Record<string, unknown> | null {
+  // 1) ```json ... ``` (LF or CRLF)
+  const fenced = text.match(/```json\r?\n([\s\S]*?)\r?\n```/)
+  if (fenced) { try { return JSON.parse(fenced[1]) } catch {} }
+
+  // 2) ``` ... ``` with leading {
+  const plain = text.match(/```\r?\n(\{[\s\S]*?\})\r?\n```/)
+  if (plain) { try { return JSON.parse(plain[1]) } catch {} }
+
+  // 3) First { ... last }
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start !== -1 && end > start) {
+    try { return JSON.parse(text.slice(start, end + 1)) } catch {}
+  }
+
+  return null
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { team_id, match_ids, map_filter } = await req.json()
@@ -36,15 +55,8 @@ export async function POST(req: NextRequest) {
 
     const rawAnalysis = message.content[0].type === 'text' ? message.content[0].text : ''
 
-    let parsedReport: Record<string, unknown> | null = null
-    const jsonMatch = rawAnalysis.match(/```json\n([\s\S]*?)\n```/)
-    if (jsonMatch) {
-      try {
-        parsedReport = JSON.parse(jsonMatch[1])
-      } catch {
-        console.error('[AI] Failed to parse JSON response')
-      }
-    }
+    const parsedReport = extractJSON(rawAnalysis)
+    if (!parsedReport) console.error('[AI] Failed to parse JSON response')
 
     const saved = await query(
       `INSERT INTO ai_reports
@@ -55,11 +67,11 @@ export async function POST(req: NextRequest) {
       [
         team_id,
         null,
-        'coach_v2',
-        JSON.stringify([]),
-        JSON.stringify([]),
-        JSON.stringify(parsedReport?.improvements ?? []),
-        JSON.stringify([]),
+        'coach_v3',
+        JSON.stringify(parsedReport?.pattern_analysis ? (parsedReport.pattern_analysis as Record<string, unknown>).loss_patterns ?? [] : []),
+        JSON.stringify(parsedReport?.pattern_analysis ? (parsedReport.pattern_analysis as Record<string, unknown>).win_patterns ?? [] : []),
+        JSON.stringify(parsedReport?.macro_analysis ? (parsedReport.macro_analysis as Record<string, unknown>).improvement_actions ?? [] : []),
+        JSON.stringify(parsedReport?.player_feedback ?? []),
         rawAnalysis,
         'claude-sonnet-4-6',
         message.usage.input_tokens + message.usage.output_tokens,

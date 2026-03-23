@@ -32,7 +32,14 @@ interface RoundRow {
   site: string
   retake: boolean
   fb_team: boolean | ''
+  contact_timing: 'early' | 'mid' | 'late' | ''
 }
+
+const TIMING_OPTIONS = [
+  { value: 'early', label: 'Early', sub: '〜25秒', color: 'text-[#FF4655]', bg: 'bg-[#FF4655]/20 border-[#FF4655]/40' },
+  { value: 'mid',   label: 'Mid',   sub: '25〜75秒', color: 'text-[#6C63FF]', bg: 'bg-[#6C63FF]/20 border-[#6C63FF]/40' },
+  { value: 'late',  label: 'Late',  sub: '75秒〜', color: 'text-[#9B9BA4]', bg: 'bg-muted/40 border-border' },
+]
 
 const EMPTY_ROW = (): PlayerRow => ({
   player_id: '', agent: '', kills: '', deaths: '', assists: '',
@@ -108,6 +115,7 @@ export default function ScrimInputPage() {
       site: '',
       retake: false,
       fb_team: '',
+      contact_timing: '',
     })))
   }, [teamScore, oppScore, firstHalfSide])
 
@@ -480,8 +488,8 @@ export default function ScrimInputPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-muted/20 border-b border-border">
-                      {['#','サイド','エコノミー','結果','プラント','サイト','リテイク','FB'].map(h => (
-                        <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium">{h}</th>
+                      {['#','サイド','エコノミー','結果','プラント','サイト','リテイク','FB','タイミング'].map(h => (
+                        <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -567,6 +575,27 @@ export default function ScrimInputPage() {
                             <option value="us">味方</option>
                             <option value="them">相手</option>
                           </select>
+                        </td>
+                        <td className="px-2 py-1">
+                          <div className="flex gap-1">
+                            {TIMING_OPTIONS.map(t => (
+                              <button
+                                key={t.value}
+                                type="button"
+                                onClick={() => updateRound(i, 'contact_timing',
+                                  r.contact_timing === t.value ? '' : t.value)}
+                                title={`${t.label} ${t.sub}`}
+                                className={cn(
+                                  'px-2 py-0.5 rounded text-[10px] font-bold border transition-colors',
+                                  r.contact_timing === t.value
+                                    ? t.bg + ' ' + t.color
+                                    : 'bg-transparent border-border text-muted-foreground hover:border-muted-foreground'
+                                )}
+                              >
+                                {t.label}
+                              </button>
+                            ))}
+                          </div>
                         </td>
                       </tr>
                     ))}

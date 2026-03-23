@@ -26,7 +26,7 @@ export default function DashboardPage() {
 
     fetch(`/api/analysis/dashboard?${params}`)
       .then(r => {
-        if (!r.ok) return r.json().then(j => { throw new Error(j.error ?? `HTTP ${r.status}`) })
+        if (!r.ok) return r.json().then(j => { throw new Error(`${j.error ?? `HTTP ${r.status}`}${j.details ? `: ${j.details}` : ''}`) })
         return r.json()
       })
       .then(json => {
