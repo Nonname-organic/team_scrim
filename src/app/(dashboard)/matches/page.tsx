@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
-import { Upload, X, Check, Loader2, AlertCircle, UserCheck, UserX, Play, Link2, Pencil } from 'lucide-react'
+import { Upload, X, Check, Loader2, AlertCircle, UserCheck, UserX, Play, Link2, Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MAPS } from '@/types'
 
@@ -48,6 +48,8 @@ export default function MatchesPage() {
   const [editVodId, setEditVodId] = useState<string | null>(null)
   const [vodInput, setVodInput] = useState('')
   const [vodSaving, setVodSaving] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const vodInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -71,6 +73,20 @@ export default function MatchesPage() {
     e.preventDefault()
     setEditVodId(null)
     setActiveVideoId(prev => prev === m.id ? null : m.id)
+  }
+
+  async function deleteMatch(matchId: string) {
+    setDeletingId(matchId)
+    try {
+      const res = await fetch(`/api/matches/${matchId}`, { method: 'DELETE' })
+      if (res.ok) {
+        setMatches(prev => prev.filter(m => m.id !== matchId))
+        if (activeVideoId === matchId) setActiveVideoId(null)
+      }
+    } finally {
+      setDeletingId(null)
+      setConfirmDeleteId(null)
+    }
   }
 
   async function saveVodUrl(matchId: string) {
@@ -157,6 +173,11 @@ export default function MatchesPage() {
               onVodInputChange={setVodInput}
               onVodSave={() => saveVodUrl(m.id)}
               onVodCancel={() => setEditVodId(null)}
+              isConfirmDelete={confirmDeleteId === m.id}
+              isDeleting={deletingId === m.id}
+              onDeleteRequest={() => setConfirmDeleteId(m.id)}
+              onDeleteConfirm={() => deleteMatch(m.id)}
+              onDeleteCancel={() => setConfirmDeleteId(null)}
             />
           ))}
         </div>
@@ -186,7 +207,9 @@ function MatchTableHeader() {
 
 function MatchItem({
   match: m, isVideoActive, isVodEdit, vodInput, vodSaving, vodInputRef,
+  isConfirmDelete, isDeleting,
   onOpenVideo, onOpenVodEdit, onVodInputChange, onVodSave, onVodCancel,
+  onDeleteRequest, onDeleteConfirm, onDeleteCancel,
 }: {
   match: Match
   isVideoActive: boolean
@@ -194,11 +217,16 @@ function MatchItem({
   vodInput: string
   vodSaving: boolean
   vodInputRef?: React.RefObject<HTMLInputElement | null>
+  isConfirmDelete: boolean
+  isDeleting: boolean
   onOpenVideo: (m: Match, e: React.MouseEvent) => void
   onOpenVodEdit: (m: Match, e: React.MouseEvent) => void
   onVodInputChange: (v: string) => void
   onVodSave: () => void
   onVodCancel: () => void
+  onDeleteRequest: () => void
+  onDeleteConfirm: () => void
+  onDeleteCancel: () => void
 }) {
   const isWin = m.result === 'win'
   const isLoss = m.result === 'loss'
@@ -273,6 +301,24 @@ function MatchItem({
             <button onClick={e => onOpenVodEdit(m, e)}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-white border border-border hover:border-white/30 transition-colors">
               <Link2 className="w-3 h-3" /> VOD
+            </button>
+          )}
+          {/* Delete */}
+          {isConfirmDelete ? (
+            <div className="flex items-center gap-1">
+              <button onClick={onDeleteConfirm} disabled={isDeleting}
+                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs bg-[#FF4655] text-white hover:bg-[#e03e4d] transition-colors disabled:opacity-50">
+                {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : '削除'}
+              </button>
+              <button onClick={onDeleteCancel}
+                className="px-2 py-1.5 rounded-lg text-xs border border-border text-muted-foreground hover:text-white transition-colors">
+                戻す
+              </button>
+            </div>
+          ) : (
+            <button onClick={onDeleteRequest}
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-[#FF4655] border border-transparent hover:border-[#FF4655]/30 transition-colors">
+              <Trash2 className="w-3.5 h-3.5" />
             </button>
           )}
         </div>

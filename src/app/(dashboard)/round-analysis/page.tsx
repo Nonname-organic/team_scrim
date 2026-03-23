@@ -8,12 +8,17 @@ const TEAM_ID = process.env.NEXT_PUBLIC_DEFAULT_TEAM_ID ?? 'YOUR_TEAM_UUID'
 
 const ECO_LABELS: Record<string, string> = {
   pistol: 'ピストル', eco: 'エコ', anti_eco: 'アンチエコ', semi_eco: 'セミエコ',
-  semi_buy: 'セミバイ', full_buy: 'フルバイ', force: 'フォース',
+  semi_buy: 'セミバイ', full_buy: 'フルバイ', oper: 'オペ', second: 'セカンド', third: 'サード',
 }
 const ECO_COLOR: Record<string, string> = {
   pistol: '#FFD700', eco: '#FF4655', anti_eco: '#FF8C42', semi_eco: '#FF8C42',
-  semi_buy: '#6C63FF', full_buy: '#00D4A0', force: '#FF8C42',
+  semi_buy: '#6C63FF', full_buy: '#00D4A0', oper: '#9B59B6', second: '#3498DB', third: '#1ABC9C',
 }
+const TIMING_CFG = {
+  early: { label: 'Early', color: '#FF4655' },
+  mid:   { label: 'Mid',   color: '#6C63FF' },
+  late:  { label: 'Late',  color: '#9B9BA4' },
+} as const
 
 interface Match {
   id: string; opponent_name: string; match_date: string
@@ -26,6 +31,7 @@ interface Round {
   economy_type: string | null; planted: boolean; plant_site: string | null
   first_blood_team: boolean | null
   plant_x: number | null; plant_y: number | null
+  contact_timing: 'early' | 'mid' | 'late' | null
 }
 
 type SortKey = 'date' | 'opponent' | 'map'
@@ -274,7 +280,16 @@ function RoundDetail({
   rounds: Round[]
   map: string
 }) {
-  const rounds = initialRounds
+  const [rounds, setRounds] = useState<Round[]>(initialRounds)
+
+  async function updateTiming(roundId: string, timing: 'early' | 'mid' | 'late' | null) {
+    await fetch(`/api/rounds/${roundId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contact_timing: timing }),
+    })
+    setRounds(prev => prev.map(r => r.id === roundId ? { ...r, contact_timing: timing } : r))
+  }
 
   const atkRounds = rounds.filter(r => r.side === 'attack')
   const defRounds = rounds.filter(r => r.side === 'defense')
@@ -289,7 +304,7 @@ function RoundDetail({
   const fbWinRate  = fbWonRounds.length  > 0 ? fbWonRounds.filter(r => r.result === 'win').length  / fbWonRounds.length  : null
   const fdWinRate  = fbLostRounds.length > 0 ? fbLostRounds.filter(r => r.result === 'win').length / fbLostRounds.length : null
 
-  const ecoTypes = ['pistol', 'eco', 'semi_eco', 'semi_buy', 'full_buy', 'force']
+  const ecoTypes = ['pistol', 'eco', 'anti_eco', 'semi_eco', 'semi_buy', 'full_buy', 'oper', 'second', 'third']
   const ecoStats = ecoTypes.map(type => {
     const rows = rounds.filter(r => r.economy_type === type)
     const wins = rows.filter(r => r.result === 'win').length
@@ -447,8 +462,8 @@ function RoundDetail({
             <table className="w-full text-xs">
               <thead>
                 <tr className="border-b border-border/60 bg-muted/20">
-                  {['R', 'サイド', 'エコ', '結果', 'プラント', 'サイト', 'FB'].map(h => (
-                    <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium">{h}</th>
+                  {['R', 'サイド', '購入状況', '結果', 'プラント', 'サイト', 'FB', 'タイミング'].map(h => (
+                    <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium whitespace-nowrap">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -486,6 +501,29 @@ function RoundDetail({
                         {r.first_blood_team === true  ? <span className="text-[#FFD700]">味方</span>
                         : r.first_blood_team === false ? <span className="text-[#FF4655]">相手</span>
                         : <span className="text-muted-foreground">--</span>}
+                      </td>
+                      <td className="px-2 py-1.5">
+                        <div className="flex gap-1">
+                          {(['early', 'mid', 'late'] as const).map(t => {
+                            const cfg = TIMING_CFG[t]
+                            const active = r.contact_timing === t
+                            return (
+                              <button
+                                key={t}
+                                onClick={() => updateTiming(r.id, active ? null : t)}
+                                className={cn(
+                                  'px-1.5 py-0.5 rounded text-[10px] font-bold border transition-colors',
+                                  active
+                                    ? 'border-current'
+                                    : 'bg-transparent border-border text-muted-foreground hover:border-muted-foreground'
+                                )}
+                                style={active ? { color: cfg.color, background: `${cfg.color}20`, borderColor: `${cfg.color}60` } : undefined}
+                              >
+                                {cfg.label}
+                              </button>
+                            )
+                          })}
+                        </div>
                       </td>
                     </tr>
                   )

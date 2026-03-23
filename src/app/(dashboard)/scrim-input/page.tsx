@@ -1,8 +1,10 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Upload, Save, RotateCcw, Loader2, Check, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MAPS, AGENTS } from '@/types'
+import { MAP_IMAGES, MAP_POLYGONS, normalizeMapKey } from '@/lib/mapPolygons'
+import { detectSite } from '@/lib/geometry'
 
 const TEAM_ID = process.env.NEXT_PUBLIC_DEFAULT_TEAM_ID ?? 'YOUR_TEAM_UUID'
 
@@ -33,6 +35,8 @@ interface RoundRow {
   retake: boolean
   fb_team: boolean | ''
   contact_timing: 'early' | 'mid' | 'late' | ''
+  plant_x: number | null
+  plant_y: number | null
 }
 
 const TIMING_OPTIONS = [
@@ -46,10 +50,10 @@ const EMPTY_ROW = (): PlayerRow => ({
   fb: '', fd: '', acs: '', hs_pct: '',
 })
 
-const ECO_OPTIONS = ['pistol', 'eco', 'anti_eco', 'semi_eco', 'semi_buy', 'full_buy', 'force']
+const ECO_OPTIONS = ['pistol', 'eco', 'anti_eco', 'semi_eco', 'semi_buy', 'full_buy', 'oper', 'second', 'third']
 const ECO_LABELS: Record<string, string> = {
   pistol: 'ピストル', eco: 'エコ', anti_eco: 'アンチエコ', semi_eco: 'セミエコ',
-  semi_buy: 'セミバイ', full_buy: 'フルバイ', force: 'フォース',
+  semi_buy: 'セミバイ', full_buy: 'フルバイ', oper: 'オペ', second: 'セカンド', third: 'サード',
 }
 
 // ============================================================
@@ -116,6 +120,8 @@ export default function ScrimInputPage() {
       retake: false,
       fb_team: '',
       contact_timing: '',
+      plant_x: null,
+      plant_y: null,
     })))
   }, [teamScore, oppScore, firstHalfSide])
 
@@ -488,14 +494,15 @@ export default function ScrimInputPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-muted/20 border-b border-border">
-                      {['#','サイド','エコノミー','結果','プラント','サイト','リテイク','FB','タイミング'].map(h => (
+                      {['#','サイド','購入状況','結果','プラント','サイト','リテイク','FB','タイミング'].map(h => (
                         <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {rounds.map((r, i) => (
-                      <tr key={i} className={cn(
+                      <React.Fragment key={i}>
+                      <tr className={cn(
                         'border-b border-border last:border-0',
                         r.result === 'win' ? 'bg-[#00D4A0]/5' : r.result === 'loss' ? 'bg-[#FF4655]/5' : ''
                       )}>
@@ -598,6 +605,25 @@ export default function ScrimInputPage() {
                           </div>
                         </td>
                       </tr>
+                      {/* 展開マップ行 — ATKでプラントチェック時のみ */}
+                      {r.plant && r.side === 'attack' && (
+                        <tr className="border-b border-border">
+                          <td colSpan={9} className="px-3 py-3 bg-muted/10">
+                            <InlineMapPin
+                              mapName={map}
+                              x={r.plant_x}
+                              y={r.plant_y}
+                              roundNumber={r.round_number}
+                              onPinSet={(x, y, site) => {
+                                updateRound(i, 'plant_x', x)
+                                updateRound(i, 'plant_y', y)
+                                if (site) updateRound(i, 'site', site)
+                              }}
+                            />
+                          </td>
+                        </tr>
+                      )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -640,4 +666,85 @@ export default function ScrimInputPage() {
 const cls = 'w-full bg-muted border border-border rounded-lg px-3 py-2 text-sm text-white focus:border-[#FF4655] outline-none'
 function Label({ children }: { children: React.ReactNode }) {
   return <div className="text-xs text-muted-foreground mb-1">{children}</div>
+}
+
+// ── Inline Map Pin (スクリム入力用・API呼び出しなし) ──
+function InlineMapPin({ mapName, x, y, roundNumber, onPinSet }: {
+  mapName: string
+  x: number | null
+  y: number | null
+  roundNumber: number
+  onPinSet: (x: number, y: number, site: string | null) => void
+}) {
+  const containerRef = useRef<HTMLDivElement>(null)
+  const [imgError, setImgError] = useState(false)
+  const [hover, setHover] = useState<{ x: number; y: number } | null>(null)
+
+  const mapKey = normalizeMapKey(mapName)
+  const imageUrl = MAP_IMAGES[mapKey] ? `/api/map-image?key=${mapKey}` : null
+  const polygons = MAP_POLYGONS[mapKey] ?? {}
+
+  function handleClick(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect) return
+    const nx = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+    const ny = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
+    onPinSet(nx, ny, detectSite(nx, ny, polygons))
+  }
+
+  return (
+    <div className="flex items-start gap-3">
+      <div
+        ref={containerRef}
+        onClick={handleClick}
+        onMouseMove={e => {
+          const rect = e.currentTarget.getBoundingClientRect()
+          setHover({ x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height })
+        }}
+        onMouseLeave={() => setHover(null)}
+        className="relative rounded-lg overflow-hidden border border-[#FF4655]/40 cursor-crosshair flex-shrink-0"
+        style={{ width: 180, height: 180 }}
+      >
+        {imageUrl && !imgError ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imageUrl} alt={mapName} className="w-full h-full object-cover select-none" draggable={false} onError={() => setImgError(true)} />
+        ) : (
+          <div className="w-full h-full bg-muted flex items-center justify-center">
+            <span className="text-xs text-muted-foreground">{mapName || 'マップ未選択'}</span>
+          </div>
+        )}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none">
+          {/* Hover crosshair */}
+          {hover && (
+            <g>
+              <line x1={`${hover.x * 100}%`} y1="0" x2={`${hover.x * 100}%`} y2="100%" stroke="#FF4655" strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 3" />
+              <line x1="0" y1={`${hover.y * 100}%`} x2="100%" y2={`${hover.y * 100}%`} stroke="#FF4655" strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 3" />
+            </g>
+          )}
+          {/* Placed pin */}
+          {x !== null && y !== null && (
+            <g>
+              <circle cx={`${x * 100}%`} cy={`${y * 100}%`} r={8} fill="#FF4655" fillOpacity={0.85} stroke="white" strokeWidth={1.5} />
+              <text x={`${x * 100}%`} y={`${y * 100}%`} dy="0.35em" textAnchor="middle" fill="white" fontSize={7} fontWeight="bold">{roundNumber}</text>
+            </g>
+          )}
+        </svg>
+        <div className="absolute bottom-1 left-1 right-1 bg-black/60 rounded text-center pointer-events-none">
+          <span className="text-[9px] text-white">クリックでピン設定</span>
+        </div>
+      </div>
+      <div className="text-xs text-muted-foreground space-y-1 pt-1">
+        <p className="text-white font-medium">R{roundNumber} プラント位置</p>
+        {x !== null && y !== null ? (
+          <>
+            <p>X: {(x * 100).toFixed(1)}%</p>
+            <p>Y: {(y * 100).toFixed(1)}%</p>
+            <p className="text-[#00D4A0]">✓ 設定済み</p>
+          </>
+        ) : (
+          <p className="text-muted-foreground/60">未設定</p>
+        )}
+      </div>
+    </div>
+  )
 }
