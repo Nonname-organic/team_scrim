@@ -2,7 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { LayoutDashboard, Users, Swords, Bot, TrendingUp, ClipboardEdit, BarChart2 } from 'lucide-react'
+import { LayoutDashboard, Users, Swords, Bot, TrendingUp, ClipboardEdit, BarChart2, Settings } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const TEAM_ID = process.env.NEXT_PUBLIC_DEFAULT_TEAM_ID ?? 'YOUR_TEAM_UUID'
@@ -14,6 +14,7 @@ const nav = [
   { href: '/matches',        label: '試合履歴',       icon: Swords },
   { href: '/round-analysis', label: 'ラウンド分析',   icon: BarChart2 },
   { href: '/ai-coach',       label: 'AIコーチ',       icon: Bot },
+  { href: '/settings',       label: '設定',           icon: Settings },
 ]
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
