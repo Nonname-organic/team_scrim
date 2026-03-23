@@ -40,9 +40,9 @@ interface RoundRow {
 }
 
 const TIMING_OPTIONS = [
-  { value: 'early', label: 'Early', sub: '〜25秒', color: 'text-[#FF4655]', bg: 'bg-[#FF4655]/20 border-[#FF4655]/40' },
+  { value: 'early', label: 'Early', sub: '〜25秒',  color: 'text-[#FF4655]', bg: 'bg-[#FF4655]/20 border-[#FF4655]/40' },
   { value: 'mid',   label: 'Mid',   sub: '25〜75秒', color: 'text-[#6C63FF]', bg: 'bg-[#6C63FF]/20 border-[#6C63FF]/40' },
-  { value: 'late',  label: 'Late',  sub: '75秒〜', color: 'text-[#9B9BA4]', bg: 'bg-muted/40 border-border' },
+  { value: 'late',  label: 'Late',  sub: '75秒〜',  color: 'text-[#E8B84B]', bg: 'bg-[#E8B84B]/20 border-[#E8B84B]/40' },
 ]
 
 const EMPTY_ROW = (): PlayerRow => ({

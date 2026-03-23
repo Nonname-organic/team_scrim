@@ -17,7 +17,7 @@ const ECO_LABELS: Record<string, string> = {
 const TIMING_OPTIONS = [
   { value: 'early', label: 'Early', color: '#FF4655' },
   { value: 'mid',   label: 'Mid',   color: '#9B5CF6' },
-  { value: 'late',  label: 'Late',  color: '#9B9BA4' },
+  { value: 'late',  label: 'Late',  color: '#E8B84B' },
 ] as const
 const SITE_OPTS = ['', 'A', 'B', 'C']
 

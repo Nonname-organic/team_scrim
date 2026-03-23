@@ -17,7 +17,7 @@ const ECO_COLOR: Record<string, string> = {
 const TIMING_CFG = {
   early: { label: 'Early', color: '#FF4655' },
   mid:   { label: 'Mid',   color: '#6C63FF' },
-  late:  { label: 'Late',  color: '#9B9BA4' },
+  late:  { label: 'Late',  color: '#E8B84B' },
 } as const
 
 interface Match {
