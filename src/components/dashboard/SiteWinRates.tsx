@@ -77,25 +77,6 @@ export function SiteWinRates({ data }: Props) {
         ))}
       </div>
 
-      {/* Post-plant overall */}
-      {postPlant && (() => {
-        const p = pct(postPlant)
-        const c = color(p)
-        return (
-          <div className="bg-muted/20 border border-border/60 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">ポストプラント全体</span>
-              <span>
-                <span className="font-bold text-sm" style={{ color: c }}>{p !== null ? `${p}%` : '--'}</span>
-                <span className="text-muted-foreground/60 ml-1.5 text-xs">{postPlant.wins}W / {postPlant.total}R</span>
-              </span>
-            </div>
-            <div className="h-2 bg-muted rounded-full overflow-hidden">
-              <div className="h-full rounded-full" style={{ width: `${p ?? 0}%`, background: c }} />
-            </div>
-          </div>
-        )
-      })()}
     </div>
   )
 }
