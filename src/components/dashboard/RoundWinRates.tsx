@@ -12,7 +12,7 @@ interface Row {
 }
 
 export function RoundWinRates({ data: rawData }: { data: Record<string, unknown>[] }) {
-  const data = rawData as Row[]
+  const data = rawData as unknown as Row[]
   if (!data?.length) return <p className="text-sm text-muted-foreground">データなし</p>
 
   return (

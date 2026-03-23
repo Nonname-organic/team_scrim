@@ -27,7 +27,7 @@ const IDEAL: Record<string, number> = {
 }
 
 export function EconomyWinRates({ data: rawData }: { data: Record<string, unknown>[] }) {
-  const data = rawData as Row[]
+  const data = rawData as unknown as Row[]
   if (!data?.length) return <Empty />
 
   return (
