@@ -26,7 +26,8 @@ const IDEAL: Record<string, number> = {
   force:    0.35,
 }
 
-export function EconomyWinRates({ data }: { data: Row[] }) {
+export function EconomyWinRates({ data: rawData }: { data: Record<string, unknown>[] }) {
+  const data = rawData as Row[]
   if (!data?.length) return <Empty />
 
   return (

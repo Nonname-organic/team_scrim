@@ -11,7 +11,8 @@ interface Row {
   win_rate: number
 }
 
-export function RoundWinRates({ data }: { data: Row[] }) {
+export function RoundWinRates({ data: rawData }: { data: Record<string, unknown>[] }) {
+  const data = rawData as Row[]
   if (!data?.length) return <p className="text-sm text-muted-foreground">データなし</p>
 
   return (

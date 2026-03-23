@@ -8,7 +8,7 @@ interface SiteData {
 }
 
 interface Props {
-  data: Record<string, SiteData>
+  data: Record<string, unknown>
 }
 
 const SITE_LABELS: Record<string, { label: string; side: string }> = {

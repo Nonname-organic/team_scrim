@@ -7,7 +7,8 @@ interface Row {
   win_rate: number
 }
 
-export function FirstBloodImpact({ data }: { data: Row[] }) {
+export function FirstBloodImpact({ data: rawData }: { data: Record<string, unknown>[] }) {
+  const data = rawData as Row[]
   if (!data?.length) return <p className="text-sm text-muted-foreground">データなし</p>
 
   const fbRow = data.find(r => r.fb_team === true)
