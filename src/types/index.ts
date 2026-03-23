@@ -10,7 +10,7 @@ export type MatchType = 'scrim' | 'official' | 'practice'
 export type EconomyType = 'pistol' | 'eco' | 'semi_eco' | 'semi_buy' | 'full_buy' | 'force'
 export type EventType = 'kill' | 'death' | 'assist' | 'plant' | 'defuse' | 'ultimate' | 'ability'
 export type WinCondition = 'elimination' | 'defuse' | 'detonate' | 'time'
-export type PlantSite = 'A' | 'B' | 'C' | 'M'
+export type PlantSite = 'A' | 'B' | 'C'
 export type ReportType = 'post_match' | 'weekly' | 'player' | 'tactical'
 
 // ============================================================
@@ -341,8 +341,8 @@ export const MAPS = [
 export type ValorantMap = typeof MAPS[number]
 
 export const AGENTS = [
-  'Astra', 'Breach', 'Brimstone', 'Chamber', 'Clove', 'Cypher',
-  'Deadlock', 'Fade', 'Gekko', 'Harbor', 'Iso', 'Jett', 'KAY/O',
-  'Killjoy', 'Neon', 'Omen', 'Phoenix', 'Raze', 'Reyna', 'Sage',
-  'Skye', 'Sova', 'Tejo', 'Viper', 'Vyse', 'Waylay', 'Yoru'
+  'アストラ', 'ブリーチ', 'ブリムストーン', 'チェンバー', 'クローブ', 'サイファー',
+  'デッドロック', 'フェイド', 'ゲッコー', 'ハーバー', 'アイソ', 'ジェット', 'ケイオー',
+  'キルジョイ', 'ネオン', 'オーメン', 'フェニックス', 'レイズ', 'レイナ', 'セージ',
+  'スカイ', 'ソーヴァ', 'テホ', 'ヴァイパー', 'ヴァイス', 'ウェイレイ', 'ヨル'
 ] as const

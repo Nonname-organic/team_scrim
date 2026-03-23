@@ -288,7 +288,6 @@ export async function getPlayerRadarStats(playerId: string) {
     { subject: 'ACS',    value: Math.min(100, Math.round((stats.avg_acs  / 300)  * 100)), fullMark: 100 },
     { subject: 'KD',     value: Math.min(100, Math.round((stats.avg_kd   / 1.8)  * 100)), fullMark: 100 },
     { subject: 'ADR',    value: Math.min(100, Math.round((stats.avg_adr  / 180)  * 100)), fullMark: 100 },
-    { subject: 'FBSR',   value: Math.min(100, Math.round((stats.career_fbsr / 0.7) * 100)), fullMark: 100 },
     { subject: 'KPR',    value: Math.min(100, Math.round((stats.avg_kpr  / 1.0)  * 100)), fullMark: 100 },
   ]
 }
@@ -335,5 +334,129 @@ export async function buildAIContext(teamId: string, matchId?: string) {
     round_win_rates: roundWinRates,
     player_stats: playerStats,
     match_data: matchData,
+  }
+}
+
+// ============================================================
+// AI Context V2 — match/map filtered
+// ============================================================
+
+export async function buildAIContextV2(
+  teamId: string,
+  options: { matchIds?: string[]; mapFilter?: string } = {}
+) {
+  const { matchIds, mapFilter } = options
+  const hasMatchFilter = !!matchIds?.length
+
+  // Build parameterised WHERE clauses
+  const matchWhere = (alias: string, startIdx: number): { clause: string; params: unknown[] } => {
+    const params: unknown[] = []
+    let clause = ''
+    if (hasMatchFilter) {
+      clause += ` AND ${alias}.id = ANY($${startIdx + params.length}::uuid[])`
+      params.push(matchIds)
+    }
+    if (mapFilter) {
+      clause += ` AND ${alias}.map = $${startIdx + params.length}`
+      params.push(mapFilter)
+    }
+    return { clause, params }
+  }
+
+  // Matches with agent compositions
+  const mf = matchWhere('m', 2)
+  const matchDetails = await query<Record<string, unknown>>(`
+    SELECT
+      m.id, m.match_date, m.opponent_name, m.map, m.result,
+      m.team_score, m.opponent_score,
+      m.attack_rounds_won, m.attack_rounds_played,
+      m.defense_rounds_won, m.defense_rounds_played,
+      COALESCE(
+        json_agg(DISTINCT ps.agent ORDER BY ps.agent) FILTER (WHERE ps.agent IS NOT NULL),
+        '[]'::json
+      ) AS agents_used
+    FROM matches m
+    LEFT JOIN player_stats ps ON ps.match_id = m.id
+    WHERE m.team_id = $1 ${mf.clause}
+    GROUP BY m.id
+    ORDER BY m.match_date DESC
+  `, [teamId, ...mf.params])
+
+  // Rounds for selected matches
+  const rf = matchWhere('m', 2)
+  const rounds = await query<Record<string, unknown>>(`
+    SELECT r.round_number, r.side, r.result, r.economy_type,
+           r.planted, r.plant_site, r.first_blood_team,
+           m.map, m.opponent_name
+    FROM rounds r
+    JOIN matches m ON m.id = r.match_id
+    WHERE m.team_id = $1 ${rf.clause}
+    ORDER BY m.match_date DESC, r.round_number
+    LIMIT 300
+  `, [teamId, ...rf.params])
+
+  // Aggregate win rates (filtered)
+  const af = matchWhere('m', 2)
+  const winRates = await query<Record<string, unknown>>(`
+    SELECT m.map,
+      COUNT(m.id) AS total_matches,
+      SUM(CASE WHEN m.result = 'win' THEN 1 ELSE 0 END) AS wins,
+      ROUND(
+        SUM(CASE WHEN m.result = 'win' THEN 1 ELSE 0 END)::numeric / NULLIF(COUNT(m.id), 0),
+        3
+      ) AS win_rate,
+      ROUND(AVG(m.attack_rounds_won::numeric / NULLIF(m.attack_rounds_played, 0)), 3) AS attack_win_rate,
+      ROUND(AVG(m.defense_rounds_won::numeric / NULLIF(m.defense_rounds_played, 0)), 3) AS defense_win_rate
+    FROM matches m
+    WHERE m.team_id = $1 ${af.clause}
+    GROUP BY m.map
+    ORDER BY total_matches DESC
+  `, [teamId, ...af.params])
+
+  // Player stats (filtered)
+  const pf = matchWhere('m', 2)
+  const playerStats = await query<Record<string, unknown>>(`
+    SELECT p.ign, ps.agent,
+      ROUND(AVG(ps.kills), 2) AS avg_kills,
+      ROUND(AVG(ps.deaths), 2) AS avg_deaths,
+      ROUND(AVG(ps.assists), 2) AS avg_assists,
+      ROUND(AVG(ps.acs), 0) AS avg_acs,
+      ROUND(AVG(ps.hs_pct), 1) AS avg_hs_pct,
+      SUM(ps.first_bloods) AS total_fb,
+      SUM(ps.first_deaths) AS total_fd,
+      COUNT(DISTINCT ps.match_id) AS matches_played
+    FROM player_stats ps
+    JOIN matches m ON m.id = ps.match_id
+    JOIN players p ON p.id = ps.player_id
+    WHERE m.team_id = $1 ${pf.clause}
+    GROUP BY p.ign, ps.agent
+    ORDER BY avg_acs DESC
+  `, [teamId, ...pf.params])
+
+  // Economy win rates (filtered)
+  const ef = matchWhere('m', 2)
+  const economyStats = await query<Record<string, unknown>>(`
+    SELECT r.economy_type,
+      COUNT(*) AS total,
+      SUM(CASE WHEN r.result = 'win' THEN 1 ELSE 0 END) AS wins,
+      ROUND(SUM(CASE WHEN r.result = 'win' THEN 1 ELSE 0 END)::numeric / NULLIF(COUNT(*), 0), 3) AS win_rate
+    FROM rounds r
+    JOIN matches m ON m.id = r.match_id
+    WHERE m.team_id = $1 AND r.economy_type IS NOT NULL ${ef.clause}
+    GROUP BY r.economy_type
+    ORDER BY total DESC
+  `, [teamId, ...ef.params])
+
+  return {
+    match_details: matchDetails,
+    rounds_sample: rounds,
+    win_rates: winRates,
+    player_stats: playerStats,
+    economy_stats: economyStats,
+    filter_info: {
+      match_count: matchDetails.length,
+      map_filter: mapFilter ?? null,
+      match_ids_provided: hasMatchFilter,
+    },
   }
 }

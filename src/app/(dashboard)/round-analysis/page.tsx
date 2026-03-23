@@ -2,15 +2,16 @@
 import { useEffect, useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronUp, Search, X } from 'lucide-react'
+import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSelector'
 
 const TEAM_ID = process.env.NEXT_PUBLIC_DEFAULT_TEAM_ID ?? 'YOUR_TEAM_UUID'
 
 const ECO_LABELS: Record<string, string> = {
-  pistol: 'ピストル', eco: 'エコ', semi_eco: 'セミエコ',
+  pistol: 'ピストル', eco: 'エコ', anti_eco: 'アンチエコ', semi_eco: 'セミエコ',
   semi_buy: 'セミバイ', full_buy: 'フルバイ', force: 'フォース',
 }
 const ECO_COLOR: Record<string, string> = {
-  pistol: '#FFD700', eco: '#FF4655', semi_eco: '#FF8C42',
+  pistol: '#FFD700', eco: '#FF4655', anti_eco: '#FF8C42', semi_eco: '#FF8C42',
   semi_buy: '#6C63FF', full_buy: '#00D4A0', force: '#FF8C42',
 }
 
@@ -24,6 +25,7 @@ interface Round {
   id: string; round_number: number; side: string; result: string
   economy_type: string | null; planted: boolean; plant_site: string | null
   first_blood_team: boolean | null
+  plant_x: number | null; plant_y: number | null
 }
 
 type SortKey = 'date' | 'opponent' | 'map'
@@ -33,6 +35,7 @@ export default function RoundAnalysisPage() {
   const [matches, setMatches] = useState<Match[]>([])
   const [selectedId, setSelectedId] = useState<string>('')
   const [roundsCache, setRoundsCache] = useState<Record<string, Round[]>>({})
+
   const [loadingMatches, setLoadingMatches] = useState(true)
   const [loadingRoundId, setLoadingRoundId] = useState<string | null>(null)
 
@@ -95,7 +98,7 @@ export default function RoundAnalysisPage() {
   ]
 
   return (
-    <div className="space-y-4 max-w-6xl">
+    <div className="space-y-4">
       {/* Page header */}
       <div>
         <h1 className="text-2xl font-bold text-white">ラウンド <span className="text-[#FF4655]">分析</span></h1>
@@ -244,7 +247,10 @@ export default function RoundAnalysisPage() {
                         ラウンドデータがありません
                       </div>
                     ) : (
-                      <RoundDetail rounds={rounds} />
+                      <RoundDetail
+                        rounds={rounds}
+                        map={m.map}
+                      />
                     )}
                   </div>
                 )}
@@ -261,7 +267,15 @@ export default function RoundAnalysisPage() {
 // Round detail (shown when a match is expanded)
 // ============================================================
 
-function RoundDetail({ rounds }: { rounds: Round[] }) {
+function RoundDetail({
+  rounds: initialRounds,
+  map,
+}: {
+  rounds: Round[]
+  map: string
+}) {
+  const rounds = initialRounds
+
   const atkRounds = rounds.filter(r => r.side === 'attack')
   const defRounds = rounds.filter(r => r.side === 'defense')
   const atkWins = atkRounds.filter(r => r.result === 'win').length
@@ -282,7 +296,7 @@ function RoundDetail({ rounds }: { rounds: Round[] }) {
     return { type, total: rows.length, wins, wr: rows.length > 0 ? wins / rows.length : null }
   }).filter(e => e.total > 0)
 
-  const sites = ['A', 'B', 'C', 'M'] as const
+  const sites = ['A', 'B', 'C'] as const
   const siteStats = sites.map(site => {
     const atk  = plantedRounds.filter(r => r.plant_site === site && r.side === 'attack')
     const def  = plantedRounds.filter(r => r.plant_site === site && r.side === 'defense')
@@ -329,7 +343,7 @@ function RoundDetail({ rounds }: { rounds: Round[] }) {
             return (
               <div
                 key={r.round_number}
-                title={`R${r.round_number} | ${side} | ${eco}${r.planted ? ` | 🌱${r.plant_site ?? ''}` : ''}${r.first_blood_team !== null ? (r.first_blood_team ? ' | FB取得' : ' | FB取られ') : ''}`}
+                title={`R${r.round_number} | ${side} | ${eco}${r.planted ? ` | 🌱${r.plant_site ?? ''}` : ''}${r.first_blood_team !== null ? (r.first_blood_team ? ' | FB味方' : ' | FB相手') : ''}`}
                 className={cn(
                   'relative w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold cursor-default border',
                   isWin
@@ -404,55 +418,81 @@ function RoundDetail({ rounds }: { rounds: Round[] }) {
         )}
       </div>
 
-      {/* Round detail table */}
-      <div className="bg-muted/10 border border-border/60 rounded-xl overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-border/60">
-          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">ラウンド詳細</div>
+      {/* Map plant heatmap */}
+      <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-3">
+        <div className="bg-muted/10 border border-border/60 rounded-xl p-4">
+          <MapPlantSelector
+            mapName={map}
+            rounds={rounds.filter(r => r.planted).map<PlantRound>(r => ({
+              id: r.id,
+              round_number: r.round_number,
+              plant_x: r.plant_x,
+              plant_y: r.plant_y,
+              plant_site: r.plant_site,
+              result: r.result,
+              side: r.side,
+            }))}
+            editRoundId={null}
+            onSaved={() => {}}
+            onCancelEdit={() => {}}
+          />
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border/60 bg-muted/20">
-                {['R', 'サイド', 'エコ', '結果', 'プラント', 'サイト', 'FB'].map(h => (
-                  <th key={h} className="px-4 py-2 text-left text-muted-foreground font-medium">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {rounds.map(r => (
-                <tr key={r.round_number} className="border-b border-border/40 last:border-0 hover:bg-muted/10 transition-colors">
-                  <td className="px-4 py-2 font-bold text-white">{r.round_number}</td>
-                  <td className="px-4 py-2">
-                    <span className={cn('font-semibold', r.side === 'attack' ? 'text-[#FF8C42]' : 'text-[#00D4A0]')}>
-                      {r.side === 'attack' ? 'ATK' : 'DEF'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2">
-                    {r.economy_type ? (
-                      <span className="px-1.5 py-0.5 rounded text-[10px] font-medium"
-                        style={{ background: `${ECO_COLOR[r.economy_type] ?? '#9B9BA4'}20`, color: ECO_COLOR[r.economy_type] ?? '#9B9BA4' }}>
-                        {ECO_LABELS[r.economy_type] ?? r.economy_type}
-                      </span>
-                    ) : <span className="text-muted-foreground">--</span>}
-                  </td>
-                  <td className="px-4 py-2">
-                    <span className={cn('font-bold', r.result === 'win' ? 'text-[#00D4A0]' : 'text-[#FF4655]')}>
-                      {r.result === 'win' ? '勝' : '敗'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-2">
-                    {r.planted ? <span className="text-[#6C63FF]">あり</span> : <span className="text-muted-foreground">--</span>}
-                  </td>
-                  <td className="px-4 py-2 text-muted-foreground">{r.plant_site ?? '--'}</td>
-                  <td className="px-4 py-2">
-                    {r.first_blood_team === true  ? <span className="text-[#FFD700]">取得</span>
-                    : r.first_blood_team === false ? <span className="text-[#FF4655]">取られ</span>
-                    : <span className="text-muted-foreground">--</span>}
-                  </td>
+
+        {/* Round detail table */}
+        <div className="bg-muted/10 border border-border/60 rounded-xl overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-border/60">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">ラウンド詳細</div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="border-b border-border/60 bg-muted/20">
+                  {['R', 'サイド', 'エコ', '結果', 'プラント', 'サイト', 'FB'].map(h => (
+                    <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium">{h}</th>
+                  ))}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rounds.map(r => {
+                  return (
+                    <tr
+                      key={r.round_number}
+                      className="border-b border-border/40 last:border-0 transition-colors hover:bg-muted/10"
+                    >
+                      <td className="px-3 py-2 font-bold text-white">{r.round_number}</td>
+                      <td className="px-3 py-2">
+                        <span className={cn('font-semibold', r.side === 'attack' ? 'text-[#FF8C42]' : 'text-[#00D4A0]')}>
+                          {r.side === 'attack' ? 'ATK' : 'DEF'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        {r.economy_type ? (
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+                            style={{ background: `${ECO_COLOR[r.economy_type] ?? '#9B9BA4'}20`, color: ECO_COLOR[r.economy_type] ?? '#9B9BA4' }}>
+                            {ECO_LABELS[r.economy_type] ?? r.economy_type}
+                          </span>
+                        ) : <span className="text-muted-foreground">--</span>}
+                      </td>
+                      <td className="px-3 py-2">
+                        <span className={cn('font-bold', r.result === 'win' ? 'text-[#00D4A0]' : 'text-[#FF4655]')}>
+                          {r.result === 'win' ? '勝' : '敗'}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2">
+                        {r.planted ? <span className="text-[#6C63FF]">あり</span> : <span className="text-muted-foreground">--</span>}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">{r.plant_site ?? '--'}</td>
+                      <td className="px-3 py-2">
+                        {r.first_blood_team === true  ? <span className="text-[#FFD700]">味方</span>
+                        : r.first_blood_team === false ? <span className="text-[#FF4655]">相手</span>
+                        : <span className="text-muted-foreground">--</span>}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>

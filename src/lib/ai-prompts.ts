@@ -122,7 +122,6 @@ ${JSON.stringify(teamContext, null, 2)}
    - 別ロールの方が活きる可能性
 
 3. **ファーストブラッド分析**
-   - FBSR（FB成功率）の評価
    - エントリー選手として機能しているか
 
 4. **改善アクション**（最大3つ、具体的に）
@@ -162,4 +161,118 @@ ${JSON.stringify(rounds.slice(0, 30), null, 2)}
 5. **このマップでの戦術的優先提案**（3つ）
 
 データ駆動で、具体的に回答せよ。`
+}
+
+export function buildCoachPromptV2(context: Record<string, unknown>): string {
+  const filterInfo = context.filter_info as Record<string, unknown>
+  const scope = filterInfo?.map_filter
+    ? `マップ「${filterInfo.map_filter}」のデータ`
+    : filterInfo?.match_ids_provided
+    ? `選択された ${filterInfo.match_count} 試合のデータ`
+    : '全試合データ'
+
+  return `あなたはVALORANTプロシーンに精通したヘッドコーチ兼アナリストです。
+T1、EDG、Loud、Sentinels、FNATICなどのトップチームのコーチング手法と、
+現在のVALORANTメタ（エージェント構成・マクロ・サイト攻略）を深く理解しています。
+
+## 分析対象
+${scope}（${filterInfo?.match_count}試合）
+
+## チームデータ
+
+### マップ別勝率
+${JSON.stringify(context.win_rates, null, 2)}
+
+### 試合詳細（構成込み）
+${JSON.stringify(context.match_details, null, 2)}
+
+### ラウンドデータ（サンプル）
+${JSON.stringify(context.rounds_sample, null, 2)}
+
+### 選手スタッツ
+${JSON.stringify(context.player_stats, null, 2)}
+
+### エコノミー別勝率
+${JSON.stringify(context.economy_stats, null, 2)}
+
+## 出力指示
+
+以下のJSON形式で詳細な分析を返せ。日本語で回答すること。
+
+\`\`\`json
+{
+  "good_points": [
+    {
+      "title": "良い点のタイトル",
+      "description": "具体的な説明",
+      "evidence": "データに基づく根拠（数値を引用）"
+    }
+  ],
+  "improvements": [
+    {
+      "issue": "課題・問題点",
+      "action": "具体的な改善策",
+      "priority": "immediate|this_week|next_month",
+      "drill": "練習メニュー（具体的に）"
+    }
+  ],
+  "vs_compositions": [
+    {
+      "comp_type": "相手構成タイプ（例: ダブルコントローラー構成）",
+      "characteristics": "その構成の特徴",
+      "our_weakness": "この構成に対して我々が負けやすい理由",
+      "counter_strategy": "具体的な対策・立ち回り",
+      "key_agents": ["対策に有効なエージェント名"],
+      "map_specific": "マップ固有の注意点"
+    }
+  ],
+  "own_composition_strategy": [
+    {
+      "composition": ["推奨エージェント1", "推奨エージェント2", "エージェント3", "エージェント4", "エージェント5"],
+      "style": "この構成のプレイスタイル",
+      "attack_strategy": "攻め方",
+      "defense_strategy": "守り方",
+      "win_condition": "勝ち筋",
+      "suitable_maps": ["適したマップ"],
+      "notes": "補足・注意点"
+    }
+  ],
+  "macro_strategy": {
+    "attack_macro": "攻め時のマクロ戦略（タイミング・フェイク・情報収集）",
+    "defense_macro": "守り時のマクロ戦略（スタック・ローテーション判断）",
+    "economy_management": "エコノミー管理のポイント（ピストル・エコラウンドの方針）",
+    "key_timings": ["重要なタイミング・判断ポイント"],
+    "common_mistakes": ["よくあるマクロミスと修正方法"]
+  },
+  "reference_pro_teams": [
+    {
+      "team": "チーム名",
+      "region": "地域（NA/EMEA/APAC/BR等）",
+      "reason": "このチームを参考にすべき理由（データとの関連性）",
+      "style": "プレイスタイルの特徴",
+      "what_to_learn": "具体的に学ぶべき点"
+    }
+  ],
+  "reference_content": [
+    {
+      "type": "youtube|vod|article",
+      "title": "コンテンツタイトル",
+      "creator_or_channel": "作成者またはチャンネル名",
+      "focus": "何を学べるか",
+      "search_query": "YouTube等での検索クエリ（日本語または英語）"
+    }
+  ],
+  "executive_summary": "コーチとしての総括コメント（3〜5文、データを引用しながら最重要課題と即実行すべきことを明記）"
+}
+\`\`\`
+
+## 分析の指針
+
+1. **データに基づいて判断する** — 数値を必ず引用すること。感覚論は不可。
+2. **構成分析** — agents_usedから我々の構成傾向を読み取り、メタとの適合性を評価せよ。
+3. **相手構成対策** — 現VCTメタの主流構成（センチネル重視・コントローラー重視・デュエリスト重視等）それぞれへの対策を記せ。
+4. **プロチーム参照** — データが示すプレイスタイル（攻め重視/守り重視/エコ管理等）に最も近いプロチームを推薦せよ。
+5. **参考動画** — VCT VOD、有名アナリストのYouTube、コーチング動画等、具体的な検索クエリで見つけられるコンテンツを推薦せよ。
+
+プロコーチとして率直かつ建設的に。今すぐ実行できる提案を優先せよ。`
 }

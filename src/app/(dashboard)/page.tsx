@@ -60,7 +60,7 @@ export default function DashboardPage() {
           <select
             value={mapFilter}
             onChange={e => setMapFilter(e.target.value)}
-            className="bg-muted/30 border border-border rounded-lg px-3 py-1.5 text-sm text-white focus:border-[#FF4655] outline-none"
+            className="bg-muted border border-border rounded-lg px-3 py-1.5 text-sm text-white focus:border-[#FF4655] outline-none"
           >
             <option value="">すべてのマップ</option>
             {MAPS.map(m => <option key={m} value={m}>{m}</option>)}

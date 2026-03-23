@@ -1,8 +1,11 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { LayoutDashboard, Users, Swords, Bot, TrendingUp, ClipboardEdit, BarChart2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+const TEAM_ID = process.env.NEXT_PUBLIC_DEFAULT_TEAM_ID ?? 'YOUR_TEAM_UUID'
 
 const nav = [
   { href: '/',               label: 'ダッシュボード', icon: LayoutDashboard },
@@ -15,6 +18,20 @@ const nav = [
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
+  const [teamName, setTeamName] = useState<string>('MY TEAM')
+  const [teamTag, setTeamTag] = useState<string>('')
+
+  useEffect(() => {
+    fetch(`/api/teams?team_id=${TEAM_ID}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(json => {
+        if (json?.data) {
+          setTeamName(json.data.name)
+          setTeamTag(json.data.tag)
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   return (
     <div className="flex min-h-screen">
@@ -53,7 +70,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         <div className="px-4 py-3 border-t border-border">
           <div className="text-[10px] text-muted-foreground">チーム</div>
-          <div className="text-xs font-semibold text-white mt-0.5">MY TEAM</div>
+          <div className="text-xs font-semibold text-white mt-0.5">{teamName}</div>
+          {teamTag && <div className="text-[10px] text-muted-foreground mt-0.5">[{teamTag}]</div>}
         </div>
       </aside>
 

@@ -1,13 +1,20 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Shield, Crosshair, Pencil, Save, X } from 'lucide-react'
+import { ArrowLeft, Shield, Crosshair, Pencil, Save, X, Plus, Trash2, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AGENTS } from '@/types'
+import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
+import { detectSite } from '@/lib/geometry'
+import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSelector'
 
 const RESULT_COLOR = { win: '#00D4A0', loss: '#FF4655', draw: '#9B9BA4' } as const
-const ECONOMY_OPTS = ['', 'pistol', 'eco', 'semi_eco', 'semi_buy', 'full_buy', 'force']
-const SITE_OPTS = ['', 'A', 'B', 'C', 'M']
+const ECO_OPTIONS = ['pistol', 'eco', 'anti_eco', 'semi_eco', 'semi_buy', 'full_buy', 'force'] as const
+const ECO_LABELS: Record<string, string> = {
+  pistol: 'ピストル', eco: 'エコ', anti_eco: 'アンチエコ', semi_eco: 'セミエコ',
+  semi_buy: 'セミバイ', full_buy: 'フルバイ', force: 'フォース',
+}
+const SITE_OPTS = ['', 'A', 'B', 'C']
 
 type PEdit = {
   player_id: string
@@ -28,12 +35,15 @@ type REdit = {
   result: string
   economy_type: string
   planted: boolean
+  retake: boolean
   plant_site: string
+  plant_x: number | null
+  plant_y: number | null
   first_blood_team: string
 }
 
-const inputCls = 'bg-muted/40 border border-border rounded px-1.5 py-0.5 text-xs text-white focus:border-[#FF4655] outline-none w-full'
-const selectCls = 'bg-muted/40 border border-border rounded px-1 py-0.5 text-xs text-white focus:border-[#FF4655] outline-none w-full'
+const inputCls = 'bg-muted border border-border rounded px-1.5 py-0.5 text-xs text-white focus:border-[#FF4655] outline-none w-full'
+const selectCls = 'bg-muted border border-border rounded px-1 py-0.5 text-xs text-white focus:border-[#FF4655] outline-none w-full'
 
 export default function MatchDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -41,10 +51,13 @@ export default function MatchDetailPage() {
   const [data, setData] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
   const [editMode, setEditMode] = useState(false)
+  const [editRoundMode, setEditRoundMode] = useState(false)
   const [editPlayers, setEditPlayers] = useState<PEdit[]>([])
   const [editRounds, setEditRounds] = useState<REdit[]>([])
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
+  const [roundSaveError, setRoundSaveError] = useState<string | null>(null)
+  const [plantEditIdx, setPlantEditIdx] = useState<number | null>(null)
 
   useEffect(() => {
     fetch(`/api/matches/${id}`)
@@ -92,17 +105,50 @@ export default function MatchDetailPage() {
       first_bloods: Number(p.first_bloods ?? 0),
       first_deaths: Number(p.first_deaths ?? 0),
     })))
-    setEditRounds(rounds.map(r => ({
-      round_number: Number(r.round_number),
-      side: String(r.side ?? ''),
-      result: String(r.result ?? ''),
-      economy_type: String(r.economy_type ?? ''),
-      planted: Boolean(r.planted),
-      plant_site: r.plant_site == null ? '' : String(r.plant_site),
-      first_blood_team:
-        r.first_blood_team == null ? '' : String(r.first_blood_team),
-    })))
     setEditMode(true)
+  }
+
+  function enterRoundEdit() {
+    setRoundSaveError(null)
+    setEditRounds(rounds.map(r => {
+      const side = String(r.side ?? '')
+      const planted = Boolean(r.planted)
+      return {
+        round_number: Number(r.round_number),
+        side,
+        result: String(r.result ?? ''),
+        economy_type: String(r.economy_type ?? ''),
+        planted: side === 'attack' ? planted : false,
+        retake: side === 'defense' ? planted : false,
+        plant_site: r.plant_site == null ? '' : String(r.plant_site),
+        plant_x: r.plant_x != null ? Number(r.plant_x) : null,
+        plant_y: r.plant_y != null ? Number(r.plant_y) : null,
+        first_blood_team: r.first_blood_team == null ? '' : String(r.first_blood_team),
+      }
+    }))
+    setEditRoundMode(true)
+  }
+
+  function addRound() {
+    setEditRounds(prev => {
+      const nextNum = prev.length > 0 ? prev[prev.length - 1].round_number + 1 : 1
+      return [...prev, {
+        round_number: nextNum,
+        side: 'attack',
+        result: 'win',
+        economy_type: '',
+        planted: false,
+        retake: false,
+        plant_site: '',
+        plant_x: null,
+        plant_y: null,
+        first_blood_team: '',
+      }]
+    })
+  }
+
+  function removeRound(i: number) {
+    setEditRounds(prev => prev.filter((_, idx) => idx !== i))
   }
 
   function updatePlayer(i: number, field: keyof PEdit, value: string | number) {
@@ -110,14 +156,24 @@ export default function MatchDetailPage() {
   }
 
   function updateRound(i: number, field: keyof REdit, value: string | boolean) {
-    setEditRounds(prev => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r))
+    setEditRounds(prev => prev.map((r, idx) => {
+      if (idx !== i) return r
+      if (field === 'round_number') return { ...r, round_number: Number(value) }
+      return { ...r, [field]: value }
+    }))
+  }
+
+  function updateRoundCoords(i: number, x: number | null, y: number | null, site: string | null) {
+    setEditRounds(prev => prev.map((r, idx) => {
+      if (idx !== i) return r
+      return { ...r, plant_x: x, plant_y: y, ...(site != null ? { plant_site: site } : {}) }
+    }))
   }
 
   async function saveAll() {
     setSaving(true)
     setSaveError(null)
     try {
-      // Save player stats
       const playerResults = await Promise.all(
         editPlayers.map(p =>
           fetch(`/api/players/${p.player_id}/stats`, {
@@ -141,33 +197,45 @@ export default function MatchDetailPage() {
       const playerErr = playerResults.find(r => r.error)
       if (playerErr) throw new Error(playerErr.error)
 
-      // Save rounds
-      if (editRounds.length > 0) {
-        const roundRes = await fetch('/api/rounds', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            match_id: id,
-            rounds: editRounds.map(r => ({
-              round_number: r.round_number,
-              side: r.side,
-              result: r.result,
-              economy: r.economy_type,
-              plant: r.planted,
-              site: r.plant_site,
-              fb_team: r.first_blood_team,
-            })),
-          }),
-        }).then(r => r.json())
-        if (roundRes.error) throw new Error(roundRes.error)
-      }
-
-      // Refresh
       const j = await fetch(`/api/matches/${id}`).then(r => r.json())
       setData(j.data)
       setEditMode(false)
     } catch (e) {
       setSaveError(String(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function saveRounds() {
+    setSaving(true)
+    setRoundSaveError(null)
+    try {
+      const roundRes = await fetch('/api/rounds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          match_id: id,
+          rounds: editRounds.map(r => ({
+            round_number: r.round_number,
+            side: r.side,
+            result: r.result,
+            economy: r.economy_type,
+            plant: r.side === 'defense' ? r.retake : r.planted,
+            site: r.plant_site,
+            plant_x: r.plant_x,
+            plant_y: r.plant_y,
+            fb_team: r.first_blood_team,
+          })),
+        }),
+      }).then(r => r.json())
+      if (roundRes.error) throw new Error(roundRes.error)
+
+      const j = await fetch(`/api/matches/${id}`).then(r => r.json())
+      setData(j.data)
+      setEditRoundMode(false)
+    } catch (e) {
+      setRoundSaveError(String(e))
     } finally {
       setSaving(false)
     }
@@ -328,6 +396,9 @@ export default function MatchDetailPage() {
                           onChange={e => updatePlayer(i, 'agent', e.target.value)}
                           className={selectCls}
                         >
+                          {p.agent && !(AGENTS as readonly string[]).includes(p.agent) && (
+                            <option key="__current" value={p.agent}>{p.agent}</option>
+                          )}
                           {AGENTS.map(a => <option key={a} value={a}>{a}</option>)}
                         </select>
                       </td>
@@ -373,136 +444,447 @@ export default function MatchDetailPage() {
       )}
 
       {/* Round log */}
-      {rounds.length > 0 && (
-        <div className="bg-card border border-border rounded-xl overflow-hidden">
-          <div className="px-5 py-3 border-b border-border">
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="px-5 py-3 border-b border-border flex items-center justify-between">
             <div className="text-sm font-semibold text-white">ラウンドログ</div>
+            {!editRoundMode ? (
+              <button
+                onClick={enterRoundEdit}
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white border border-border hover:border-white/30 rounded-lg px-3 py-1.5 transition-colors"
+              >
+                <Pencil className="w-3 h-3" /> 編集
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                {roundSaveError && <span className="text-xs text-[#FF4655]">{roundSaveError}</span>}
+                <button
+                  onClick={() => setEditRoundMode(false)}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white border border-border rounded-lg px-3 py-1.5 transition-colors"
+                >
+                  <X className="w-3 h-3" /> キャンセル
+                </button>
+                <button
+                  onClick={saveRounds}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 text-xs bg-[#FF4655] hover:bg-[#FF4655]/80 text-white rounded-lg px-3 py-1.5 transition-colors"
+                >
+                  <Save className="w-3 h-3" /> {saving ? '保存中...' : '保存'}
+                </button>
+              </div>
+            )}
           </div>
 
-          {!editMode ? (
+          {!editRoundMode ? (
             <div className="p-4">
-              <div className="flex flex-wrap gap-1.5">
-                {rounds.map((r) => {
-                  const isWin = r.result === 'win'
-                  const side = String(r.side ?? '')
-                  return (
-                    <div
-                      key={String(r.round_number)}
-                      title={`R${r.round_number} ${side} ${r.economy_type ?? ''} ${r.planted ? '🌱' : ''}`}
-                      className={cn(
-                        'w-8 h-8 rounded flex items-center justify-center text-xs font-bold cursor-default',
-                        isWin
-                          ? 'bg-[#00D4A0]/20 text-[#00D4A0] border border-[#00D4A0]/30'
-                          : 'bg-[#FF4655]/20 text-[#FF4655] border border-[#FF4655]/30'
-                      )}
-                    >
-                      {String(r.round_number)}
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="flex gap-4 mt-3 text-[10px] text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-[#00D4A0]/20 border border-[#00D4A0]/30 inline-block" />勝利
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-[#FF4655]/20 border border-[#FF4655]/30 inline-block" />敗北
-                </span>
-              </div>
+              {rounds.length === 0 ? (
+                <div className="text-center py-6 text-muted-foreground text-sm">
+                  ラウンドデータがありません。「編集」から追加できます。
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-wrap gap-1.5">
+                    {rounds.map((r) => {
+                      const isWin = r.result === 'win'
+                      const side = String(r.side ?? '')
+                      return (
+                        <div
+                          key={String(r.round_number)}
+                          title={`R${r.round_number} ${side} ${r.economy_type ?? ''} ${r.planted ? '🌱' : ''}`}
+                          className={cn(
+                            'w-8 h-8 rounded flex items-center justify-center text-xs font-bold cursor-default',
+                            isWin
+                              ? 'bg-[#00D4A0]/20 text-[#00D4A0] border border-[#00D4A0]/30'
+                              : 'bg-[#FF4655]/20 text-[#FF4655] border border-[#FF4655]/30'
+                          )}
+                        >
+                          {String(r.round_number)}
+                        </div>
+                      )
+                    })}
+                  </div>
+                  <div className="flex gap-4 mt-3 text-[10px] text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <span className="w-3 h-3 rounded bg-[#00D4A0]/20 border border-[#00D4A0]/30 inline-block" />勝利
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-3 h-3 rounded bg-[#FF4655]/20 border border-[#FF4655]/30 inline-block" />敗北
+                    </span>
+                  </div>
+
+                  {/* Plant heatmap + site win rates */}
+                  {(() => {
+                    const planted = rounds.filter(r => Boolean(r.planted))
+                    if (planted.length === 0) return null
+                    const plantRounds: PlantRound[] = planted.map(r => ({
+                      id: String(r.id ?? r.round_number),
+                      round_number: Number(r.round_number),
+                      plant_x: r.plant_x != null ? Number(r.plant_x) : null,
+                      plant_y: r.plant_y != null ? Number(r.plant_y) : null,
+                      plant_site: r.plant_site != null ? String(r.plant_site) : null,
+                      result: String(r.result ?? ''),
+                      side: String(r.side ?? ''),
+                    }))
+                    const siteStats = (['A', 'B', 'C'] as const).map(site => {
+                      const atk  = planted.filter(r => r.plant_site === site && r.side === 'attack')
+                      const def  = planted.filter(r => r.plant_site === site && r.side === 'defense')
+                      return {
+                        site,
+                        atk:    { total: (atk as unknown[]).length, wins: (atk as Record<string,unknown>[]).filter(r => r.result === 'win').length },
+                        retake: { total: (def as unknown[]).length, wins: (def as Record<string,unknown>[]).filter(r => r.result === 'win').length },
+                      }
+                    }).filter(s => s.atk.total > 0 || s.retake.total > 0)
+                    return (
+                      <div className="mt-4 grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3 items-start">
+                        <MapPlantSelector
+                          mapName={String(match.map ?? '')}
+                          rounds={plantRounds}
+                          editRoundId={null}
+                          onSaved={() => {}}
+                          onCancelEdit={() => {}}
+                        />
+                        {siteStats.length > 0 && (
+                          <div className="space-y-3">
+                            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                              サイト別勝率
+                            </div>
+                            {siteStats.map(s => (
+                              <div key={s.site} className="space-y-1.5">
+                                <div className="text-xs font-semibold text-white">{s.site}サイト</div>
+                                {s.atk.total > 0 && (() => {
+                                  const wr = Math.round((s.atk.wins / s.atk.total) * 100)
+                                  return (
+                                    <div>
+                                      <div className="flex justify-between text-[10px] mb-0.5">
+                                        <span className="text-muted-foreground">ATK実行</span>
+                                        <span className={wr >= 50 ? 'text-[#00D4A0] font-bold' : 'text-[#FF4655] font-bold'}>{wr}% <span className="text-muted-foreground/60 font-normal">{s.atk.wins}/{s.atk.total}</span></span>
+                                      </div>
+                                      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                                        <div className="h-full rounded-full bg-[#FF8C42]" style={{ width: `${wr}%` }} />
+                                      </div>
+                                    </div>
+                                  )
+                                })()}
+                                {s.retake.total > 0 && (() => {
+                                  const wr = Math.round((s.retake.wins / s.retake.total) * 100)
+                                  return (
+                                    <div>
+                                      <div className="flex justify-between text-[10px] mb-0.5">
+                                        <span className="text-muted-foreground">リテイク</span>
+                                        <span className={wr >= 50 ? 'text-[#00D4A0] font-bold' : 'text-[#FF4655] font-bold'}>{wr}% <span className="text-muted-foreground/60 font-normal">{s.retake.wins}/{s.retake.total}</span></span>
+                                      </div>
+                                      <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                                        <div className="h-full rounded-full bg-[#00D4A0]" style={{ width: `${wr}%` }} />
+                                      </div>
+                                    </div>
+                                  )
+                                })()}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })()}
+                </>
+              )}
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-border">
-                    {['R#', 'サイド', '結果', 'エコ', 'プラント', 'サイト', 'FB取得'].map(h => (
-                      <th key={h} className="px-3 py-2 text-left text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {editRounds.map((r, i) => (
-                    <tr key={r.round_number} className="border-b border-border/40 last:border-0 hover:bg-muted/10">
-                      <td className="px-3 py-1.5 text-muted-foreground font-mono">{r.round_number}</td>
-                      <td className="px-2 py-1.5">
-                        <select
-                          value={r.side}
-                          onChange={e => updateRound(i, 'side', e.target.value)}
-                          className={selectCls}
-                        >
-                          <option value="">-</option>
-                          <option value="attack">ATK</option>
-                          <option value="defense">DEF</option>
-                        </select>
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <select
-                          value={r.result}
-                          onChange={e => updateRound(i, 'result', e.target.value)}
-                          className={selectCls}
-                        >
-                          <option value="">-</option>
-                          <option value="win">勝利</option>
-                          <option value="loss">敗北</option>
-                        </select>
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <select
-                          value={r.economy_type}
-                          onChange={e => updateRound(i, 'economy_type', e.target.value)}
-                          className={selectCls}
-                        >
-                          {ECONOMY_OPTS.map(o => (
-                            <option key={o} value={o}>{o || '-'}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-2 py-1.5 text-center">
-                        <input
-                          type="checkbox"
-                          checked={r.planted}
-                          onChange={e => updateRound(i, 'planted', e.target.checked)}
-                          className="accent-[#FF4655] w-4 h-4"
-                        />
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <select
-                          value={r.plant_site}
-                          onChange={e => updateRound(i, 'plant_site', e.target.value)}
-                          className={selectCls}
-                        >
-                          {SITE_OPTS.map(o => (
-                            <option key={o} value={o}>{o || '-'}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="px-2 py-1.5">
-                        <select
-                          value={r.first_blood_team}
-                          onChange={e => updateRound(i, 'first_blood_team', e.target.value)}
-                          className={selectCls}
-                        >
-                          <option value="">-</option>
-                          <option value="true">取得</option>
-                          <option value="false">被取得</option>
-                        </select>
-                      </td>
+            <div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/20">
+                      {['#', 'サイド', 'エコノミー', '結果', 'プラント', 'サイト', 'リテイク', 'FB', ''].map(h => (
+                        <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium">
+                          {h}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {editRounds.map((r, i) => (
+                      <tr key={i} className={cn(
+                        'border-b border-border/40 last:border-0',
+                        r.result === 'win' ? 'bg-[#00D4A0]/5' : r.result === 'loss' ? 'bg-[#FF4655]/5' : ''
+                      )}>
+                        {/* # */}
+                        <td className="px-3 py-1.5">
+                          <input
+                            type="number" min={1}
+                            value={r.round_number}
+                            onChange={e => updateRound(i, 'round_number' as keyof REdit, e.target.value)}
+                            className={cn(inputCls, 'w-12')}
+                          />
+                        </td>
+                        {/* サイド */}
+                        <td className="px-2 py-1">
+                          <select
+                            value={r.side}
+                            onChange={e => {
+                              updateRound(i, 'side', e.target.value)
+                              // サイドが変わったらプラント/リテイクをリセット
+                              if (e.target.value === 'attack') updateRound(i, 'retake', false)
+                              if (e.target.value === 'defense') { updateRound(i, 'planted', false); updateRound(i, 'plant_site', '') }
+                            }}
+                            className={cn(
+                              'border rounded px-2 py-1 text-xs font-semibold focus:border-[#FF4655] outline-none',
+                              r.side === 'attack'  ? 'bg-[#FF8C42]/20 border-[#FF8C42]/30 text-[#FF8C42]' :
+                              r.side === 'defense' ? 'bg-[#00D4A0]/20 border-[#00D4A0]/30 text-[#00D4A0]' :
+                              'bg-muted border-border text-muted-foreground'
+                            )}
+                          >
+                            <option value="attack">ATK</option>
+                            <option value="defense">DEF</option>
+                          </select>
+                        </td>
+                        {/* エコノミー */}
+                        <td className="px-2 py-1">
+                          <select
+                            value={r.economy_type}
+                            onChange={e => updateRound(i, 'economy_type', e.target.value)}
+                            className={selectCls}
+                          >
+                            <option value=""></option>
+                            {ECO_OPTIONS.map(o => (
+                              <option key={o} value={o}>{ECO_LABELS[o]}</option>
+                            ))}
+                          </select>
+                        </td>
+                        {/* 結果 */}
+                        <td className="px-2 py-1">
+                          <select
+                            value={r.result}
+                            onChange={e => updateRound(i, 'result', e.target.value)}
+                            className={cn(
+                              'border rounded px-2 py-1 text-xs font-semibold focus:border-[#FF4655] outline-none',
+                              r.result === 'win'  ? 'bg-[#00D4A0]/20 border-[#00D4A0]/30 text-[#00D4A0]' :
+                              r.result === 'loss' ? 'bg-[#FF4655]/20 border-[#FF4655]/30 text-[#FF4655]' :
+                              'bg-muted border-border text-muted-foreground'
+                            )}
+                          >
+                            <option value=""></option>
+                            <option value="win">WIN</option>
+                            <option value="loss">LOSS</option>
+                          </select>
+                        </td>
+                        {/* プラント */}
+                        <td className="px-3 py-1.5">
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="checkbox"
+                              checked={r.planted}
+                              disabled={r.side !== 'attack'}
+                              onChange={e => {
+                                updateRound(i, 'planted', e.target.checked)
+                                if (!e.target.checked) {
+                                  updateRound(i, 'plant_site', '')
+                                  updateRoundCoords(i, null, null, null)
+                                  if (plantEditIdx === i) setPlantEditIdx(null)
+                                }
+                              }}
+                              className="accent-[#FF4655] w-4 h-4"
+                            />
+                            {r.planted && r.side === 'attack' && (
+                              <button
+                                onClick={() => setPlantEditIdx(plantEditIdx === i ? null : i)}
+                                title="プラント位置を設定"
+                                className={cn(
+                                  'p-0.5 rounded transition-colors',
+                                  plantEditIdx === i ? 'text-[#FF4655]' :
+                                  r.plant_x != null ? 'text-[#00D4A0]' : 'text-muted-foreground hover:text-white'
+                                )}
+                              >
+                                <MapPin className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                        {/* サイト */}
+                        <td className="px-2 py-1">
+                          <select
+                            value={r.plant_site}
+                            onChange={e => updateRound(i, 'plant_site', e.target.value)}
+                            className={selectCls}
+                          >
+                            {SITE_OPTS.map(o => (
+                              <option key={o} value={o}>{o || '-'}</option>
+                            ))}
+                          </select>
+                        </td>
+                        {/* リテイク */}
+                        <td className="px-3 py-1.5">
+                          <input
+                            type="checkbox"
+                            checked={r.retake}
+                            disabled={r.side !== 'defense'}
+                            onChange={e => {
+                              updateRound(i, 'retake', e.target.checked)
+                              if (!e.target.checked) updateRound(i, 'plant_site', '')
+                            }}
+                            className="accent-[#6C63FF] w-4 h-4"
+                          />
+                        </td>
+                        {/* FB */}
+                        <td className="px-2 py-1">
+                          <select
+                            value={r.first_blood_team === '' ? '' : r.first_blood_team === 'true' ? 'us' : 'them'}
+                            onChange={e => updateRound(i, 'first_blood_team',
+                              e.target.value === '' ? '' : e.target.value === 'us' ? 'true' : 'false'
+                            )}
+                            className={selectCls}
+                          >
+                            <option value=""></option>
+                            <option value="us">味方</option>
+                            <option value="them">相手</option>
+                          </select>
+                        </td>
+                        {/* 削除 */}
+                        <td className="px-2 py-1.5">
+                          <button
+                            onClick={() => removeRound(i)}
+                            className="p-1 rounded text-muted-foreground hover:text-[#FF4655] hover:bg-[#FF4655]/10 transition-colors"
+                            title="削除"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {/* Plant position picker */}
+              {plantEditIdx !== null && editRounds[plantEditIdx] && (() => {
+                const mapName = String(match.map ?? '')
+                const mapKey = normalizeMapKey(mapName)
+                const imgUrl = MAP_IMAGES[mapKey] ? `/api/map-image?key=${mapKey}` : null
+                const polygons = MAP_POLYGONS[mapKey] ?? {}
+                const pr = editRounds[plantEditIdx]
+                return (
+                  <InlineMapPicker
+                    key={plantEditIdx}
+                    mapName={mapName}
+                    imgUrl={imgUrl}
+                    roundNumber={pr.round_number}
+                    existingDots={editRounds
+                      .filter(r => r.plant_x != null && r.plant_y != null)
+                      .map(r => ({ x: r.plant_x!, y: r.plant_y!, win: r.result === 'win' }))}
+                    onClose={() => setPlantEditIdx(null)}
+                    onPick={(x, y) => {
+                      const site = detectSite(x, y, polygons)
+                      updateRoundCoords(plantEditIdx, x, y, site)
+                      if (site) updateRound(plantEditIdx, 'plant_site', site)
+                      setPlantEditIdx(null)
+                    }}
+                  />
+                )
+              })()}
+
+              {/* Add row button */}
+              <div className="px-4 py-3 border-t border-border/60">
+                <button
+                  onClick={addRound}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white border border-dashed border-border hover:border-white/40 rounded-lg px-3 py-2 w-full justify-center transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" /> ラウンド追加
+                </button>
+              </div>
             </div>
           )}
         </div>
-      )}
 
       {playerStats.length === 0 && rounds.length === 0 && (
         <div className="text-center py-12 text-muted-foreground text-sm">
           詳細データがありません
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Inline map picker for edit mode ──
+function InlineMapPicker({
+  mapName, imgUrl, roundNumber, existingDots, onClose, onPick,
+}: {
+  mapName: string
+  imgUrl: string | null
+  roundNumber: number
+  existingDots: { x: number; y: number; win: boolean }[]
+  onClose: () => void
+  onPick: (x: number, y: number) => void
+}) {
+  const [imgError, setImgError] = useState(false)
+  const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null)
+  const rotation = MAP_ROTATION[normalizeMapKey(mapName)] ?? 0
+
+  return (
+    <div className="border-t border-border/60 px-4 py-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">
+          R{roundNumber} のプラント位置 — マップをクリック
+        </span>
+        <button onClick={onClose} className="text-muted-foreground hover:text-white">
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+      <div
+        className="relative rounded-xl overflow-hidden border border-[#FF4655]/50 cursor-none mx-auto"
+        style={{ width: '100%', maxWidth: 320, aspectRatio: '1 / 1' }}
+        onClick={e => {
+          const rect = e.currentTarget.getBoundingClientRect()
+          onPick(
+            Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
+            Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
+          )
+        }}
+        onMouseMove={e => {
+          const rect = e.currentTarget.getBoundingClientRect()
+          setMouse({
+            x: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
+            y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
+          })
+        }}
+        onMouseLeave={() => setMouse(null)}
+      >
+        {imgUrl && !imgError ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={imgUrl} alt={mapName}
+            className="w-full h-full object-cover select-none"
+            draggable={false}
+            onError={() => setImgError(true)}
+            style={rotation ? { transform: `rotate(${rotation}deg)` } : undefined}
+          />
+        ) : (
+          <div className="w-full h-full bg-muted flex flex-col items-center justify-center gap-1">
+            <span className="text-muted-foreground text-sm">{mapName}</span>
+            {imgError && <span className="text-muted-foreground/50 text-[10px]">画像を読み込めません</span>}
+          </div>
+        )}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none">
+          {existingDots.map((d, i) => (
+            <circle key={i}
+              cx={`${d.x * 100}%`} cy={`${d.y * 100}%`}
+              r={4} fill={d.win ? '#00D4A0' : '#FF4655'} fillOpacity={0.85}
+              stroke="rgba(0,0,0,0.5)" strokeWidth={1}
+            />
+          ))}
+          {mouse && (
+            <g>
+              <line x1={`${mouse.x * 100}%`} y1="0" x2={`${mouse.x * 100}%`} y2="100%"
+                stroke="#FF4655" strokeWidth="0.8" strokeOpacity="0.6" strokeDasharray="4 4" />
+              <line x1="0" y1={`${mouse.y * 100}%`} x2="100%" y2={`${mouse.y * 100}%`}
+                stroke="#FF4655" strokeWidth="0.8" strokeOpacity="0.6" strokeDasharray="4 4" />
+              <circle cx={`${mouse.x * 100}%`} cy={`${mouse.y * 100}%`}
+                r={4} fill="#FF4655" fillOpacity={0.9} stroke="white" strokeWidth={1} />
+            </g>
+          )}
+        </svg>
+        <div className="absolute bottom-2 left-2 right-2 bg-black/70 backdrop-blur-sm rounded px-2 py-1 text-center pointer-events-none">
+          <span className="text-white text-[10px]">クリックして位置を設定</span>
+        </div>
+      </div>
     </div>
   )
 }

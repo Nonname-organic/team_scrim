@@ -39,9 +39,9 @@ const EMPTY_ROW = (): PlayerRow => ({
   fb: '', fd: '', acs: '', hs_pct: '',
 })
 
-const ECO_OPTIONS = ['pistol', 'eco', 'semi_eco', 'semi_buy', 'full_buy', 'force']
+const ECO_OPTIONS = ['pistol', 'eco', 'anti_eco', 'semi_eco', 'semi_buy', 'full_buy', 'force']
 const ECO_LABELS: Record<string, string> = {
-  pistol: 'ピストル', eco: 'エコ', semi_eco: 'セミエコ',
+  pistol: 'ピストル', eco: 'エコ', anti_eco: 'アンチエコ', semi_eco: 'セミエコ',
   semi_buy: 'セミバイ', full_buy: 'フルバイ', force: 'フォース',
 }
 
@@ -268,7 +268,7 @@ export default function ScrimInputPage() {
   }
 
   return (
-    <div className="max-w-6xl space-y-4">
+    <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">
@@ -389,7 +389,7 @@ export default function ScrimInputPage() {
                   {/* Player select */}
                   <td className="px-3 py-2">
                     <select
-                      className="bg-muted/30 border border-border rounded-lg px-2 py-1.5 text-xs text-white focus:border-[#FF4655] outline-none w-32"
+                      className="bg-muted border border-border rounded-lg px-2 py-1.5 text-xs text-white focus:border-[#FF4655] outline-none w-32"
                       value={row.player_id}
                       onChange={e => updateRow(i, 'player_id', e.target.value)}
                     >
@@ -403,7 +403,7 @@ export default function ScrimInputPage() {
                   {/* Agent select */}
                   <td className="px-3 py-2">
                     <select
-                      className="bg-muted/30 border border-border rounded-lg px-2 py-1.5 text-xs text-white focus:border-[#FF4655] outline-none w-28"
+                      className="bg-muted border border-border rounded-lg px-2 py-1.5 text-xs text-white focus:border-[#FF4655] outline-none w-28"
                       value={row.agent}
                       onChange={e => updateRow(i, 'agent', e.target.value)}
                     >
@@ -417,7 +417,7 @@ export default function ScrimInputPage() {
                     <td key={key} className="px-2 py-2">
                       <input
                         type="number" min={0}
-                        className="w-14 bg-muted/30 border border-transparent hover:border-border focus:border-[#FF4655] rounded px-2 py-1 text-xs text-white outline-none text-center transition-colors"
+                        className="w-14 bg-muted border border-transparent hover:border-border focus:border-[#FF4655] rounded px-2 py-1 text-xs text-white outline-none text-center transition-colors"
                         value={row[key]}
                         placeholder="0"
                         onChange={e => updateRow(i, key, e.target.value === '' ? '' : Number(e.target.value))}
@@ -500,7 +500,7 @@ export default function ScrimInputPage() {
                         </td>
                         <td className="px-2 py-1">
                           <select
-                            className="bg-muted/30 border border-border rounded px-1.5 py-1 text-xs text-white focus:border-[#FF4655] outline-none"
+                            className="bg-muted border border-border rounded px-1.5 py-1 text-xs text-white focus:border-[#FF4655] outline-none"
                             value={r.economy}
                             onChange={e => updateRound(i, 'economy', e.target.value)}
                           >
@@ -514,7 +514,7 @@ export default function ScrimInputPage() {
                               'border rounded px-2 py-1 text-xs font-semibold focus:border-[#FF4655] outline-none',
                               r.result === 'win' ? 'bg-[#00D4A0]/20 border-[#00D4A0]/30 text-[#00D4A0]' :
                               r.result === 'loss' ? 'bg-[#FF4655]/20 border-[#FF4655]/30 text-[#FF4655]' :
-                              'bg-muted/30 border-border text-muted-foreground'
+                              'bg-muted border-border text-muted-foreground'
                             )}
                             value={r.result}
                             onChange={e => updateRound(i, 'result', e.target.value)}
@@ -536,7 +536,7 @@ export default function ScrimInputPage() {
                         </td>
                         <td className="px-2 py-1">
                           <select
-                            className="bg-muted/30 border border-border rounded px-1.5 py-1 text-xs text-white focus:border-[#FF4655] outline-none w-12"
+                            className="bg-muted border border-border rounded px-1.5 py-1 text-xs text-white focus:border-[#FF4655] outline-none w-12"
                             value={r.site}
                             onChange={e => updateRound(i, 'site', e.target.value)}
                           >
@@ -558,7 +558,7 @@ export default function ScrimInputPage() {
                         </td>
                         <td className="px-2 py-1">
                           <select
-                            className="bg-muted/30 border border-border rounded px-1.5 py-1 text-xs text-white focus:border-[#FF4655] outline-none"
+                            className="bg-muted border border-border rounded px-1.5 py-1 text-xs text-white focus:border-[#FF4655] outline-none"
                             value={r.fb_team === '' ? '' : r.fb_team ? 'us' : 'them'}
                             onChange={e => updateRound(i, 'fb_team',
                               e.target.value === '' ? '' : e.target.value === 'us')}
@@ -608,7 +608,7 @@ export default function ScrimInputPage() {
 }
 
 // ── Shared ──
-const cls = 'w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-white focus:border-[#FF4655] outline-none'
+const cls = 'w-full bg-muted border border-border rounded-lg px-3 py-2 text-sm text-white focus:border-[#FF4655] outline-none'
 function Label({ children }: { children: React.ReactNode }) {
   return <div className="text-xs text-muted-foreground mb-1">{children}</div>
 }

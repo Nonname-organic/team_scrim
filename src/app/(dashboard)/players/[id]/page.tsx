@@ -33,6 +33,8 @@ export default function PlayerDetailPage() {
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('overall')
   const [trendMetric, setTrendMetric] = useState<TrendMetric>('ACS')
+  const [selectedMap, setSelectedMap] = useState<string | null>(null)
+  const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
 
   useEffect(() => {
     fetch(`/api/players/${id}/stats`)
@@ -64,7 +66,6 @@ export default function PlayerDetailPage() {
     { label: 'ACS',  value: Number(career.avg_acs  ?? 0).toFixed(0), threshold: 250 },
     { label: 'K/D',  value: Number(career.avg_kd   ?? 0).toFixed(2), threshold: 1.1 },
     { label: 'KPR',  value: Number(career.avg_kpr  ?? 0).toFixed(2), threshold: 0.7 },
-    { label: 'FBSR', value: (Number(career.career_fbsr ?? 0) * 100).toFixed(1) + '%', threshold: 50 },
   ]
 
   const trendData = [...recent].reverse().map((r, i) => {
@@ -197,7 +198,7 @@ export default function PlayerDetailPage() {
                   <select
                     value={trendMetric}
                     onChange={e => setTrendMetric(e.target.value as TrendMetric)}
-                    className="bg-muted/30 border border-border rounded-lg px-2.5 py-1 text-xs text-white focus:border-[#FF4655] outline-none"
+                    className="bg-muted border border-border rounded-lg px-2.5 py-1 text-xs text-white focus:border-[#FF4655] outline-none"
                   >
                     {TREND_METRICS.map(m => (
                       <option key={m.id} value={m.id}>{m.label}</option>
@@ -287,38 +288,188 @@ export default function PlayerDetailPage() {
       )}
 
       {/* Map breakdown tab */}
-      {tab === 'map' && (
-        <BreakdownTable
-          rows={mapStats}
-          nameKey="map"
-          nameLabel="マップ"
-          color={roleCfg.color}
-        />
-      )}
+      {tab === 'map' && (() => {
+        const activeMap = selectedMap ?? (mapStats.length > 0 ? String(mapStats[0].map ?? '') : '')
+        const mapRow = mapStats.find(r => String(r.map ?? '') === activeMap) ?? mapStats[0]
+        const mapRadar = mapRow ? radarFromRow(mapRow) : []
+        const mapTrend = buildTrendData(recent, 'map', activeMap)
+        return (
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {mapRadar.length > 0 && (
+                <div className="bg-card border border-border rounded-xl p-5">
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                    スキルレーダー
+                  </div>
+                  <div className="text-sm font-bold text-white mb-3">{activeMap}</div>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <RadarChart data={mapRadar}>
+                      <PolarGrid stroke="hsl(var(--border))" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                      <Tooltip formatter={(v: number) => [`${v}`, 'スコア']} contentStyle={{ background: '#18181F', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+                      <Radar dataKey="value" stroke={roleCfg.color} fill={roleCfg.color} fillOpacity={0.2} strokeWidth={2} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+              <div className="bg-card border border-border rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">推移</div>
+                    <div className="text-sm font-bold text-white mt-0.5">{activeMap}</div>
+                  </div>
+                  <select
+                    value={trendMetric}
+                    onChange={e => setTrendMetric(e.target.value as TrendMetric)}
+                    className="bg-muted border border-border rounded-lg px-2.5 py-1 text-xs text-white focus:border-[#FF4655] outline-none"
+                  >
+                    {TREND_METRICS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                  </select>
+                </div>
+                {mapTrend.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={mapTrend} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+                      <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" />
+                      <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{ background: '#18181F', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                        formatter={(v: number) => [trendMetric === 'ACS' || trendMetric === 'K' ? v : v.toFixed(2), TREND_METRICS.find(m => m.id === trendMetric)?.label ?? trendMetric]} />
+                      <Line dataKey={trendMetric} stroke={roleCfg.color} strokeWidth={2} dot={{ r: 3, fill: roleCfg.color }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[220px] flex items-center justify-center text-muted-foreground text-xs">
+                    直近データなし
+                  </div>
+                )}
+              </div>
+            </div>
+            <BreakdownTable
+              rows={mapStats} nameKey="map" nameLabel="マップ" color={roleCfg.color}
+              selected={activeMap} onSelect={setSelectedMap}
+            />
+          </div>
+        )
+      })()}
 
       {/* Agent breakdown tab */}
-      {tab === 'agent' && (
-        <BreakdownTable
-          rows={agentStats}
-          nameKey="agent"
-          nameLabel="エージェント"
-          color={roleCfg.color}
-        />
-      )}
+      {tab === 'agent' && (() => {
+        const activeAgent = selectedAgent ?? (agentStats.length > 0 ? String(agentStats[0].agent ?? '') : '')
+        const agentRow = agentStats.find(r => String(r.agent ?? '') === activeAgent) ?? agentStats[0]
+        const agentRadar = agentRow ? radarFromRow(agentRow) : []
+        const agentTrend = buildTrendData(recent, 'agent', activeAgent)
+        return (
+          <div className="space-y-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {agentRadar.length > 0 && (
+                <div className="bg-card border border-border rounded-xl p-5">
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">
+                    スキルレーダー
+                  </div>
+                  <div className="text-sm font-bold text-white mb-3">{activeAgent}</div>
+                  <ResponsiveContainer width="100%" height={220}>
+                    <RadarChart data={agentRadar}>
+                      <PolarGrid stroke="hsl(var(--border))" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                      <Tooltip formatter={(v: number) => [`${v}`, 'スコア']} contentStyle={{ background: '#18181F', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+                      <Radar dataKey="value" stroke={roleCfg.color} fill={roleCfg.color} fillOpacity={0.2} strokeWidth={2} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+              <div className="bg-card border border-border rounded-xl p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <div>
+                    <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">推移</div>
+                    <div className="text-sm font-bold text-white mt-0.5">{activeAgent}</div>
+                  </div>
+                  <select
+                    value={trendMetric}
+                    onChange={e => setTrendMetric(e.target.value as TrendMetric)}
+                    className="bg-muted border border-border rounded-lg px-2.5 py-1 text-xs text-white focus:border-[#FF4655] outline-none"
+                  >
+                    {TREND_METRICS.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}
+                  </select>
+                </div>
+                {agentTrend.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={220}>
+                    <LineChart data={agentTrend} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
+                      <CartesianGrid stroke="hsl(var(--border))" strokeDasharray="3 3" />
+                      <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={{ background: '#18181F', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
+                        formatter={(v: number) => [trendMetric === 'ACS' || trendMetric === 'K' ? v : v.toFixed(2), TREND_METRICS.find(m => m.id === trendMetric)?.label ?? trendMetric]} />
+                      <Line dataKey={trendMetric} stroke={roleCfg.color} strokeWidth={2} dot={{ r: 3, fill: roleCfg.color }} />
+                    </LineChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-[220px] flex items-center justify-center text-muted-foreground text-xs">
+                    直近データなし
+                  </div>
+                )}
+              </div>
+            </div>
+            <BreakdownTable
+              rows={agentStats} nameKey="agent" nameLabel="エージェント" color={roleCfg.color}
+              selected={activeAgent} onSelect={setSelectedAgent}
+            />
+          </div>
+        )
+      })()}
     </div>
   )
 }
+
+// ============================================================
+// Helpers
+// ============================================================
+
+function radarFromRow(row: Record<string, unknown>) {
+  return [
+    { subject: 'ACS',  value: Math.min(100, Math.round((Number(row.avg_acs ?? 0) / 300) * 100)), fullMark: 100 },
+    { subject: 'KD',   value: Math.min(100, Math.round((Number(row.avg_kd  ?? 0) / 1.8) * 100)), fullMark: 100 },
+    { subject: 'KPR',  value: Math.min(100, Math.round((Number(row.avg_kpr ?? 0) / 1.0) * 100)), fullMark: 100 },
+  ]
+}
+
+function buildTrendData(
+  recent: Record<string, unknown>[],
+  filterKey: string,
+  filterValue: string
+) {
+  return [...recent]
+    .filter(r => String(r[filterKey] ?? '') === filterValue)
+    .reverse()
+    .map((r, i) => {
+      const k = Number(r.kills ?? 0)
+      const d = Number(r.deaths ?? 0)
+      const a = Number(r.assists ?? 0)
+      return {
+        name: `#${i + 1}`,
+        ACS: Number(r.acs ?? 0),
+        KD: Number(r.kd_ratio ?? 0),
+        KDA: d > 0 ? Math.round(((k + a) / d) * 100) / 100 : k + a,
+        K: k,
+      }
+    })
+}
+
+// ============================================================
 
 function BreakdownTable({
   rows,
   nameKey,
   nameLabel,
   color,
+  selected,
+  onSelect,
 }: {
   rows: Record<string, unknown>[]
   nameKey: string
   nameLabel: string
   color: string
+  selected?: string
+  onSelect?: (name: string) => void
 }) {
   if (rows.length === 0) {
     return (
@@ -326,7 +477,7 @@ function BreakdownTable({
     )
   }
 
-  const headers = [nameLabel, '試合数', '勝率', 'Avg ACS', 'Avg K', 'Avg D', 'Avg A', 'KPR', 'FBSR']
+  const headers = [nameLabel, '試合数', '勝率', 'Avg ACS', 'Avg K', 'Avg D', 'Avg A', 'KPR']
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -346,12 +497,23 @@ function BreakdownTable({
               const matches = Number(r.matches_played ?? 0)
               const wins = Number(r.wins ?? 0)
               const winRate = matches > 0 ? Math.round((wins / matches) * 100) : 0
-              const avgAcs = Number(r.avg_acs ?? 0)
               const kpr = Number(r.avg_kpr ?? 0)
-              const fbsr = Number(r.fbsr ?? 0)
+              const rowName = String(r[nameKey] ?? '')
+              const isSelected = selected === rowName
               return (
-                <tr key={i} className="border-b border-border/50 last:border-0 hover:bg-muted/20 transition-colors">
-                  <td className="px-4 py-3 font-semibold" style={{ color }}>{String(r[nameKey] ?? '--')}</td>
+                <tr
+                  key={i}
+                  onClick={() => onSelect?.(rowName)}
+                  className={cn(
+                    'border-b border-border/50 last:border-0 transition-colors',
+                    onSelect ? 'cursor-pointer' : '',
+                    isSelected ? 'bg-muted/30' : 'hover:bg-muted/20'
+                  )}
+                >
+                  <td className="px-4 py-3 font-semibold flex items-center gap-2" style={{ color }}>
+                    {isSelected && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />}
+                    {rowName || '--'}
+                  </td>
                   <td className="px-4 py-3 text-muted-foreground">{matches}</td>
                   <td className="px-4 py-3">
                     <span className={cn('font-bold', winRate >= 50 ? 'text-[#00D4A0]' : 'text-[#FF4655]')}>
@@ -364,9 +526,6 @@ function BreakdownTable({
                   <td className="px-4 py-3 text-[#FF4655]">{Number(r.avg_deaths ?? 0).toFixed(1)}</td>
                   <td className="px-4 py-3 text-muted-foreground">{Number(r.avg_assists ?? 0).toFixed(1)}</td>
                   <td className="px-4 py-3 text-muted-foreground">{kpr.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {fbsr > 0 ? (fbsr * 100).toFixed(1) + '%' : '--'}
-                  </td>
                 </tr>
               )
             })}

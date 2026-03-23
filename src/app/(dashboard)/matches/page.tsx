@@ -531,7 +531,7 @@ function OcrWizardModal({ teamId, onClose, onSaved }: {
                           </div>
                         </td>
                         <td className="px-2 py-2">
-                          <select className="bg-muted/40 border border-border rounded px-2 py-1 text-xs text-white focus:border-[#FF4655] outline-none w-28"
+                          <select className="bg-muted border border-border rounded px-2 py-1 text-xs text-white focus:border-[#FF4655] outline-none w-28"
                             value={mapped ?? ''}
                             onChange={e => setPlayerMapping(prev => ({ ...prev, [i]: e.target.value || null }))}>
                             <option value="">-- スキップ --</option>
@@ -542,7 +542,7 @@ function OcrWizardModal({ teamId, onClose, onSaved }: {
                         {(['agent','kills','deaths','assists','acs','hs_pct','first_bloods','first_deaths'] as const).map(key => (
                           <td key={key} className="px-2 py-1.5">
                             <input type={key === 'agent' ? 'text' : 'number'} min={0}
-                              className="w-full bg-muted/30 border border-transparent hover:border-border focus:border-[#FF4655] rounded px-1.5 py-1 text-xs text-white outline-none text-center transition-colors"
+                              className="w-full bg-muted border border-transparent hover:border-border focus:border-[#FF4655] rounded px-1.5 py-1 text-xs text-white outline-none text-center transition-colors"
                               value={(p as Record<string, unknown>)[key] as string ?? ''}
                               onChange={e => {
                                 const val = key === 'agent' ? e.target.value : Number(e.target.value)
@@ -677,7 +677,7 @@ function AddMatchModal({ teamId, onClose, onAdded }: {
 // Shared UI
 // ============================================================
 
-const inputCls = 'w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm text-white focus:border-[#FF4655] outline-none'
+const inputCls = 'w-full bg-muted border border-border rounded-lg px-3 py-2 text-sm text-white focus:border-[#FF4655] outline-none'
 
 function StepDot({ active, done, label }: { active: boolean; done: boolean; label: string }) {
   return (

@@ -78,3 +78,13 @@
 .win-color  { color: #00D4A0; }
 .loss-color { color: #FF4655; }
 .draw-color { color: #9B9BA4; }
+
+/* Select / Option — 全セレクト要素のダークテーマ統一 */
+select {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+}
+select option {
+  background-color: hsl(240 10% 13%);
+  color: hsl(var(--foreground));
+}

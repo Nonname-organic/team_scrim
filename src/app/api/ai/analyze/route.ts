@@ -1,58 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import { buildAIContext } from '@/lib/analysis'
-import { buildCoachPrompt } from '@/lib/ai-prompts'
+import { buildAIContextV2 } from '@/lib/analysis'
+import { buildCoachPromptV2 } from '@/lib/ai-prompts'
 import { query } from '@/lib/db'
 
 const client = new Anthropic()
 
 export async function POST(req: NextRequest) {
   try {
-    const { team_id, match_id, report_type = 'post_match' } = await req.json()
+    const { team_id, match_ids, map_filter } = await req.json()
 
     if (!team_id) {
       return NextResponse.json({ error: 'team_id is required' }, { status: 400 })
     }
 
-    // Build comprehensive context from DB
-    const context = await buildAIContext(team_id, match_id)
+    const context = await buildAIContextV2(team_id, {
+      matchIds: match_ids?.length ? match_ids : undefined,
+      mapFilter: map_filter || undefined,
+    })
 
-    // Check if we have enough data
-    if (!context.team_win_rates.length && !context.player_stats.length) {
+    if (!context.match_details.length) {
       return NextResponse.json(
-        { error: 'Insufficient data. Please add at least 3 matches before requesting AI analysis.' },
+        { error: 'データが見つかりません。試合データを追加してから分析してください。' },
         { status: 422 }
       )
     }
 
-    const prompt = buildCoachPrompt(context as Record<string, unknown>)
+    const prompt = buildCoachPromptV2(context as Record<string, unknown>)
 
-    // Call Claude API
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 4096,
-      messages: [
-        {
-          role: 'user',
-          content: prompt,
-        },
-      ],
+      max_tokens: 8192,
+      messages: [{ role: 'user', content: prompt }],
     })
 
     const rawAnalysis = message.content[0].type === 'text' ? message.content[0].text : ''
 
-    // Extract JSON from response
-    let parsedReport = null
+    let parsedReport: Record<string, unknown> | null = null
     const jsonMatch = rawAnalysis.match(/```json\n([\s\S]*?)\n```/)
     if (jsonMatch) {
       try {
         parsedReport = JSON.parse(jsonMatch[1])
       } catch {
-        console.error('Failed to parse AI JSON response')
+        console.error('[AI] Failed to parse JSON response')
       }
     }
 
-    // Save report to DB
     const saved = await query(
       `INSERT INTO ai_reports
          (team_id, match_id, report_type, loss_reasons, win_patterns,
@@ -61,19 +54,25 @@ export async function POST(req: NextRequest) {
        RETURNING *`,
       [
         team_id,
-        match_id || null,
-        report_type,
-        JSON.stringify(parsedReport?.loss_reasons ?? []),
-        JSON.stringify(parsedReport?.win_patterns ?? []),
+        null,
+        'coach_v2',
+        JSON.stringify([]),
+        JSON.stringify([]),
         JSON.stringify(parsedReport?.improvements ?? []),
-        JSON.stringify(parsedReport?.player_feedback ?? []),
+        JSON.stringify([]),
         rawAnalysis,
         'claude-sonnet-4-6',
         message.usage.input_tokens + message.usage.output_tokens,
       ]
     )
 
-    return NextResponse.json({ data: saved[0] })
+    return NextResponse.json({
+      data: {
+        ...saved[0],
+        ...parsedReport,
+        raw_analysis: rawAnalysis,
+      },
+    })
   } catch (err) {
     console.error('[AI analyze]', err)
     return NextResponse.json(
