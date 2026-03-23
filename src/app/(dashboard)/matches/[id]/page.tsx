@@ -9,11 +9,16 @@ import { detectSite } from '@/lib/geometry'
 import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSelector'
 
 const RESULT_COLOR = { win: '#00D4A0', loss: '#FF4655', draw: '#9B9BA4' } as const
-const ECO_OPTIONS = ['pistol', 'eco', 'anti_eco', 'semi_eco', 'semi_buy', 'full_buy', 'force'] as const
+const ECO_OPTIONS = ['pistol', 'eco', 'anti_eco', 'semi_eco', 'semi_buy', 'full_buy', 'oper', 'second', 'third'] as const
 const ECO_LABELS: Record<string, string> = {
   pistol: 'ピストル', eco: 'エコ', anti_eco: 'アンチエコ', semi_eco: 'セミエコ',
-  semi_buy: 'セミバイ', full_buy: 'フルバイ', force: 'フォース',
+  semi_buy: 'セミバイ', full_buy: 'フルバイ', oper: 'オペ', second: 'セカンド', third: 'サード',
 }
+const TIMING_OPTIONS = [
+  { value: 'early', label: 'Early', color: '#FF4655' },
+  { value: 'mid',   label: 'Mid',   color: '#9B5CF6' },
+  { value: 'late',  label: 'Late',  color: '#9B9BA4' },
+] as const
 const SITE_OPTS = ['', 'A', 'B', 'C']
 
 type PEdit = {
@@ -40,6 +45,7 @@ type REdit = {
   plant_x: number | null
   plant_y: number | null
   first_blood_team: string
+  contact_timing: string
 }
 
 const inputCls = 'bg-muted border border-border rounded px-1.5 py-0.5 text-xs text-white focus:border-[#FF4655] outline-none w-full'
@@ -124,6 +130,7 @@ export default function MatchDetailPage() {
         plant_x: r.plant_x != null ? Number(r.plant_x) : null,
         plant_y: r.plant_y != null ? Number(r.plant_y) : null,
         first_blood_team: r.first_blood_team == null ? '' : String(r.first_blood_team),
+        contact_timing: r.contact_timing == null ? '' : String(r.contact_timing),
       }
     }))
     setEditRoundMode(true)
@@ -143,6 +150,7 @@ export default function MatchDetailPage() {
         plant_x: null,
         plant_y: null,
         first_blood_team: '',
+        contact_timing: '',
       }]
     })
   }
@@ -226,6 +234,7 @@ export default function MatchDetailPage() {
             plant_x: r.plant_x,
             plant_y: r.plant_y,
             fb_team: r.first_blood_team,
+            contact_timing: r.contact_timing || null,
           })),
         }),
       }).then(r => r.json())
@@ -595,7 +604,7 @@ export default function MatchDetailPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border bg-muted/20">
-                      {['#', 'サイド', 'エコノミー', '結果', 'プラント', 'サイト', 'リテイク', 'FB', ''].map(h => (
+                      {['#', 'サイド', '購入状況', '結果', 'プラント', 'サイト', 'リテイク', 'FB', 'タイミング', ''].map(h => (
                         <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium">
                           {h}
                         </th>
@@ -738,6 +747,24 @@ export default function MatchDetailPage() {
                             <option value="us">味方</option>
                             <option value="them">相手</option>
                           </select>
+                        </td>
+                        {/* タイミング */}
+                        <td className="px-2 py-1">
+                          <div className="flex gap-0.5">
+                            {TIMING_OPTIONS.map(t => (
+                              <button
+                                key={t.value}
+                                onClick={() => updateRound(i, 'contact_timing', r.contact_timing === t.value ? '' : t.value)}
+                                className="px-1.5 py-0.5 rounded text-[10px] font-semibold border transition-colors"
+                                style={r.contact_timing === t.value
+                                  ? { color: t.color, borderColor: t.color, background: `${t.color}20` }
+                                  : { color: '#9B9BA4', borderColor: '#2A2A3A', background: 'transparent' }
+                                }
+                              >
+                                {t.label}
+                              </button>
+                            ))}
+                          </div>
                         </td>
                         {/* 削除 */}
                         <td className="px-2 py-1.5">
