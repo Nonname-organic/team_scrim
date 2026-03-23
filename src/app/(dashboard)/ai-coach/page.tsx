@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useMemo } from 'react'
 import {
-  Bot, AlertTriangle, Loader2, ChevronDown, ChevronUp, Map,
+  Bot, AlertTriangle, Loader2, Map,
   CheckSquare, Square, Target, TrendingUp, BarChart2, User,
   ShieldAlert, Zap, List, XCircle, ArrowRight, MessageSquare,
   AlertCircle, CheckCircle2, Trophy, Swords, Brain,
@@ -38,7 +38,6 @@ export default function AICoachPage() {
   const [report, setReport] = useState<Report | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [showRaw, setShowRaw] = useState(false)
 
   useEffect(() => {
     fetch(`/api/matches?team_id=${TEAM_ID}&limit=50`)
@@ -419,19 +418,6 @@ export default function AICoachPage() {
             </div>
           )}
 
-          {/* Raw toggle */}
-          <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <button onClick={() => setShowRaw(v => !v)}
-              className="w-full flex items-center justify-between p-4 text-xs text-muted-foreground hover:text-white transition-colors">
-              <span>生の分析テキスト（デバッグ用）</span>
-              {showRaw ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-            </button>
-            {showRaw && (
-              <pre className="p-4 text-xs text-muted-foreground whitespace-pre-wrap border-t border-border overflow-auto max-h-96">
-                {report.raw_analysis}
-              </pre>
-            )}
-          </div>
         </div>
       )}
     </div>
