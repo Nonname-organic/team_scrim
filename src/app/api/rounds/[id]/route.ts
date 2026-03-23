@@ -3,9 +3,10 @@ import { query } from '@/lib/db'
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const { plant_x, plant_y, plant_site } = await req.json()
     await query(
       `UPDATE rounds
@@ -17,7 +18,7 @@ export async function PATCH(
         plant_x ?? null,
         plant_y ?? null,
         plant_site ?? null,
-        params.id,
+        id,
       ]
     )
     return NextResponse.json({ ok: true })

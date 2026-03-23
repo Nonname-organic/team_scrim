@@ -3,9 +3,9 @@ import { query, queryOne } from '@/lib/db'
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const matchId = params.id
+  const { id: matchId } = await params
 
   const [match, rounds, playerStats, events, teamStats] = await Promise.all([
     queryOne('SELECT * FROM matches WHERE id = $1', [matchId]),
@@ -56,9 +56,9 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const matchId = params.id
+  const { id: matchId } = await params
   const body = await req.json()
   const fields: string[] = []
   const values: unknown[] = []
@@ -80,9 +80,9 @@ export async function PATCH(
 
 export async function DELETE(
   _req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const matchId = params.id
+  const { id: matchId } = await params
   await queryOne('DELETE FROM matches WHERE id = $1 RETURNING id', [matchId])
   return NextResponse.json({ message: 'Deleted' })
 }

@@ -4,9 +4,9 @@ import { getPlayerRadarStats } from '@/lib/analysis'
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const playerId = params.id
+  const { id: playerId } = await params
   const { searchParams } = new URL(req.url)
   const limit = Number(searchParams.get('limit') ?? 20)
 
@@ -78,9 +78,9 @@ export async function GET(
 
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const playerId = params.id
+  const { id: playerId } = await params
   const body = await req.json()
 
   const {
