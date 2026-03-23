@@ -1,7 +1,6 @@
 'use client'
-import { cn } from '@/lib/utils'
 
-interface SiteData {
+interface Entry {
   wins: number
   total: number
   win_rate: number | null
@@ -11,12 +10,36 @@ interface Props {
   data: Record<string, unknown>
 }
 
-const SITE_LABELS: Record<string, { label: string; side: string }> = {
-  a_attack:   { label: 'A アタック',    side: 'attack' },
-  b_attack:   { label: 'B アタック',    side: 'attack' },
-  a_retake:   { label: 'A リテイク',    side: 'defense' },
-  b_retake:   { label: 'B リテイク',    side: 'defense' },
-  post_plant: { label: 'ポストプラント', side: 'both' },
+function pct(e: Entry | undefined): number | null {
+  if (!e || e.win_rate == null) return null
+  return Math.round(Number(e.win_rate) * 100)
+}
+
+function color(p: number | null): string {
+  if (p === null) return '#9B9BA4'
+  if (p >= 50) return '#00D4A0'
+  if (p >= 35) return '#FF8C42'
+  return '#FF4655'
+}
+
+function Bar({ entry, label, sideColor }: { entry: Entry | undefined; label: string; sideColor: string }) {
+  const p = pct(entry)
+  const c = color(p)
+  if (!entry) return null
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between text-xs">
+        <span className="font-medium" style={{ color: sideColor }}>{label}</span>
+        <span>
+          <span className="font-bold" style={{ color: c }}>{p !== null ? `${p}%` : '--'}</span>
+          <span className="text-muted-foreground/60 ml-1 text-[10px]">{entry.wins}W/{entry.total}R</span>
+        </span>
+      </div>
+      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+        <div className="h-full rounded-full" style={{ width: `${p ?? 0}%`, background: sideColor }} />
+      </div>
+    </div>
+  )
 }
 
 export function SiteWinRates({ data }: Props) {
@@ -24,51 +47,55 @@ export function SiteWinRates({ data }: Props) {
     return <p className="text-sm text-muted-foreground">データなし</p>
   }
 
+  const get = (key: string) => data[key] as Entry | undefined
+
+  const sites = [
+    { key: 'A', atk: get('a_attack'), def: get('a_retake') },
+    { key: 'B', atk: get('b_attack'), def: get('b_retake') },
+    { key: 'C', atk: get('c_attack'), def: get('c_retake') },
+  ].filter(s => s.atk || s.def)
+
+  const postPlant = get('post_plant')
+
+  if (!sites.length && !postPlant) {
+    return <p className="text-sm text-muted-foreground">データなし</p>
+  }
+
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-      {Object.entries(SITE_LABELS).map(([key, { label, side }]) => {
-        const item = data[key] as SiteData | undefined
-        if (!item) return null
+    <div className="space-y-4">
+      {/* Per-site ATK + DEF */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {sites.map(({ key, atk, def }) => (
+          <div key={key} className="bg-muted/20 border border-border/60 rounded-xl p-4 space-y-3 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1 h-full rounded-l-xl bg-[#6C63FF]/60" />
+            <div className="text-xs font-bold text-white pl-1">{key} サイト</div>
+            <div className="space-y-2.5 pl-1">
+              {atk && <Bar entry={atk} label="ATK実行" sideColor="#FF8C42" />}
+              {def && <Bar entry={def} label="リテイク" sideColor="#00D4A0" />}
+            </div>
+          </div>
+        ))}
+      </div>
 
-        const pct = item.win_rate !== null ? Math.round(item.win_rate * 10) / 10 : null
-        const color =
-          pct === null ? '#9B9BA4' :
-          pct >= 50 ? '#00D4A0' :
-          pct >= 35 ? '#FF8C42' : '#FF4655'
-
+      {/* Post-plant overall */}
+      {postPlant && (() => {
+        const p = pct(postPlant)
+        const c = color(p)
         return (
-          <div key={key} className="bg-muted/30 rounded-xl p-4 text-center relative overflow-hidden">
-            <div
-              className="absolute inset-0 opacity-[0.03]"
-              style={{ background: color }}
-            />
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">
-              {label}
+          <div className="bg-muted/20 border border-border/60 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">ポストプラント全体</span>
+              <span>
+                <span className="font-bold text-sm" style={{ color: c }}>{p !== null ? `${p}%` : '--'}</span>
+                <span className="text-muted-foreground/60 ml-1.5 text-xs">{postPlant.wins}W / {postPlant.total}R</span>
+              </span>
             </div>
-            <div className="text-2xl font-bold" style={{ color }}>
-              {pct !== null ? `${pct}%` : '--'}
-            </div>
-            <div className="text-[10px] text-muted-foreground mt-1">
-              {item.wins}W / {item.total}R
-            </div>
-            {/* Progress ring (simplified) */}
-            <div className="mt-2 h-1 bg-muted rounded-full overflow-hidden">
-              <div
-                className="h-full rounded-full"
-                style={{ width: `${pct ?? 0}%`, background: color }}
-              />
-            </div>
-            <div className={cn(
-              'text-[10px] mt-1.5 px-1.5 py-0.5 rounded inline-block',
-              side === 'attack' ? 'bg-[#FF8C42]/10 text-[#FF8C42]' :
-              side === 'defense' ? 'bg-[#00D4A0]/10 text-[#00D4A0]' :
-              'bg-[#6C63FF]/10 text-[#6C63FF]'
-            )}>
-              {side === 'attack' ? 'ATK' : side === 'defense' ? 'DEF' : 'ALL'}
+            <div className="h-2 bg-muted rounded-full overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${p ?? 0}%`, background: c }} />
             </div>
           </div>
         )
-      })}
+      })()}
     </div>
   )
 }

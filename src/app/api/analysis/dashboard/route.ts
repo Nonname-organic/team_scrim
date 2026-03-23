@@ -24,8 +24,10 @@ function buildSiteWinRates(siteStats: { by_site: SiteRow[]; post_plant: Entry | 
   return {
     a_attack:   toEntry(find('A', 'attack')),
     b_attack:   toEntry(find('B', 'attack')),
+    c_attack:   toEntry(find('C', 'attack')),
     a_retake:   toEntry(find('A', 'defense')),
     b_retake:   toEntry(find('B', 'defense')),
+    c_retake:   toEntry(find('C', 'defense')),
     post_plant: pp ? { wins: Number(pp.wins), total: Number(pp.total), win_rate: Number(pp.win_rate) } : undefined,
   }
 }
