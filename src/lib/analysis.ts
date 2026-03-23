@@ -17,7 +17,7 @@ export async function getDashboardSummary(teamId: string, mapFilter?: string): P
   const matchParams: unknown[] = [teamId]
   if (mapFilter) matchParams.push(mapFilter)
 
-  const [team, recentMatches, mapStats, topPerformers, lastReport] = await Promise.all([
+  const [team, recentMatches, mapStats, topPerformers, lastReport, sideRates] = await Promise.all([
     queryOne('SELECT * FROM teams WHERE id = $1', [teamId]),
     query(
       `SELECT * FROM matches WHERE team_id = $1 ${mapClause} ORDER BY match_date DESC LIMIT 20`,
@@ -35,14 +35,27 @@ export async function getDashboardSummary(teamId: string, mapFilter?: string): P
       `SELECT * FROM ai_reports WHERE team_id = $1 ORDER BY created_at DESC LIMIT 1`,
       [teamId]
     ),
+    // Compute ATK/DEF win rates directly from rounds (reliable regardless of match-level fields)
+    query<{ side: string; wins: number; total: number }>(
+      `SELECT r.side,
+              SUM(CASE WHEN r.result = 'win' THEN 1 ELSE 0 END)::int AS wins,
+              COUNT(*)::int AS total
+       FROM rounds r
+       JOIN matches m ON m.id = r.match_id
+       WHERE m.team_id = $1 ${mapClause}
+       GROUP BY r.side`,
+      matchParams
+    ),
   ])
 
   const totalMatches = recentMatches.length
   const wins = recentMatches.filter((m: Record<string, unknown>) => m.result === 'win').length
   const overallWinRate = totalMatches > 0 ? wins / totalMatches : 0
 
-  const attackWR = mapStats.reduce((sum, s) => sum + (s.attack_win_rate ?? 0), 0) / (mapStats.length || 1)
-  const defenseWR = mapStats.reduce((sum, s) => sum + (s.defense_win_rate ?? 0), 0) / (mapStats.length || 1)
+  const atkData = sideRates.find(r => r.side === 'attack')
+  const defData = sideRates.find(r => r.side === 'defense')
+  const attackWR  = atkData && atkData.total  > 0 ? atkData.wins  / atkData.total  : 0
+  const defenseWR = defData && defData.total > 0 ? defData.wins / defData.total : 0
 
   return {
     team: team as unknown as DashboardSummary['team'],
