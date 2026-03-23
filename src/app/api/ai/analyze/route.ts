@@ -4,6 +4,8 @@ import { buildAIContextV2 } from '@/lib/analysis'
 import { buildCoachPromptV2 } from '@/lib/ai-prompts'
 import { query } from '@/lib/db'
 
+export const maxDuration = 60
+
 const client = new Anthropic()
 
 function extractJSON(text: string): Record<string, unknown> | null {
@@ -56,7 +58,13 @@ export async function POST(req: NextRequest) {
     const rawAnalysis = message.content[0].type === 'text' ? message.content[0].text : ''
 
     const parsedReport = extractJSON(rawAnalysis)
-    if (!parsedReport) console.error('[AI] Failed to parse JSON response')
+    if (!parsedReport) {
+      console.error('[AI] Failed to parse JSON response:', rawAnalysis.slice(0, 500))
+      return NextResponse.json(
+        { error: 'AIの応答をJSON形式で解析できませんでした。再度お試しください。' },
+        { status: 500 }
+      )
+    }
 
     const saved = await query(
       `INSERT INTO ai_reports
