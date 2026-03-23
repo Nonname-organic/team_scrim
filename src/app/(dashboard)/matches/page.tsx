@@ -543,7 +543,7 @@ function OcrWizardModal({ teamId, onClose, onSaved }: {
                           <td key={key} className="px-2 py-1.5">
                             <input type={key === 'agent' ? 'text' : 'number'} min={0}
                               className="w-full bg-muted border border-transparent hover:border-border focus:border-[#FF4655] rounded px-1.5 py-1 text-xs text-white outline-none text-center transition-colors"
-                              value={(p as Record<string, unknown>)[key] as string ?? ''}
+                              value={(p as unknown as Record<string, unknown>)[key] as string ?? ''}
                               onChange={e => {
                                 const val = key === 'agent' ? e.target.value : Number(e.target.value)
                                 setOcrPlayers(prev => prev.map((op, idx) => idx === i ? { ...op, [key]: val } : op))
