@@ -65,7 +65,7 @@ export default function ExportPage() {
   }
 
   return (
-    <>
+    <div className="min-h-screen bg-white text-gray-900">
       {/* Print button — hidden when printing */}
       <div className="print:hidden fixed top-4 right-4 z-50 flex gap-2">
         <button
@@ -259,6 +259,6 @@ export default function ExportPage() {
           .report-body { max-width: 100% !important; padding: 0 !important; }
         }
       `}</style>
-    </>
+    </div>
   )
 }
