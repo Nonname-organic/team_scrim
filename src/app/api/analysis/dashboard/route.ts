@@ -7,6 +7,7 @@ import {
   getSiteWinRates,
   getRoundNumberWinRates,
   getRoundSiteStats,
+  getTimingWinRates,
 } from '@/lib/analysis'
 
 export async function GET(req: NextRequest) {
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
   const map = searchParams.get('map') ?? undefined
 
   try {
-    const [summary, trend, economy, fbImpact, sites, roundWinRates, siteStats] = await Promise.all([
+    const [summary, trend, economy, fbImpact, sites, roundWinRates, siteStats, timingWinRates] = await Promise.all([
       getDashboardSummary(teamId, map),
       getWinRateTrend(teamId, 20, map),
       getEconomyWinRates(teamId, map),
@@ -28,6 +29,7 @@ export async function GET(req: NextRequest) {
       getSiteWinRates(teamId),
       getRoundNumberWinRates(teamId, map),
       getRoundSiteStats(teamId, map),
+      getTimingWinRates(teamId, map),
     ])
 
     return NextResponse.json({
@@ -39,6 +41,7 @@ export async function GET(req: NextRequest) {
         site_win_rates: sites,
         round_win_rates: roundWinRates,
         site_stats: siteStats,
+        timing_win_rates: timingWinRates,
       },
     })
   } catch (err) {

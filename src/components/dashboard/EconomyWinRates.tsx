@@ -11,19 +11,25 @@ interface Row {
 const LABELS: Record<string, string> = {
   pistol:   'ピストル',
   eco:      'エコ',
+  anti_eco: 'アンチエコ',
   semi_eco: 'セミエコ',
   semi_buy: 'セミバイ',
   full_buy: 'フルバイ',
-  force:    'フォース',
+  oper:     'オペ',
+  second:   'セカンド',
+  third:    'サード',
 }
 
 const IDEAL: Record<string, number> = {
   pistol:   0.5,
   eco:      0.2,
+  anti_eco: 0.6,
   semi_eco: 0.35,
   semi_buy: 0.45,
   full_buy: 0.6,
-  force:    0.35,
+  oper:     0.55,
+  second:   0.5,
+  third:    0.5,
 }
 
 export function EconomyWinRates({ data: rawData }: { data: Record<string, unknown>[] }) {

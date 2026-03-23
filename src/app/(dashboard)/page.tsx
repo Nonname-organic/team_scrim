@@ -7,6 +7,7 @@ import { FirstBloodImpact } from '@/components/dashboard/FirstBloodImpact'
 import { SiteWinRates } from '@/components/dashboard/SiteWinRates'
 import { RecentMatches } from '@/components/dashboard/RecentMatches'
 import { RoundWinRates } from '@/components/dashboard/RoundWinRates'
+import { TimingWinRates } from '@/components/dashboard/TimingWinRates'
 import { AlertTriangle } from 'lucide-react'
 import { MAPS } from '@/types'
 
@@ -43,7 +44,7 @@ export default function DashboardPage() {
   if (loading) return <LoadingState />
   if (error || !data) return <ErrorState message={error ?? 'No data'} dbSetup={!data && !!error} />
 
-  const { summary, trend, economy, first_blood_impact, site_win_rates, round_win_rates } =
+  const { summary, trend, economy, first_blood_impact, site_win_rates, round_win_rates, timing_win_rates } =
     data as Record<string, unknown>
   const s = summary as Record<string, unknown>
 
@@ -114,7 +115,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-card rounded-xl p-5 border border-border">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-            エコノミー別勝率
+            購入状況別勝率
           </h2>
           <EconomyWinRates data={economy as Record<string, unknown>[]} />
         </div>
@@ -135,12 +136,21 @@ export default function DashboardPage() {
         <SiteWinRates data={site_win_rates as Record<string, unknown>} />
       </div>
 
-      {/* Round Win Rates */}
-      <div className="bg-card rounded-xl p-5 border border-border">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-          ラウンド番号別勝率
-        </h2>
-        <RoundWinRates data={round_win_rates as Record<string, unknown>[]} />
+      {/* Round Win Rates + Timing Win Rates */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-card rounded-xl p-5 border border-border">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+            ラウンド番号別勝率
+          </h2>
+          <RoundWinRates data={round_win_rates as Record<string, unknown>[]} />
+        </div>
+
+        <div className="bg-card rounded-xl p-5 border border-border">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+            タイミング別勝率
+          </h2>
+          <TimingWinRates data={(timing_win_rates ?? []) as Record<string, unknown>[]} />
+        </div>
       </div>
 
       {/* Recent Matches */}

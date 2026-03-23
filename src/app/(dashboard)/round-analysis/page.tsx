@@ -311,6 +311,16 @@ function RoundDetail({
     return { type, total: rows.length, wins, wr: rows.length > 0 ? wins / rows.length : null }
   }).filter(e => e.total > 0)
 
+  const timingStats = (['early', 'mid', 'late'] as const).map(t => {
+    const atkRows = atkRounds.filter(r => r.contact_timing === t)
+    const defRows = defRounds.filter(r => r.contact_timing === t)
+    return {
+      timing: t,
+      atk: { total: atkRows.length, wins: atkRows.filter(r => r.result === 'win').length },
+      def: { total: defRows.length, wins: defRows.filter(r => r.result === 'win').length },
+    }
+  }).filter(s => s.atk.total > 0 || s.def.total > 0)
+
   const sites = ['A', 'B', 'C'] as const
   const siteStats = sites.map(site => {
     const atk  = plantedRounds.filter(r => r.plant_site === site && r.side === 'attack')
@@ -389,7 +399,7 @@ function RoundDetail({
         {ecoStats.length > 0 && (
           <div className="bg-muted/10 border border-border/60 rounded-xl overflow-hidden">
             <div className="px-4 py-2.5 border-b border-border/60">
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">エコノミー別</div>
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">購入状況別</div>
             </div>
             <div className="p-4 space-y-3">
               {ecoStats.map(e => {
@@ -416,7 +426,7 @@ function RoundDetail({
         {siteStats.length > 0 && (
           <div className="bg-muted/10 border border-border/60 rounded-xl overflow-hidden">
             <div className="px-4 py-2.5 border-b border-border/60">
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">サイト別（植込みラウンド）</div>
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">サイト別（プラントラウンド）</div>
             </div>
             <div className="p-4 space-y-4">
               {siteStats.map(s => (
@@ -432,6 +442,35 @@ function RoundDetail({
           </div>
         )}
       </div>
+
+      {/* Timing Win Rates */}
+      {timingStats.length > 0 && (
+        <div className="bg-muted/10 border border-border/60 rounded-xl overflow-hidden">
+          <div className="px-4 py-2.5 border-b border-border/60">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">タイミング別勝率</div>
+          </div>
+          <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {timingStats.map(({ timing, atk, def }) => {
+              const cfg = TIMING_CFG[timing]
+              const sublabel = timing === 'early' ? 'ラッシュ' : timing === 'mid' ? 'デフォルト' : 'スロウ'
+              return (
+                <div key={timing}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-xs font-bold px-2 py-0.5 rounded" style={{ color: cfg.color, background: `${cfg.color}20` }}>
+                      {cfg.label}
+                    </span>
+                    <span className="text-xs text-muted-foreground">{sublabel}</span>
+                  </div>
+                  <div className="space-y-2">
+                    {atk.total > 0 && <WrBar label="ATK" color="#FF8C42" wins={atk.wins} total={atk.total} />}
+                    {def.total > 0 && <WrBar label="DEF" color="#00D4A0" wins={def.wins} total={def.total} />}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Map plant heatmap */}
       <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-3">

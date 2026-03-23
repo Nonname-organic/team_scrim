@@ -250,6 +250,35 @@ export async function getRoundSiteStats(teamId: string, mapFilter?: string) {
 }
 
 // ============================================================
+// Timing Win Rates (early=ラッシュ / mid=デフォルト / late=スロウ)
+// ============================================================
+
+export async function getTimingWinRates(teamId: string, mapFilter?: string) {
+  const mapClause = mapFilter ? `AND m.map = $2` : ''
+  const params: unknown[] = [teamId]
+  if (mapFilter) params.push(mapFilter)
+
+  return query<{
+    contact_timing: string
+    side: string
+    total: number
+    wins: number
+    win_rate: number
+  }>(
+    `SELECT r.contact_timing, r.side,
+            COUNT(*) AS total,
+            SUM(CASE WHEN r.result = 'win' THEN 1 ELSE 0 END) AS wins,
+            ROUND(SUM(CASE WHEN r.result = 'win' THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*),0), 3) AS win_rate
+     FROM rounds r
+     JOIN matches m ON m.id = r.match_id
+     WHERE m.team_id = $1 AND r.contact_timing IS NOT NULL ${mapClause}
+     GROUP BY r.contact_timing, r.side
+     ORDER BY r.contact_timing, r.side`,
+    params
+  )
+}
+
+// ============================================================
 // Round-by-round analysis (round 1, 2, 3...)
 // ============================================================
 
