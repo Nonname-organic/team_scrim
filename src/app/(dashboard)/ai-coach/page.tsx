@@ -83,10 +83,10 @@ export default function AICoachPage() {
           </h1>
           <p className="text-muted-foreground text-sm mt-1">試合・マップを選択してAIにコーチングレポートを生成させる</p>
         </div>
-        <button disabled
-          title="クレジット不足のため一時停止中"
-          className="flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm whitespace-nowrap bg-muted text-muted-foreground cursor-not-allowed opacity-50">
-          <Bot className="w-4 h-4" />分析実行（停止中）
+        <button onClick={runAnalysis} disabled={loading}
+          className={cn('flex items-center gap-2 px-5 py-2.5 rounded-lg font-semibold text-sm transition-all whitespace-nowrap shadow-lg',
+            loading ? 'bg-muted text-muted-foreground cursor-not-allowed' : 'bg-[#FF4655] hover:bg-[#e03e4d] text-white shadow-[#FF4655]/30')}>
+          {loading ? <><Loader2 className="w-4 h-4 animate-spin" />分析中...</> : <><Bot className="w-4 h-4" />{analysisLabel}</>}
         </button>
       </div>
 
