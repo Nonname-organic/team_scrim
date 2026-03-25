@@ -188,19 +188,19 @@ ${scope}（${filterInfo?.match_count}試合）
 ## チームデータ
 
 ### マップ別勝率
-${JSON.stringify(context.win_rates, null, 2)}
+${JSON.stringify(context.win_rates)}
 
 ### 試合詳細（構成込み）
-${JSON.stringify(context.match_details, null, 2)}
+${JSON.stringify(context.match_details)}
 
-### ラウンドデータ（サンプル）
-${JSON.stringify(context.rounds_sample, null, 2)}
+### ラウンドデータ（サンプル50件）
+${JSON.stringify(context.rounds_sample)}
 
 ### 選手スタッツ
-${JSON.stringify(context.player_stats, null, 2)}
+${JSON.stringify(context.player_stats)}
 
 ### エコノミー別勝率
-${JSON.stringify(context.economy_stats, null, 2)}
+${JSON.stringify(context.economy_stats)}
 
 ## 出力指示
 

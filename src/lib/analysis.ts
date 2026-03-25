@@ -434,7 +434,7 @@ export async function buildAIContextV2(
     JOIN matches m ON m.id = r.match_id
     WHERE m.team_id = $1 ${rf.clause}
     ORDER BY m.match_date DESC, r.round_number
-    LIMIT 300
+    LIMIT 50
   `, [teamId, ...rf.params])
 
   // Aggregate win rates (filtered)
