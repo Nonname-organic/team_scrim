@@ -3,7 +3,7 @@ import { useEffect, useState, useMemo } from 'react'
 import {
   Bot, AlertTriangle, Loader2, Map, FileDown,
   CheckSquare, Square, Target, TrendingUp, BarChart2, User,
-  ShieldAlert, Zap, List, XCircle, ArrowRight, MessageSquare,
+  ShieldAlert, Zap, ArrowRight, MessageSquare,
   AlertCircle, CheckCircle2, Trophy, Swords, Brain,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -16,18 +16,13 @@ interface MatchSummary {
   map: string; result: 'win' | 'loss' | 'draw'
   team_score: number; opponent_score: number
 }
-interface StyleEvidence { rush_tendency: string; first_kill_first_death: string; trade_rate: string }
-interface TeamStyle { classification: string; evidence: StyleEvidence; pro_gap: string }
-interface MacroAnalysis { main_issues: string[]; data_evidence: string; causes: string[]; improvement_actions: string[] }
+interface TeamStyle { classification: string; pro_gap: string[] }
+interface MacroAnalysis { main_issues: string[]; causes: string[]; improvement_actions: string[] }
 interface PatternAnalysis { loss_patterns: string[]; win_patterns: string[] }
-interface RoundAnalysis { round_number: string; situation: string; reason: string; improvement: string }
-interface PlayerFeedback { name: string; role: string; evaluation: string[]; issues: string[]; causes: string[]; improvements: string[]; practice: string[] }
-interface StyleScores { aggression: number; structure: number; teamwork: number; adaptability: number; info_management: number }
+interface PlayerFeedback { name: string; evaluation: string[]; issues: string[]; improvements: string[]; practice: string[] }
 interface Report {
   team_style?: TeamStyle; macro_analysis?: MacroAnalysis; pattern_analysis?: PatternAnalysis
-  round_analysis?: RoundAnalysis[]; player_feedback?: PlayerFeedback[]; style_scores?: StyleScores
-  improvement_priority?: string[]; ng_actions?: string[]; next_match_actions?: string[]
-  summary?: string; raw_analysis?: string
+  player_feedback?: PlayerFeedback[]; summary?: string; raw_analysis?: string
 }
 
 // ── Main Page ─────────────────────────────────────────────────
@@ -213,60 +208,33 @@ export default function AICoachPage() {
           {/* ① チームスタイル分析 */}
           {report.team_style && (
             <ReportCard num="①" title="チームスタイル分析" icon={Brain} accent="#6C63FF">
-              {/* Classification Hero */}
               <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-[#6C63FF]/20 to-[#6C63FF]/5 border border-[#6C63FF]/25 px-5 py-4 mb-4">
-                <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,#6C63FF20,transparent_70%)]" />
                 <p className="text-[10px] text-[#6C63FF] font-semibold tracking-widest uppercase mb-1">スタイル分類</p>
                 <p className="text-xl font-black text-white">{report.team_style.classification}</p>
               </div>
-              {/* Evidence 3-col */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                {[
-                  { label: 'ラッシュ傾向', value: report.team_style.evidence.rush_tendency },
-                  { label: 'FirstKill / FirstDeath', value: report.team_style.evidence.first_kill_first_death },
-                  { label: 'トレード率', value: report.team_style.evidence.trade_rate },
-                ].map((d, i) => (
-                  <div key={i} className="bg-card border border-border rounded-lg p-3">
-                    <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">{d.label}</p>
-                    <p className="text-xs text-white leading-relaxed">{d.value}</p>
+              <div className="space-y-2">
+                {report.team_style.pro_gap.map((gap, i) => (
+                  <div key={i} className="flex items-start gap-3 bg-[#FF4655]/5 border border-[#FF4655]/20 rounded-lg px-4 py-3">
+                    <AlertCircle className="w-4 h-4 text-[#FF4655] flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-muted-foreground leading-relaxed">{gap}</p>
                   </div>
                 ))}
-              </div>
-              {/* Pro gap */}
-              <div className="flex items-start gap-3 bg-[#FF4655]/5 border border-[#FF4655]/20 rounded-lg px-4 py-3">
-                <AlertCircle className="w-4 h-4 text-[#FF4655] flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-[10px] font-semibold text-[#FF4655] mb-0.5">プロ基準との差</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">{report.team_style.pro_gap}</p>
-                </div>
               </div>
             </ReportCard>
           )}
 
           {/* ② マクロ分析 */}
           {report.macro_analysis && (
-            <ReportCard num="②" title="マクロ分析（戦術課題）" icon={BarChart2} accent="#FF8C42">
-              {/* Flow: 問題 → 原因 → 改善 */}
+            <ReportCard num="②" title="マクロ分析" icon={BarChart2} accent="#FF8C42">
               <div className="space-y-3">
-                {/* 問題 */}
                 <FlowBlock label="主な問題" color="#FF4655" bg="bg-[#FF4655]/5" border="border-[#FF4655]/20">
                   {report.macro_analysis.main_issues.map((t, i) => <FlowRow key={i} text={t} dot="#FF4655" />)}
-                  {report.macro_analysis.data_evidence && (
-                    <div className="mt-2 inline-flex items-center gap-1.5 bg-[#FF4655]/10 rounded px-2 py-1">
-                      <span className="text-[10px] text-[#FF4655] font-medium">根拠データ：</span>
-                      <span className="text-[10px] text-white">{report.macro_analysis.data_evidence}</span>
-                    </div>
-                  )}
                 </FlowBlock>
-                {/* Arrow */}
                 <div className="flex justify-center"><ArrowRight className="w-4 h-4 text-muted-foreground rotate-90" /></div>
-                {/* 原因 */}
                 <FlowBlock label="原因" color="#FF8C42" bg="bg-[#FF8C42]/5" border="border-[#FF8C42]/20">
                   {report.macro_analysis.causes.map((t, i) => <FlowRow key={i} text={t} dot="#FF8C42" />)}
                 </FlowBlock>
-                {/* Arrow */}
                 <div className="flex justify-center"><ArrowRight className="w-4 h-4 text-muted-foreground rotate-90" /></div>
-                {/* 改善アクション */}
                 <FlowBlock label="改善アクション" color="#00D4A0" bg="bg-[#00D4A0]/5" border="border-[#00D4A0]/20">
                   {report.macro_analysis.improvement_actions.map((t, i) => (
                     <div key={i} className="flex items-start gap-2.5 text-xs text-muted-foreground">
@@ -281,9 +249,8 @@ export default function AICoachPage() {
 
           {/* ③ パターン分析 */}
           {report.pattern_analysis && (
-            <ReportCard num="③" title="パターン分析（複数試合ベース）" icon={TrendingUp} accent="#00D4A0">
+            <ReportCard num="③" title="パターン分析" icon={TrendingUp} accent="#00D4A0">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* 負けパターン */}
                 <div className="bg-[#FF4655]/5 border border-[#FF4655]/25 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Swords className="w-3.5 h-3.5 text-[#FF4655]" />
@@ -298,7 +265,6 @@ export default function AICoachPage() {
                     ))}
                   </div>
                 </div>
-                {/* 勝ちパターン */}
                 <div className="bg-[#00D4A0]/5 border border-[#00D4A0]/25 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Trophy className="w-3.5 h-3.5 text-[#00D4A0]" />
@@ -317,47 +283,21 @@ export default function AICoachPage() {
             </ReportCard>
           )}
 
-          {/* ④ ラウンド分析 */}
-          {report.round_analysis?.length ? (
-            <ReportCard num="④" title="ラウンド分析（重要ラウンド抽出）" icon={List} accent="#FFD700">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {report.round_analysis.map((r, i) => (
-                  <div key={i} className="border border-border rounded-xl overflow-hidden">
-                    <div className="bg-gradient-to-r from-[#FFD700]/15 to-transparent px-4 py-2.5 flex items-center gap-2 border-b border-border">
-                      <span className="text-sm font-black text-[#FFD700]">{r.round_number}</span>
-                    </div>
-                    <div className="p-4 space-y-2">
-                      <RoundRow icon="📍" label="状況" text={r.situation} color="text-white" />
-                      <RoundRow icon="⚠️" label="敗因 / 勝因" text={r.reason} color="text-[#FF4655]" />
-                      <RoundRow icon="✅" label="改善" text={r.improvement} color="text-[#00D4A0]" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </ReportCard>
-          ) : null}
-
-          {/* ⑤ 個人フィードバック */}
+          {/* ④ 個人フィードバック */}
           {report.player_feedback?.length ? (
-            <ReportCard num="⑤" title="個人フィードバック" icon={User} accent="#6C63FF">
+            <ReportCard num="④" title="個人フィードバック" icon={User} accent="#6C63FF">
               <div className="space-y-4">
                 {report.player_feedback.map((player, i) => (
                   <div key={i} className="rounded-xl border border-border overflow-hidden">
-                    {/* Player header */}
                     <div className="bg-gradient-to-r from-[#6C63FF]/20 to-transparent px-5 py-3 flex items-center gap-3">
                       <div className="w-8 h-8 rounded-full bg-[#6C63FF]/30 flex items-center justify-center flex-shrink-0">
                         <User className="w-4 h-4 text-[#6C63FF]" />
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-white">{player.name}</p>
-                        <p className="text-[10px] text-[#6C63FF]">{player.role}</p>
-                      </div>
+                      <p className="text-sm font-bold text-white">{player.name}</p>
                     </div>
-                    {/* Columns */}
-                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <PlayerBlock label="評価" items={player.evaluation} icon={<CheckCircle2 className="w-3 h-3" />} color="#00D4A0" />
                       <PlayerBlock label="問題点" items={player.issues} icon={<AlertCircle className="w-3 h-3" />} color="#FF4655" />
-                      <PlayerBlock label="原因" items={player.causes} icon={<AlertTriangle className="w-3 h-3" />} color="#FF8C42" />
                       <PlayerBlock label="改善策" items={player.improvements} icon={<Target className="w-3 h-3" />} color="#6C63FF" />
                       <PlayerBlock label="練習方法" items={player.practice} icon={<Zap className="w-3 h-3" />} color="#FFD700" />
                     </div>
@@ -367,82 +307,14 @@ export default function AICoachPage() {
             </ReportCard>
           ) : null}
 
-          {/* ⑥ スタイルスコア */}
-          {report.style_scores && (
-            <ReportCard num="⑥" title="スタイルスコア" icon={BarChart2} accent="#FF8C42">
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-                {([
-                  { label: '攻撃性', key: 'aggression' },
-                  { label: '構造性', key: 'structure' },
-                  { label: '連携', key: 'teamwork' },
-                  { label: '適応力', key: 'adaptability' },
-                  { label: '情報管理', key: 'info_management' },
-                ] as const).map(({ label, key }) => (
-                  <ScoreCard key={key} label={label} value={report.style_scores![key]} />
-                ))}
-              </div>
-            </ReportCard>
-          )}
-
-          {/* ⑦ 改善優先度 */}
-          {report.improvement_priority?.length ? (
-            <ReportCard num="⑦" title="改善優先度" icon={Target} accent="#FF4655">
-              <div className="space-y-2.5">
-                {report.improvement_priority.map((item, i) => {
-                  const cfg = [
-                    { medal: '🥇', bg: 'bg-[#FF4655]/10', border: 'border-[#FF4655]/30', num: 'bg-[#FF4655] text-white' },
-                    { medal: '🥈', bg: 'bg-[#FF8C42]/10', border: 'border-[#FF8C42]/30', num: 'bg-[#FF8C42] text-white' },
-                    { medal: '🥉', bg: 'bg-muted/20', border: 'border-border', num: 'bg-muted text-muted-foreground' },
-                  ][i] ?? { medal: '', bg: 'bg-muted/10', border: 'border-border', num: 'bg-muted text-muted-foreground' }
-                  return (
-                    <div key={i} className={cn('flex items-center gap-3 p-4 rounded-xl border', cfg.bg, cfg.border)}>
-                      <span className="text-xl flex-shrink-0">{cfg.medal}</span>
-                      <p className="text-sm text-white font-medium leading-relaxed">{item}</p>
-                    </div>
-                  )
-                })}
-              </div>
-            </ReportCard>
-          ) : null}
-
-          {/* ⑧ NG行動 */}
-          {report.ng_actions?.length ? (
-            <ReportCard num="⑧" title="NG行動" icon={XCircle} accent="#FF4655">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                {report.ng_actions.map((action, i) => (
-                  <div key={i} className="flex items-start gap-3 p-3.5 bg-[#FF4655]/5 border border-[#FF4655]/20 rounded-xl">
-                    <XCircle className="w-4 h-4 text-[#FF4655] flex-shrink-0 mt-0.5" />
-                    <p className="text-xs text-muted-foreground leading-relaxed">{action}</p>
-                  </div>
-                ))}
-              </div>
-            </ReportCard>
-          ) : null}
-
-          {/* ⑨ 次の試合でやること */}
-          {report.next_match_actions?.length ? (
-            <ReportCard num="⑨" title="次の試合でやること" icon={Zap} accent="#00D4A0">
-              <div className="space-y-2.5">
-                {report.next_match_actions.map((action, i) => (
-                  <div key={i} className="flex items-start gap-3 p-4 bg-[#00D4A0]/5 border border-[#00D4A0]/20 rounded-xl">
-                    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#00D4A0]/20 flex items-center justify-center mt-0.5">
-                      <span className="text-[10px] font-bold text-[#00D4A0]">{i + 1}</span>
-                    </div>
-                    <p className="text-sm text-white leading-relaxed">{action}</p>
-                  </div>
-                ))}
-              </div>
-            </ReportCard>
-          ) : null}
-
-          {/* ⑩ 総括 */}
+          {/* ⑤ 総括 */}
           {report.summary && (
             <div className="relative overflow-hidden rounded-2xl border border-[#6C63FF]/30 bg-gradient-to-br from-[#6C63FF]/10 via-card to-card">
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,#6C63FF15,transparent_60%)]" />
               <div className="relative px-6 py-5">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-6 h-6 rounded-lg bg-[#6C63FF]/20 flex items-center justify-center">
-                    <span className="text-xs font-black text-[#6C63FF]">⑩</span>
+                    <span className="text-xs font-black text-[#6C63FF]">⑤</span>
                   </div>
                   <MessageSquare className="w-4 h-4 text-[#6C63FF]" />
                   <h2 className="text-sm font-bold text-white">総括</h2>
@@ -504,15 +376,6 @@ function FlowRow({ text, dot }: { text: string; dot: string }) {
   )
 }
 
-function RoundRow({ icon, label, text, color }: { icon: string; label: string; text: string; color: string }) {
-  return (
-    <div className="flex items-start gap-2 text-xs">
-      <span className="flex-shrink-0 text-sm leading-none mt-0.5">{icon}</span>
-      <span className={cn('font-semibold flex-shrink-0', color)}>{label}：</span>
-      <span className="text-muted-foreground leading-relaxed">{text}</span>
-    </div>
-  )
-}
 
 function PlayerBlock({ label, items, icon, color }: { label: string; items: string[]; icon: React.ReactNode; color: string }) {
   if (!items?.length) return null
@@ -534,19 +397,3 @@ function PlayerBlock({ label, items, icon, color }: { label: string; items: stri
   )
 }
 
-function ScoreCard({ label, value }: { label: string; value: number }) {
-  const v = Math.max(0, Math.min(10, value))
-  const pct = v * 10
-  const color = pct >= 70 ? '#00D4A0' : pct >= 50 ? '#FFD700' : '#FF4655'
-  const ring = pct >= 70 ? 'border-[#00D4A0]/40' : pct >= 50 ? 'border-[#FFD700]/40' : 'border-[#FF4655]/40'
-  return (
-    <div className={cn('rounded-xl border bg-card p-4 text-center', ring)}>
-      <p className="text-[10px] text-muted-foreground font-medium mb-3">{label}</p>
-      <p className="text-3xl font-black leading-none" style={{ color }}>{v}</p>
-      <p className="text-[10px] text-muted-foreground mt-0.5">/10</p>
-      <div className="mt-3 h-1.5 bg-muted/30 rounded-full overflow-hidden">
-        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
-      </div>
-    </div>
-  )
-}
