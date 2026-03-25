@@ -63,7 +63,8 @@ export default function AICoachPage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ team_id: TEAM_ID, match_ids: selectedIds.size > 0 ? [...selectedIds] : undefined, map_filter: mapFilter || undefined }),
       })
-      let json: Record<string, string>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let json: Record<string, any>
       try { json = await res.json() } catch { throw new Error(`サーバーエラー (HTTP ${res.status})`) }
       if (!res.ok) throw new Error(json.details ? `${json.error ?? 'Analysis failed'}: ${json.details}` : (json.error ?? 'Analysis failed'))
       setReport(json.data)
