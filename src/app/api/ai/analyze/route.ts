@@ -43,6 +43,10 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`))
       }
 
+      const keepalive = setInterval(() => {
+        try { controller.enqueue(encoder.encode(': ping\n\n')) } catch {}
+      }, 5000)
+
       try {
         const context = await buildAIContextV2(team_id, {
           matchIds: match_ids?.length ? match_ids : undefined,
@@ -105,6 +109,7 @@ export async function POST(req: NextRequest) {
         console.error('[AI analyze]', err)
         send({ error: 'AI analysis failed', details: String(err) })
       } finally {
+        clearInterval(keepalive)
         controller.close()
       }
     },
