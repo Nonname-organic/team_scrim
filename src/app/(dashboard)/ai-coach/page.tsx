@@ -2,9 +2,9 @@
 import { useEffect, useState, useMemo } from 'react'
 import {
   Bot, AlertTriangle, Loader2, Map, FileDown,
-  CheckSquare, Square, Target, TrendingUp, BarChart2, User,
-  ShieldAlert, Zap, ArrowRight, MessageSquare,
-  AlertCircle, CheckCircle2, Trophy, Swords, Brain,
+  CheckSquare, Square, Target, User,
+  ShieldAlert, Zap, MessageSquare,
+  AlertCircle, Swords, Brain,
   ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -17,13 +17,14 @@ interface MatchSummary {
   map: string; result: 'win' | 'loss' | 'draw'
   team_score: number; opponent_score: number
 }
-interface TeamStyle { classification: string; pro_gap: string[] }
-interface MacroAnalysis { main_issues: string[]; causes: string[]; improvement_actions: string[] }
-interface PatternAnalysis { loss_patterns: string[]; win_patterns: string[] }
-interface PlayerFeedback { name: string; evaluation: string[]; issues: string[]; improvements: string[]; practice: string[] }
+interface TeamStyle    { type: string; win_path: string; weakness: string }
+interface MainIssue   { issue: string; data_evidence: string; cause: string }
+interface PlayerFeedback { name: string; problem: string; improvement: string }
 interface Report {
-  team_style?: TeamStyle; macro_analysis?: MacroAnalysis; pattern_analysis?: PatternAnalysis
-  player_feedback?: PlayerFeedback[]; summary?: string; raw_analysis?: string
+  team_style?: TeamStyle; main_issue?: MainIssue
+  loss_patterns?: string[]; macro_improvements?: string[]
+  player_feedback?: PlayerFeedback[]; next_actions?: string[]
+  summary?: string; raw_analysis?: string
 }
 
 // ── Main Page ─────────────────────────────────────────────────
@@ -187,101 +188,93 @@ export default function AICoachPage() {
             </button>
           </div>
 
-          {/* ① チームスタイル分析 */}
+          {/* ① チームスタイル */}
           {report.team_style && (
-            <ReportCard num="①" title="チームスタイル分析" icon={Brain} accent="#6C63FF">
-              <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-[#6C63FF]/20 to-[#6C63FF]/5 border border-[#6C63FF]/25 px-5 py-4 mb-4">
-                <p className="text-[10px] text-[#6C63FF] font-semibold tracking-widest uppercase mb-1">スタイル分類</p>
-                <p className="text-xl font-black text-white">{report.team_style.classification}</p>
-              </div>
-              <div className="space-y-2">
-                {report.team_style.pro_gap.map((gap, i) => (
-                  <div key={i} className="flex items-start gap-3 bg-[#FF4655]/5 border border-[#FF4655]/20 rounded-lg px-4 py-3">
-                    <AlertCircle className="w-4 h-4 text-[#FF4655] flex-shrink-0 mt-0.5" />
-                    <p className="text-xs text-muted-foreground leading-relaxed">{gap}</p>
+            <ReportCard num="①" title="チームスタイル" icon={Brain} accent="#6C63FF">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {[
+                  { label: 'タイプ',   value: report.team_style.type,     color: '#6C63FF' },
+                  { label: '勝ち筋',   value: report.team_style.win_path,  color: '#00D4A0' },
+                  { label: '弱点',     value: report.team_style.weakness,  color: '#FF4655' },
+                ].map((d, i) => (
+                  <div key={i} className="bg-card border border-border rounded-xl p-4">
+                    <p className="text-[10px] font-bold mb-2 tracking-widest uppercase" style={{ color: d.color }}>{d.label}</p>
+                    <p className="text-xs text-white leading-relaxed">{d.value}</p>
                   </div>
                 ))}
               </div>
             </ReportCard>
           )}
 
-          {/* ② マクロ分析 */}
-          {report.macro_analysis && (
-            <ReportCard num="②" title="マクロ分析" icon={BarChart2} accent="#FF8C42">
+          {/* ② 最重要課題 */}
+          {report.main_issue && (
+            <ReportCard num="②" title="最重要課題" icon={AlertCircle} accent="#FF4655">
               <div className="space-y-3">
-                <FlowBlock label="主な問題" color="#FF4655" bg="bg-[#FF4655]/5" border="border-[#FF4655]/20">
-                  {report.macro_analysis.main_issues.map((t, i) => <FlowRow key={i} text={t} dot="#FF4655" />)}
-                </FlowBlock>
-                <div className="flex justify-center"><ArrowRight className="w-4 h-4 text-muted-foreground rotate-90" /></div>
-                <FlowBlock label="原因" color="#FF8C42" bg="bg-[#FF8C42]/5" border="border-[#FF8C42]/20">
-                  {report.macro_analysis.causes.map((t, i) => <FlowRow key={i} text={t} dot="#FF8C42" />)}
-                </FlowBlock>
-                <div className="flex justify-center"><ArrowRight className="w-4 h-4 text-muted-foreground rotate-90" /></div>
-                <FlowBlock label="改善アクション" color="#00D4A0" bg="bg-[#00D4A0]/5" border="border-[#00D4A0]/20">
-                  {report.macro_analysis.improvement_actions.map((t, i) => (
-                    <div key={i} className="flex items-start gap-2.5 text-xs text-muted-foreground">
-                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#00D4A0]/20 text-[#00D4A0] text-[10px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
-                      <span className="leading-relaxed pt-0.5">{t}</span>
-                    </div>
-                  ))}
-                </FlowBlock>
-              </div>
-            </ReportCard>
-          )}
-
-          {/* ③ パターン分析 */}
-          {report.pattern_analysis && (
-            <ReportCard num="③" title="パターン分析" icon={TrendingUp} accent="#00D4A0">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-[#FF4655]/5 border border-[#FF4655]/25 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Swords className="w-3.5 h-3.5 text-[#FF4655]" />
-                    <p className="text-xs font-bold text-[#FF4655]">頻出負けパターン</p>
-                  </div>
-                  <div className="space-y-2.5">
-                    {report.pattern_analysis.loss_patterns.map((p, i) => (
-                      <div key={i} className="flex items-start gap-2.5">
-                        <span className="flex-shrink-0 w-5 h-5 rounded bg-[#FF4655]/20 text-[#FF4655] text-[10px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
-                        <p className="text-xs text-muted-foreground leading-relaxed pt-0.5">{p}</p>
-                      </div>
-                    ))}
-                  </div>
+                <div className="bg-[#FF4655]/10 border border-[#FF4655]/30 rounded-xl px-5 py-4">
+                  <p className="text-[10px] text-[#FF4655] font-bold mb-1 uppercase tracking-widest">課題</p>
+                  <p className="text-sm font-bold text-white">{report.main_issue.issue}</p>
                 </div>
-                <div className="bg-[#00D4A0]/5 border border-[#00D4A0]/25 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Trophy className="w-3.5 h-3.5 text-[#00D4A0]" />
-                    <p className="text-xs font-bold text-[#00D4A0]">勝ちパターン</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="bg-card border border-border rounded-xl p-4">
+                    <p className="text-[10px] text-muted-foreground font-bold mb-1 uppercase tracking-widest">根拠データ</p>
+                    <p className="text-xs text-white">{report.main_issue.data_evidence}</p>
                   </div>
-                  <div className="space-y-2.5">
-                    {report.pattern_analysis.win_patterns.map((p, i) => (
-                      <div key={i} className="flex items-start gap-2.5">
-                        <span className="flex-shrink-0 w-5 h-5 rounded bg-[#00D4A0]/20 text-[#00D4A0] text-[10px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
-                        <p className="text-xs text-muted-foreground leading-relaxed pt-0.5">{p}</p>
-                      </div>
-                    ))}
+                  <div className="bg-card border border-border rounded-xl p-4">
+                    <p className="text-[10px] text-muted-foreground font-bold mb-1 uppercase tracking-widest">原因</p>
+                    <p className="text-xs text-white">{report.main_issue.cause}</p>
                   </div>
                 </div>
               </div>
             </ReportCard>
           )}
 
-          {/* ④ 個人フィードバック */}
+          {/* ③ 負けパターン */}
+          {report.loss_patterns?.length ? (
+            <ReportCard num="③" title="負けパターン（再現性）" icon={Swords} accent="#FF8C42">
+              <div className="space-y-2.5">
+                {report.loss_patterns.map((p, i) => (
+                  <div key={i} className="flex items-start gap-3 bg-[#FF8C42]/5 border border-[#FF8C42]/20 rounded-xl px-4 py-3">
+                    <span className="flex-shrink-0 w-5 h-5 rounded bg-[#FF8C42]/20 text-[#FF8C42] text-[10px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{p}</p>
+                  </div>
+                ))}
+              </div>
+            </ReportCard>
+          ) : null}
+
+          {/* ④ マクロ改善 */}
+          {report.macro_improvements?.length ? (
+            <ReportCard num="④" title="マクロ改善（即実行）" icon={Zap} accent="#00D4A0">
+              <div className="space-y-2.5">
+                {report.macro_improvements.map((t, i) => (
+                  <div key={i} className="flex items-start gap-3 bg-[#00D4A0]/5 border border-[#00D4A0]/20 rounded-xl px-4 py-3">
+                    <span className="flex-shrink-0 w-5 h-5 rounded-full bg-[#00D4A0]/20 text-[#00D4A0] text-[10px] font-bold flex items-center justify-center mt-0.5">{i + 1}</span>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{t}</p>
+                  </div>
+                ))}
+              </div>
+            </ReportCard>
+          ) : null}
+
+          {/* ⑤ 個人フィードバック */}
           {report.player_feedback?.length ? (
-            <ReportCard num="④" title="個人フィードバック" icon={User} accent="#6C63FF">
-              <div className="space-y-4">
+            <ReportCard num="⑤" title="個人フィードバック" icon={User} accent="#6C63FF">
+              <div className="space-y-3">
                 {report.player_feedback.map((player, i) => (
                   <div key={i} className="rounded-xl border border-border overflow-hidden">
                     <div className="bg-gradient-to-r from-[#6C63FF]/20 to-transparent px-5 py-3 flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-[#6C63FF]/30 flex items-center justify-center flex-shrink-0">
-                        <User className="w-4 h-4 text-[#6C63FF]" />
-                      </div>
+                      <User className="w-4 h-4 text-[#6C63FF] flex-shrink-0" />
                       <p className="text-sm font-bold text-white">{player.name}</p>
                     </div>
                     <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <PlayerBlock label="評価" items={player.evaluation} icon={<CheckCircle2 className="w-3 h-3" />} color="#00D4A0" />
-                      <PlayerBlock label="問題点" items={player.issues} icon={<AlertCircle className="w-3 h-3" />} color="#FF4655" />
-                      <PlayerBlock label="改善策" items={player.improvements} icon={<Target className="w-3 h-3" />} color="#6C63FF" />
-                      <PlayerBlock label="練習方法" items={player.practice} icon={<Zap className="w-3 h-3" />} color="#FFD700" />
+                      <div className="bg-[#FF4655]/5 border border-[#FF4655]/20 rounded-xl p-3">
+                        <p className="text-[10px] text-[#FF4655] font-bold mb-1.5 uppercase tracking-widest">問題</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{player.problem}</p>
+                      </div>
+                      <div className="bg-[#00D4A0]/5 border border-[#00D4A0]/20 rounded-xl p-3">
+                        <p className="text-[10px] text-[#00D4A0] font-bold mb-1.5 uppercase tracking-widest">改善</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{player.improvement}</p>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -289,17 +282,31 @@ export default function AICoachPage() {
             </ReportCard>
           ) : null}
 
-          {/* ⑤ 総括 */}
+          {/* ⑥ 次の試合でやること */}
+          {report.next_actions?.length ? (
+            <ReportCard num="⑥" title="次の試合でやること" icon={Target} accent="#FFD700">
+              <div className="space-y-2.5">
+                {report.next_actions.map((action, i) => (
+                  <div key={i} className="flex items-center gap-3 bg-[#FFD700]/5 border border-[#FFD700]/20 rounded-xl px-4 py-3">
+                    <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#FFD700]/20 text-[#FFD700] text-xs font-black flex items-center justify-center">{i + 1}</span>
+                    <p className="text-sm text-white font-medium">{action}</p>
+                  </div>
+                ))}
+              </div>
+            </ReportCard>
+          ) : null}
+
+          {/* ⑦ 総評 */}
           {report.summary && (
             <div className="relative overflow-hidden rounded-2xl border border-[#6C63FF]/30 bg-gradient-to-br from-[#6C63FF]/10 via-card to-card">
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,#6C63FF15,transparent_60%)]" />
               <div className="relative px-6 py-5">
                 <div className="flex items-center gap-2 mb-4">
                   <div className="w-6 h-6 rounded-lg bg-[#6C63FF]/20 flex items-center justify-center">
-                    <span className="text-xs font-black text-[#6C63FF]">⑤</span>
+                    <span className="text-xs font-black text-[#6C63FF]">⑦</span>
                   </div>
                   <MessageSquare className="w-4 h-4 text-[#6C63FF]" />
-                  <h2 className="text-sm font-bold text-white">総括</h2>
+                  <h2 className="text-sm font-bold text-white">総評（コーチ視点）</h2>
                 </div>
                 <div className="flex items-start gap-3">
                   <ShieldAlert className="w-5 h-5 text-[#6C63FF] flex-shrink-0 mt-0.5" />
@@ -354,44 +361,4 @@ function ReportCard({ num, title, icon: Icon, accent, children }: {
   )
 }
 
-function FlowBlock({ label, color, bg, border, children }: {
-  label: string; color: string; bg: string; border: string; children: React.ReactNode
-}) {
-  return (
-    <div className={cn('rounded-xl p-4 border space-y-2', bg, border)}>
-      <p className="text-[10px] font-bold tracking-widest uppercase" style={{ color }}>{label}</p>
-      {children}
-    </div>
-  )
-}
-
-function FlowRow({ text, dot }: { text: string; dot: string }) {
-  return (
-    <div className="flex items-start gap-2 text-xs text-muted-foreground">
-      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5" style={{ background: dot }} />
-      <span className="leading-relaxed">{text}</span>
-    </div>
-  )
-}
-
-
-function PlayerBlock({ label, items, icon, color }: { label: string; items: string[]; icon: React.ReactNode; color: string }) {
-  if (!items?.length) return null
-  return (
-    <div className="rounded-lg p-3 border border-border bg-muted/10">
-      <div className="flex items-center gap-1.5 mb-2" style={{ color }}>
-        {icon}
-        <p className="text-[10px] font-bold tracking-wide uppercase">{label}</p>
-      </div>
-      <div className="space-y-1.5">
-        {items.map((item, i) => (
-          <div key={i} className="flex items-start gap-1.5 text-xs text-muted-foreground">
-            <span className="w-1 h-1 rounded-full flex-shrink-0 mt-1.5" style={{ background: color }} />
-            <span className="leading-relaxed">{item}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
 

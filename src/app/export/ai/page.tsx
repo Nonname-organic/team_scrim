@@ -1,13 +1,17 @@
 'use client'
 import { useEffect, useState } from 'react'
 
-interface TeamStyle     { classification: string; pro_gap: string[] }
-interface MacroAnalysis { main_issues: string[]; causes: string[]; improvement_actions: string[] }
-interface PatternAnalysis { loss_patterns: string[]; win_patterns: string[] }
-interface PlayerFeedback  { name: string; evaluation: string[]; issues: string[]; improvements: string[]; practice: string[] }
+interface TeamStyle    { type: string; win_path: string; weakness: string }
+interface MainIssue   { issue: string; data_evidence: string; cause: string }
+interface PlayerFeedback { name: string; problem: string; improvement: string }
 interface Report {
-  team_style?: TeamStyle; macro_analysis?: MacroAnalysis; pattern_analysis?: PatternAnalysis
-  player_feedback?: PlayerFeedback[]; summary?: string
+  team_style?: TeamStyle
+  main_issue?: MainIssue
+  loss_patterns?: string[]
+  macro_improvements?: string[]
+  player_feedback?: PlayerFeedback[]
+  next_actions?: string[]
+  summary?: string
 }
 
 export default function AIExportPage() {
@@ -62,80 +66,112 @@ export default function AIExportPage() {
         {/* ① チームスタイル */}
         {report.team_style && (
           <section className="mb-8 break-inside-avoid">
-            <SectionTitle num="①" title="チームスタイル分析" />
-            <div className="bg-gray-50 border border-gray-200 rounded-xl px-5 py-4 mb-3">
-              <p className="text-[10px] text-gray-400 uppercase tracking-wider mb-1">スタイル分類</p>
-              <p className="text-xl font-black">{report.team_style.classification}</p>
-            </div>
-            <div className="space-y-2">
-              {report.team_style.pro_gap.map((gap, i) => (
-                <div key={i} className="border-l-4 border-red-400 pl-3 py-1 bg-red-50 rounded-r-lg">
-                  <p className="text-xs">{gap}</p>
+            <SectionTitle num="①" title="チームスタイル" />
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: 'タイプ',  value: report.team_style.type,     border: '#6C63FF' },
+                { label: '勝ち筋',  value: report.team_style.win_path,  border: '#00B894' },
+                { label: '弱点',    value: report.team_style.weakness,  border: '#FF4655' },
+              ].map((d, i) => (
+                <div key={i} className="border border-gray-200 rounded-xl p-3" style={{ borderLeftColor: d.border, borderLeftWidth: 3 }}>
+                  <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-1">{d.label}</p>
+                  <p className="text-xs leading-relaxed">{d.value}</p>
                 </div>
               ))}
             </div>
           </section>
         )}
 
-        {/* ② マクロ分析 */}
-        {report.macro_analysis && (
+        {/* ② 最重要課題 */}
+        {report.main_issue && (
           <section className="mb-8 break-inside-avoid">
-            <SectionTitle num="②" title="マクロ分析" />
-            <div className="space-y-3">
-              <SubSection title="主要課題">
-                <BulletList items={report.macro_analysis.main_issues} />
-              </SubSection>
-              <div className="grid grid-cols-2 gap-3">
-                <SubSection title="原因">
-                  <BulletList items={report.macro_analysis.causes} />
-                </SubSection>
-                <SubSection title="改善アクション">
-                  <BulletList items={report.macro_analysis.improvement_actions} marker="→" />
-                </SubSection>
-              </div>
+            <SectionTitle num="②" title="最重要課題" />
+            <div className="border-l-4 border-red-400 pl-4 mb-3 bg-red-50 rounded-r-xl py-3">
+              <p className="text-[10px] text-red-400 font-semibold uppercase tracking-wider mb-1">課題</p>
+              <p className="font-black text-sm">{report.main_issue.issue}</p>
             </div>
-          </section>
-        )}
-
-        {/* ③ パターン分析 */}
-        {report.pattern_analysis && (
-          <section className="mb-8 break-inside-avoid">
-            <SectionTitle num="③" title="パターン分析" />
             <div className="grid grid-cols-2 gap-3">
-              <SubSection title="負けパターン">
-                <BulletList items={report.pattern_analysis.loss_patterns} />
+              <SubSection title="根拠データ">
+                <p className="text-xs leading-relaxed">{report.main_issue.data_evidence}</p>
               </SubSection>
-              <SubSection title="勝ちパターン">
-                <BulletList items={report.pattern_analysis.win_patterns} />
+              <SubSection title="原因">
+                <p className="text-xs leading-relaxed">{report.main_issue.cause}</p>
               </SubSection>
             </div>
           </section>
         )}
 
-        {/* ④ 選手フィードバック */}
-        {report.player_feedback && report.player_feedback.length > 0 && (
+        {/* ③ 負けパターン */}
+        {report.loss_patterns?.length ? (
+          <section className="mb-8 break-inside-avoid">
+            <SectionTitle num="③" title="負けパターン（再現性）" />
+            <div className="space-y-2">
+              {report.loss_patterns.map((p, i) => (
+                <div key={i} className="flex items-start gap-3 border border-orange-200 bg-orange-50 rounded-xl px-4 py-2.5">
+                  <span className="w-5 h-5 rounded bg-orange-200 text-orange-600 text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                  <p className="text-xs leading-relaxed">{p}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {/* ④ マクロ改善 */}
+        {report.macro_improvements?.length ? (
+          <section className="mb-8 break-inside-avoid">
+            <SectionTitle num="④" title="マクロ改善（即実行）" />
+            <div className="space-y-2">
+              {report.macro_improvements.map((item, i) => (
+                <div key={i} className="flex items-start gap-3 border border-green-200 bg-green-50 rounded-xl px-4 py-2.5">
+                  <span className="w-5 h-5 rounded-full bg-green-200 text-green-700 text-[10px] font-bold flex items-center justify-center flex-shrink-0 mt-0.5">{i + 1}</span>
+                  <p className="text-xs leading-relaxed">{item}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {/* ⑤ 個人フィードバック */}
+        {report.player_feedback?.length ? (
           <section className="mb-8">
-            <SectionTitle num="④" title="選手フィードバック" />
-            <div className="space-y-4 mt-2">
+            <SectionTitle num="⑤" title="個人フィードバック" />
+            <div className="space-y-3 mt-2">
               {report.player_feedback.map((p, i) => (
                 <div key={i} className="border border-gray-200 rounded-xl p-4 break-inside-avoid">
                   <p className="font-black text-sm mb-3 pb-2 border-b border-gray-100">{p.name}</p>
-                  <div className="grid grid-cols-2 gap-3 text-xs">
-                    <SubSection title="評価"><BulletList items={p.evaluation} /></SubSection>
-                    <SubSection title="課題"><BulletList items={p.issues} /></SubSection>
-                    <SubSection title="改善"><BulletList items={p.improvements} marker="→" /></SubSection>
-                    <SubSection title="練習メニュー"><BulletList items={p.practice} marker="●" /></SubSection>
+                  <div className="grid grid-cols-2 gap-3">
+                    <SubSection title="問題点">
+                      <p className="text-xs leading-relaxed">{p.problem}</p>
+                    </SubSection>
+                    <SubSection title="改善策">
+                      <p className="text-xs leading-relaxed">{p.improvement}</p>
+                    </SubSection>
                   </div>
                 </div>
               ))}
             </div>
           </section>
-        )}
+        ) : null}
 
-        {/* ⑤ 総括 */}
+        {/* ⑥ 次の試合でやること */}
+        {report.next_actions?.length ? (
+          <section className="mb-8 break-inside-avoid">
+            <SectionTitle num="⑥" title="次の試合でやること" />
+            <div className="space-y-2">
+              {report.next_actions.map((action, i) => (
+                <div key={i} className="flex items-center gap-3 border border-yellow-200 bg-yellow-50 rounded-xl px-4 py-2.5">
+                  <span className="w-6 h-6 rounded-full bg-yellow-200 text-yellow-700 text-xs font-black flex items-center justify-center flex-shrink-0">{i + 1}</span>
+                  <p className="text-sm font-medium">{action}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {/* ⑦ 総評 */}
         {report.summary && (
           <section className="mb-8 break-inside-avoid">
-            <SectionTitle num="⑤" title="総括" />
+            <SectionTitle num="⑦" title="総評（コーチ視点）" />
             <div className="bg-gray-50 border border-gray-200 rounded-xl px-5 py-4 mt-2">
               <p className="text-xs leading-relaxed text-gray-700">{report.summary}</p>
             </div>
@@ -173,19 +209,5 @@ function SubSection({ title, children }: { title: string; children: React.ReactN
       <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">{title}</p>
       {children}
     </div>
-  )
-}
-
-function BulletList({ items, marker = '•' }: { items: string[]; marker?: string }) {
-  if (!items?.length) return <p className="text-xs text-gray-400">--</p>
-  return (
-    <ul className="space-y-1">
-      {items.map((item, i) => (
-        <li key={i} className="flex items-start gap-1.5 text-xs">
-          <span className="flex-shrink-0 text-gray-400 mt-0.5">{marker}</span>
-          <span>{item}</span>
-        </li>
-      ))}
-    </ul>
   )
 }

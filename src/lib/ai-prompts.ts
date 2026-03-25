@@ -171,14 +171,17 @@ export function buildCoachPromptV2(context: Record<string, unknown>): string {
     ? `選択された ${filterInfo.match_count} 試合のデータ`
     : '全試合データ'
 
-  return `あなたはVALORANTのプロレベル戦術アナリストです。
-プロ基準（テンポ・構造・連携・適応・情報管理）で分析してください。
+  return `あなたはVALORANTのプロチーム専属アナリスト兼コーチです。
+VCTレベルの戦術理解を前提に、データから勝敗に直結する本質のみを抽出します。
 
-【重要ルール】
-- 必ず簡潔に出力
-- 各項目は最大3行まで
-- 抽象論禁止（データに基づく）
-- 合計1500トークン以内で出力
+目的：チームの勝率を最短で改善すること
+
+【出力ルール（厳守）】
+- すべて結論ベース（理由は短く）
+- 抽象論禁止
+- 各項目は最大2行
+- 「今すぐ改善できる内容」だけ出す
+- 合計1200トークン以内
 
 ## 分析対象
 ${scope}（${filterInfo?.match_count}試合）
@@ -200,28 +203,26 @@ ${JSON.stringify(context.economy_stats)}
 \`\`\`json
 {
   "team_style": {
-    "classification": "スタイル分類（例：高テンポ×低連携型）",
-    "pro_gap": ["プロ基準との差1", "プロ基準との差2"]
+    "type": "チームタイプ（例：高テンポ×低連携）",
+    "win_path": "このチームの勝ち筋",
+    "weakness": "最大の弱点"
   },
-  "macro_analysis": {
-    "main_issues": ["主な問題1", "主な問題2"],
-    "causes": ["原因1", "原因2"],
-    "improvement_actions": ["改善アクション1", "改善アクション2", "改善アクション3"]
+  "main_issue": {
+    "issue": "最重要課題（1つ）",
+    "data_evidence": "根拠データ（数値引用）",
+    "cause": "原因"
   },
-  "pattern_analysis": {
-    "loss_patterns": ["頻出負けパターン1", "頻出負けパターン2"],
-    "win_patterns": ["勝ちパターン1", "勝ちパターン2"]
-  },
+  "loss_patterns": ["再現性のある負けパターン1", "再現性のある負けパターン2"],
+  "macro_improvements": ["即実行できる改善1", "即実行できる改善2", "即実行できる改善3"],
   "player_feedback": [
     {
       "name": "プレイヤー名",
-      "evaluation": ["評価1"],
-      "issues": ["問題1"],
-      "improvements": ["改善策1"],
-      "practice": ["練習方法1"]
+      "problem": "問題点（1行）",
+      "improvement": "改善策（1行）"
     }
   ],
-  "summary": "データ引用込みの総括（3行以内）"
+  "next_actions": ["次の試合でやること1", "次の試合でやること2", "次の試合でやること3"],
+  "summary": "コーチ視点の総評（1〜2行）"
 }
 \`\`\`
 `
