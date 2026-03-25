@@ -63,12 +63,29 @@ export default function AICoachPage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ team_id: TEAM_ID, match_ids: selectedIds.size > 0 ? [...selectedIds] : undefined, map_filter: mapFilter || undefined }),
       })
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let json: Record<string, any>
-      try { json = await res.json() } catch { throw new Error(`サーバーエラー (HTTP ${res.status})`) }
-      if (!res.ok) throw new Error(json.details ? `${json.error ?? 'Analysis failed'}: ${json.details}` : (json.error ?? 'Analysis failed'))
-      setReport(json.data)
-      console.log('[AI raw analysis]', json.data.raw_analysis)
+      if (!res.ok || !res.body) throw new Error(`サーバーエラー (HTTP ${res.status})`)
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buf = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buf += decoder.decode(value, { stream: true })
+        const lines = buf.split('\n')
+        buf = lines.pop() ?? ''
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const data: Record<string, any> = JSON.parse(line.slice(6))
+          if (data.error) throw new Error(data.details ? `${data.error}: ${data.details}` : data.error)
+          if (data.done) {
+            setReport(data.data)
+            console.log('[AI raw analysis]', data.data.raw_analysis)
+          }
+        }
+      }
     } catch (e) { setError(String(e)) }
     finally { setLoading(false) }
   }
