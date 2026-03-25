@@ -5,6 +5,7 @@ import {
   CheckSquare, Square, Target, TrendingUp, BarChart2, User,
   ShieldAlert, Zap, ArrowRight, MessageSquare,
   AlertCircle, CheckCircle2, Trophy, Swords, Brain,
+  ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -33,6 +34,7 @@ export default function AICoachPage() {
   const [report, setReport] = useState<Report | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [showRaw, setShowRaw] = useState(false)
 
   useEffect(() => {
     fetch(`/api/matches?team_id=${TEAM_ID}&limit=50`)
@@ -304,6 +306,22 @@ export default function AICoachPage() {
                   <p className="text-sm text-muted-foreground leading-relaxed">{report.summary}</p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* 生の分析テキスト（デバッグ用） */}
+          {report.raw_analysis && (
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <button onClick={() => setShowRaw(v => !v)}
+                className="w-full flex items-center justify-between px-5 py-3 text-xs text-muted-foreground hover:text-white transition-colors">
+                <span>生の分析テキスト（デバッグ用）</span>
+                {showRaw ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+              {showRaw && (
+                <pre className="px-5 pb-5 text-[10px] text-muted-foreground leading-relaxed whitespace-pre-wrap break-all overflow-auto max-h-96">
+                  {report.raw_analysis}
+                </pre>
+              )}
             </div>
           )}
 
