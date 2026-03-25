@@ -63,7 +63,8 @@ export default function AICoachPage() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ team_id: TEAM_ID, match_ids: selectedIds.size > 0 ? [...selectedIds] : undefined, map_filter: mapFilter || undefined }),
       })
-      const json = await res.json()
+      let json: Record<string, string>
+      try { json = await res.json() } catch { throw new Error(`サーバーエラー (HTTP ${res.status})`) }
       if (!res.ok) throw new Error(json.details ? `${json.error ?? 'Analysis failed'}: ${json.details}` : (json.error ?? 'Analysis failed'))
       setReport(json.data)
       console.log('[AI raw analysis]', json.data.raw_analysis)
