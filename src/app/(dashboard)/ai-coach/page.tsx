@@ -68,6 +68,7 @@ export default function AICoachPage() {
       const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let buf = ''
+      let reportReceived = false
 
       while (true) {
         const { done, value } = await reader.read()
@@ -81,11 +82,13 @@ export default function AICoachPage() {
           const data: Record<string, any> = JSON.parse(line.slice(6))
           if (data.error) throw new Error(data.details ? `${data.error}: ${data.details}` : data.error)
           if (data.done) {
+            reportReceived = true
             setReport(data.data)
-            console.log('[AI raw analysis]', data.data.raw_analysis)
+            console.log('[AI raw analysis]', data.data?.raw_analysis)
           }
         }
       }
+      if (!reportReceived) throw new Error('分析がタイムアウトしました。試合数を絞って再度お試しください。')
     } catch (e) { setError(String(e)) }
     finally { setLoading(false) }
   }

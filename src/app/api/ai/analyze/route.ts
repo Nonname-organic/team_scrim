@@ -58,20 +58,18 @@ export async function POST(req: NextRequest) {
         const prompt = buildCoachPromptV2(context as Record<string, unknown>)
 
         let fullText = ''
-        const stream = client.messages.stream({
+        const msgStream = client.messages.stream({
           model: 'claude-sonnet-4-6',
-          max_tokens: 8192,
+          max_tokens: 4096,
           messages: [{ role: 'user', content: prompt }],
         })
 
-        for await (const event of stream) {
-          if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-            fullText += event.delta.text
-            send({ chunk: event.delta.text })
-          }
-        }
+        msgStream.on('text', (text) => {
+          fullText += text
+          send({ chunk: text })
+        })
 
-        const finalMsg = await stream.finalMessage()
+        const finalMsg = await msgStream.finalMessage()
         const tokensUsed = finalMsg.usage.input_tokens + finalMsg.usage.output_tokens
 
         const parsedReport = extractJSON(fullText)
