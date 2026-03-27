@@ -60,6 +60,7 @@ export default function MatchDetailPage() {
   const [editRoundMode, setEditRoundMode] = useState(false)
   const [editPlayers, setEditPlayers] = useState<PEdit[]>([])
   const [editRounds, setEditRounds] = useState<REdit[]>([])
+  const [editDate, setEditDate] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [roundSaveError, setRoundSaveError] = useState<string | null>(null)
@@ -99,6 +100,7 @@ export default function MatchDetailPage() {
 
   function enterEdit() {
     setSaveError(null)
+    setEditDate(String(match.match_date ?? '').slice(0, 10))
     setEditPlayers(playerStats.map(p => ({
       player_id: String(p.player_id ?? ''),
       ign: String(p.ign ?? ''),
@@ -204,6 +206,15 @@ export default function MatchDetailPage() {
       )
       const playerErr = playerResults.find(r => r.error)
       if (playerErr) throw new Error(playerErr.error)
+
+      if (editDate) {
+        const mr = await fetch(`/api/matches/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ match_date: editDate }),
+        }).then(r => r.json())
+        if (mr.error) throw new Error(mr.error)
+      }
 
       const j = await fetch(`/api/matches/${id}`).then(r => r.json())
       setData(j.data)
@@ -354,6 +365,17 @@ export default function MatchDetailPage() {
               </div>
             )}
           </div>
+          {editMode && (
+            <div className="px-5 py-3 border-b border-border flex items-center gap-3">
+              <label className="text-xs text-muted-foreground whitespace-nowrap">試合日</label>
+              <input
+                type="date"
+                value={editDate}
+                onChange={e => setEditDate(e.target.value)}
+                className="bg-muted border border-border rounded px-2 py-1 text-xs text-white focus:border-[#FF4655] outline-none"
+              />
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>

@@ -63,8 +63,9 @@ export async function PATCH(
   const fields: string[] = []
   const values: unknown[] = []
 
-  if ('video_url' in body) { fields.push(`video_url = $${values.push(body.video_url)}`) }
-  if ('notes' in body)     { fields.push(`notes = $${values.push(body.notes)}`) }
+  if ('video_url'   in body) { fields.push(`video_url = $${values.push(body.video_url)}`) }
+  if ('notes'       in body) { fields.push(`notes = $${values.push(body.notes)}`) }
+  if ('match_date'  in body) { fields.push(`match_date = $${values.push(body.match_date)}`) }
 
   if (fields.length === 0) {
     return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
