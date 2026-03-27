@@ -48,6 +48,9 @@ export default function MatchesPage() {
   const [editVodId, setEditVodId] = useState<string | null>(null)
   const [vodInput, setVodInput] = useState('')
   const [vodSaving, setVodSaving] = useState(false)
+  const [editDateId, setEditDateId] = useState<string | null>(null)
+  const [dateInput, setDateInput] = useState('')
+  const [dateSaving, setDateSaving] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const vodInputRef = useRef<HTMLInputElement>(null)
@@ -67,6 +70,26 @@ export default function MatchesPage() {
     setActiveVideoId(null)
     setEditVodId(m.id)
     setVodInput(m.video_url ?? '')
+  }
+
+  function openDateEdit(m: Match, e: React.MouseEvent) {
+    e.preventDefault()
+    setEditDateId(m.id)
+    setDateInput(String(m.match_date ?? '').slice(0, 10))
+  }
+
+  async function saveDate(matchId: string) {
+    setDateSaving(true)
+    const res = await fetch(`/api/matches/${matchId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ match_date: dateInput }),
+    })
+    if (res.ok) {
+      setMatches(prev => prev.map(m => m.id === matchId ? { ...m, match_date: dateInput } : m))
+    }
+    setEditDateId(null)
+    setDateSaving(false)
   }
 
   function openVideo(m: Match, e: React.MouseEvent) {
@@ -173,6 +196,13 @@ export default function MatchesPage() {
               onVodInputChange={setVodInput}
               onVodSave={() => saveVodUrl(m.id)}
               onVodCancel={() => setEditVodId(null)}
+              isDateEdit={editDateId === m.id}
+              dateInput={dateInput}
+              dateSaving={dateSaving}
+              onOpenDateEdit={openDateEdit}
+              onDateInputChange={setDateInput}
+              onDateSave={() => saveDate(m.id)}
+              onDateCancel={() => setEditDateId(null)}
               isConfirmDelete={confirmDeleteId === m.id}
               isDeleting={deletingId === m.id}
               onDeleteRequest={() => setConfirmDeleteId(m.id)}
@@ -207,8 +237,10 @@ function MatchTableHeader() {
 
 function MatchItem({
   match: m, isVideoActive, isVodEdit, vodInput, vodSaving, vodInputRef,
+  isDateEdit, dateInput, dateSaving,
   isConfirmDelete, isDeleting,
   onOpenVideo, onOpenVodEdit, onVodInputChange, onVodSave, onVodCancel,
+  onOpenDateEdit, onDateInputChange, onDateSave, onDateCancel,
   onDeleteRequest, onDeleteConfirm, onDeleteCancel,
 }: {
   match: Match
@@ -217,6 +249,9 @@ function MatchItem({
   vodInput: string
   vodSaving: boolean
   vodInputRef?: React.RefObject<HTMLInputElement | null>
+  isDateEdit: boolean
+  dateInput: string
+  dateSaving: boolean
   isConfirmDelete: boolean
   isDeleting: boolean
   onOpenVideo: (m: Match, e: React.MouseEvent) => void
@@ -224,6 +259,10 @@ function MatchItem({
   onVodInputChange: (v: string) => void
   onVodSave: () => void
   onVodCancel: () => void
+  onOpenDateEdit: (m: Match, e: React.MouseEvent) => void
+  onDateInputChange: (v: string) => void
+  onDateSave: () => void
+  onDateCancel: () => void
   onDeleteRequest: () => void
   onDeleteConfirm: () => void
   onDeleteCancel: () => void
@@ -274,8 +313,14 @@ function MatchItem({
           {defPct !== null ? `${defPct}%` : '--'}
         </div>
 
-        <div className="text-right text-xs text-muted-foreground">
-          {new Date(m.match_date).toLocaleDateString('ja-JP')}
+        <div className="flex items-center justify-end gap-1">
+          <span className="text-xs text-muted-foreground">
+            {new Date(m.match_date).toLocaleDateString('ja-JP')}
+          </span>
+          <button onClick={e => onOpenDateEdit(m, e)}
+            className="p-1 rounded text-muted-foreground hover:text-white transition-colors">
+            <Pencil className="w-3 h-3" />
+          </button>
         </div>
 
         {/* VOD column */}
@@ -342,6 +387,27 @@ function MatchItem({
             {vodSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : '保存'}
           </button>
           <button onClick={onVodCancel}
+            className="px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-white transition-colors">
+            キャンセル
+          </button>
+        </div>
+      )}
+
+      {/* Date edit (inline) */}
+      {isDateEdit && (
+        <div className="px-4 pb-3 flex items-center gap-2 border-t border-border/50 pt-3">
+          <input
+            type="date"
+            value={dateInput}
+            onChange={e => onDateInputChange(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') onDateSave(); if (e.key === 'Escape') onDateCancel() }}
+            className="bg-muted/30 border border-border rounded-lg px-3 py-1.5 text-sm text-white focus:border-[#FF4655] outline-none"
+          />
+          <button onClick={onDateSave} disabled={dateSaving}
+            className="px-3 py-1.5 rounded-lg bg-[#FF4655] text-white text-xs font-medium hover:bg-[#FF4655]/80 disabled:opacity-50 transition-colors">
+            {dateSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : '保存'}
+          </button>
+          <button onClick={onDateCancel}
             className="px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-white transition-colors">
             キャンセル
           </button>
