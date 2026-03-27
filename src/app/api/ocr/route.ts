@@ -44,6 +44,17 @@ export async function POST(req: NextRequest) {
               type: 'text',
               text: `このVALORANTのスコアボード画像からデータを抽出してください。
 
+              【重要】agent フィールドは必ず日本語カタカナで返してください。
+              例：Sage→セージ, Jett→ジェット, Reyna→レイナ, Omen→オーメン,
+                  Sova→ソーヴァ, Killjoy→キルジョイ, Cypher→サイファー,
+                  Viper→ヴァイパー, Brimstone→ブリムストーン, Phoenix→フェニックス,
+                  Raze→レイズ, Breach→ブリーチ, Skye→スカイ, Yoru→ヨル,
+                  Astra→アストラ, Kay/O→ケイオー, Chamber→チェンバー,
+                  Neon→ネオン, Fade→フェイド, Harbor→ハーバー,
+                  Gekko→ゲッコー, Deadlock→デッドロック, Iso→アイソ,
+                  Clove→クローブ, Vyse→ヴァイス, Tejo→テホ,
+                  Waylay→ウェイレイ, Mixes→ミクス
+
               以下の形式のJSONで返してください：
 
               \`\`\`json
@@ -54,7 +65,7 @@ export async function POST(req: NextRequest) {
                 "players": [
                   {
                     "ign": "プレイヤー名",
-                    "agent": "エージェント名",
+                    "agent": "エージェント名（日本語カタカナ）",
                     "kills": 数値,
                     "deaths": 数値,
                     "assists": 数値,

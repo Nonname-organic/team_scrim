@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Upload, Save, RotateCcw, Loader2, Check, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MAPS, AGENTS } from '@/types'
@@ -7,6 +7,28 @@ import { MAP_IMAGES, MAP_POLYGONS, normalizeMapKey } from '@/lib/mapPolygons'
 import { detectSite } from '@/lib/geometry'
 
 const TEAM_ID = process.env.NEXT_PUBLIC_DEFAULT_TEAM_ID ?? 'YOUR_TEAM_UUID'
+
+// OCR: 英語エージェント名 → 日本語カタカナ正規化マップ
+const AGENT_EN_JA: Record<string, string> = {
+  astra: 'アストラ', breach: 'ブリーチ', brimstone: 'ブリムストーン',
+  chamber: 'チェンバー', clove: 'クローブ', cypher: 'サイファー',
+  deadlock: 'デッドロック', fade: 'フェイド', gecko: 'ゲッコー',
+  harbor: 'ハーバー', iso: 'アイソ', jett: 'ジェット',
+  'kay/o': 'ケイオー', kayo: 'ケイオー', killjoy: 'キルジョイ',
+  neon: 'ネオン', omen: 'オーメン', phoenix: 'フェニックス',
+  raze: 'レイズ', reyna: 'レイナ', sage: 'セージ',
+  skye: 'スカイ', sova: 'ソーヴァ', tejo: 'テホ',
+  viper: 'ヴァイパー', vyse: 'ヴァイス', waylay: 'ウェイレイ',
+  yoru: 'ヨル', mixes: 'ミクス',
+}
+function normalizeAgent(name: string): string {
+  const key = name.toLowerCase().replace(/[\s\-_]/g, '')
+  return AGENT_EN_JA[key] ?? name
+}
+// Riot ID（"Name#TAG"形式）のタグ部分を除いてIGN照合する
+function normalizeIgn(ign: string): string {
+  return ign.toLowerCase().replace(/\s/g, '').split('#')[0]
+}
 
 // ============================================================
 // Types
@@ -86,6 +108,25 @@ export default function ScrimInputPage() {
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  // エージェント使用頻度（DB から取得して dropdown をソート）
+  const [agentUsage, setAgentUsage] = useState<Map<string, number>>(new Map())
+  useEffect(() => {
+    fetch(`/api/agents/usage?team_id=${TEAM_ID}`)
+      .then(r => r.json())
+      .then(j => {
+        if (j.data) setAgentUsage(new Map(j.data.map((r: { agent: string; count: number }) => [r.agent, r.count])))
+      })
+      .catch(() => {})
+  }, [])
+
+  // 使用頻度順（降順）→ 未使用は五十音順（AGENTS の定義順）
+  const sortedAgents = useMemo(() => {
+    const used = (AGENTS as readonly string[]).filter(a => agentUsage.has(a))
+      .sort((a, b) => (agentUsage.get(b) ?? 0) - (agentUsage.get(a) ?? 0))
+    const unused = (AGENTS as readonly string[]).filter(a => !agentUsage.has(a))
+    return [...used, ...unused]
+  }, [agentUsage])
+
   useEffect(() => {
     fetch(`/api/players?team_id=${TEAM_ID}`)
       .then(r => r.json())
@@ -162,17 +203,16 @@ export default function ScrimInputPage() {
           const regPlayer = players.find(p => p.id === row.player_id)
           if (!regPlayer) return row
 
-          // OCRデータから名前が一致するものを探す
+          // OCRデータから名前が一致するものを探す（Riot ID の #TAG 除去＋大文字小文字無視）
           const hit = ocr.find(op =>
-            String(op.ign).toLowerCase().replace(/\s/g, '') ===
-            regPlayer.ign.toLowerCase().replace(/\s/g, '')
+            normalizeIgn(String(op.ign)) === normalizeIgn(regPlayer.ign)
           )
           if (!hit) return row  // 一致なし → そのまま
 
           // スタッツだけ上書き（player_idはそのまま）
           return {
             ...row,
-            agent:  String(hit.agent ?? row.agent),
+            agent: hit.agent ? normalizeAgent(String(hit.agent)) : row.agent,
             kills:  hit.kills  != null ? Number(hit.kills)  : row.kills,
             deaths: hit.deaths != null ? Number(hit.deaths) : row.deaths,
             assists:hit.assists!= null ? Number(hit.assists): row.assists,
@@ -422,7 +462,7 @@ export default function ScrimInputPage() {
                       onChange={e => updateRow(i, 'agent', e.target.value)}
                     >
                       <option value="">エージェント選択</option>
-                      {AGENTS.map(a => <option key={a} value={a}>{a}</option>)}
+                      {sortedAgents.map(a => <option key={a} value={a}>{a}</option>)}
                     </select>
                   </td>
 
