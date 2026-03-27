@@ -25,9 +25,20 @@ function normalizeAgent(name: string): string {
   const key = name.toLowerCase().replace(/[\s\-_]/g, '')
   return AGENT_EN_JA[key] ?? name
 }
-// Riot ID（"Name#TAG"形式）のタグ部分を除いてIGN照合する
+// Riot ID（"Name#TAG"形式）のタグ部分を除き、記号・スペースも除去してIGN照合
 function normalizeIgn(ign: string): string {
-  return ign.toLowerCase().replace(/\s/g, '').split('#')[0]
+  return ign.toLowerCase().replace(/[\s\u3000]/g, '').split('#')[0]
+}
+// OCR名と登録名を照合（完全一致 → 前方一致 → 部分一致の順でフォールバック）
+function matchIgn(ocrIgn: string, regIgn: string): boolean {
+  const o = normalizeIgn(ocrIgn)
+  const r = normalizeIgn(regIgn)
+  if (!o || !r) return false
+  if (o === r) return true
+  // 短い方が長い方に含まれるか（3文字以上の場合）
+  const shorter = o.length <= r.length ? o : r
+  const longer  = o.length <= r.length ? r : o
+  return shorter.length >= 3 && longer.includes(shorter)
 }
 
 // ============================================================
@@ -203,10 +214,8 @@ export default function ScrimInputPage() {
           const regPlayer = players.find(p => p.id === row.player_id)
           if (!regPlayer) return row
 
-          // OCRデータから名前が一致するものを探す（Riot ID の #TAG 除去＋大文字小文字無視）
-          const hit = ocr.find(op =>
-            normalizeIgn(String(op.ign)) === normalizeIgn(regPlayer.ign)
-          )
+          // OCRデータから名前が一致するものを探す（完全一致 → 部分一致フォールバック）
+          const hit = ocr.find(op => matchIgn(String(op.ign), regPlayer.ign))
           if (!hit) return row  // 一致なし → そのまま
 
           // スタッツだけ上書き（player_idはそのまま）

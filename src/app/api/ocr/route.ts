@@ -92,16 +92,18 @@ export async function POST(req: NextRequest) {
 
     const rawText = message.content[0].type === 'text' ? message.content[0].text : ''
 
-    // Extract JSON
-    const jsonMatch = rawText.match(/```json\n([\s\S]*?)\n```/)
-    if (!jsonMatch) {
+    // Extract JSON — コードブロック形式または生JSONどちらも受け入れる
+    const codeBlock = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/)
+    const rawJson   = rawText.match(/(\{[\s\S]*\})/)
+    const jsonStr   = codeBlock?.[1] ?? rawJson?.[0]
+    if (!jsonStr) {
       return NextResponse.json(
         { success: false, error: 'Could not parse scoreboard', raw_text: rawText },
         { status: 422 }
       )
     }
 
-    const parsed = JSON.parse(jsonMatch[1])
+    const parsed = JSON.parse(jsonStr)
 
     return NextResponse.json({ success: true, ...parsed })
   } catch (err) {
