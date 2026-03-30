@@ -6,6 +6,10 @@ import { query } from '@/lib/db'
 
 export const maxDuration = 60
 
+// ── AI分析 一時停止フラグ ──────────────────────────────
+// true にすると /api/ai/analyze が 503 を返す（再開時は false に戻す）
+const AI_DISABLED = true
+
 const client = new Anthropic()
 
 function extractJSON(text: string): Record<string, unknown> | null {
@@ -25,6 +29,13 @@ function extractJSON(text: string): Record<string, unknown> | null {
 }
 
 export async function POST(req: NextRequest) {
+  if (AI_DISABLED) {
+    return NextResponse.json(
+      { error: 'AI分析は現在メンテナンス中です。しばらくお待ちください。' },
+      { status: 503 }
+    )
+  }
+
   try {
     const { team_id, match_ids, map_filter } = await req.json()
 
