@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS rounds (
   win_condition VARCHAR(20)  CHECK (win_condition IN ('elimination','defuse','detonate','time')),
 
   -- Economy
-  economy_type  VARCHAR(20)  CHECK (economy_type IN ('pistol','eco','semi_eco','semi_buy','full_buy','force')),
+  economy_type  VARCHAR(20)  CHECK (economy_type IN ('pistol','eco','anti_eco','semi_eco','semi_buy','full_buy','oper','second','third')),
   team_credits_avg    INTEGER,
   opp_credits_avg     INTEGER,
 
@@ -86,11 +86,17 @@ CREATE TABLE IF NOT EXISTS rounds (
   planted       BOOLEAN      DEFAULT FALSE,
   plant_site    VARCHAR(1)   CHECK (plant_site IN ('A','B','C','M')),
   plant_time_sec SMALLINT,
+  plant_x       FLOAT,
+  plant_y       FLOAT,
 
   -- Kill counts
   team_kills    SMALLINT     DEFAULT 0,
   opp_kills     SMALLINT     DEFAULT 0,
   first_blood_team BOOLEAN,
+
+  -- Timing / retake
+  contact_timing VARCHAR(10) CHECK (contact_timing IN ('early','mid','late')),
+  retake        BOOLEAN      DEFAULT FALSE,
 
   created_at    TIMESTAMPTZ  DEFAULT NOW()
 );
