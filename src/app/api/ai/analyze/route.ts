@@ -8,7 +8,7 @@ export const maxDuration = 60
 
 // ── AI分析 一時停止フラグ ──────────────────────────────
 // true にすると /api/ai/analyze が 503 を返す（再開時は false に戻す）
-const AI_DISABLED = true
+const AI_DISABLED = false
 
 const client = new Anthropic()
 
