@@ -97,6 +97,7 @@ CREATE TABLE IF NOT EXISTS rounds (
   -- Timing / retake
   contact_timing VARCHAR(10) CHECK (contact_timing IN ('early','mid','late')),
   retake        BOOLEAN      DEFAULT FALSE,
+  notable       BOOLEAN      DEFAULT FALSE,
 
   created_at    TIMESTAMPTZ  DEFAULT NOW()
 );

@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Upload, Save, RotateCcw, Loader2, Check, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
+import { Upload, Save, RotateCcw, Loader2, Check, AlertCircle, ChevronDown, ChevronUp, Flag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MAPS, AGENTS } from '@/types'
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
@@ -70,6 +70,7 @@ interface RoundRow {
   contact_timing: 'early' | 'mid' | 'late' | ''
   plant_x: number | null
   plant_y: number | null
+  notable: boolean
 }
 
 const TIMING_OPTIONS = [
@@ -174,6 +175,7 @@ export default function ScrimInputPage() {
       contact_timing: '',
       plant_x: null,
       plant_y: null,
+      notable: false,
     })))
   }, [teamScore, oppScore, firstHalfSide])
 
@@ -543,7 +545,7 @@ export default function ScrimInputPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-muted/20 border-b border-border">
-                      {['#','サイド','購入状況','結果','プラント','サイト','リテイク','FB/FD','プレイタイム'].map(h => (
+                      {['#','サイド','購入状況','結果','プラント','サイト','リテイク','FB/FD','プレイタイム','注目'].map(h => (
                         <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -668,11 +670,26 @@ export default function ScrimInputPage() {
                             ))}
                           </div>
                         </td>
+                        {/* 注目ラウンドフラグ */}
+                        <td className="px-2 py-1">
+                          <button
+                            type="button"
+                            onClick={() => updateRound(i, 'notable', !r.notable)}
+                            className={cn(
+                              'p-1 rounded transition-colors',
+                              r.notable
+                                ? 'text-[#FF4655] bg-[#FF4655]/10'
+                                : 'text-muted-foreground hover:text-white'
+                            )}
+                          >
+                            <Flag className="w-3.5 h-3.5" fill={r.notable ? 'currentColor' : 'none'} />
+                          </button>
+                        </td>
                       </tr>
                       {/* 展開マップ行 — ATKでプラントチェック時のみ */}
                       {r.plant && r.side === 'attack' && (
                         <tr className="border-b border-border">
-                          <td colSpan={9} className="px-3 py-3 bg-muted/10">
+                          <td colSpan={10} className="px-3 py-3 bg-muted/10">
                             <InlineMapPin
                               mapName={map}
                               x={r.plant_x}
@@ -805,35 +822,18 @@ function InlineMapPin({ mapName, x, y, roundNumber, onPinSet }: {
               </g>
             )}
             {x !== null && y !== null && (
-              <circle cx={`${x * 100}%`} cy={`${y * 100}%`} r={5}
-                fill="#FF4655" fillOpacity={0.95} stroke="white" strokeWidth={1.5} />
+              <g>
+                <circle cx={`${x * 100}%`} cy={`${y * 100}%`} r={7}
+                  fill="#FF4655" fillOpacity={0.95} stroke="white" strokeWidth={1.5} />
+                <text x={`${x * 100}%`} y={`${y * 100}%`} dy="0.35em"
+                  textAnchor="middle" fill="white" fontSize={7} fontWeight="bold"
+                  style={{ userSelect: 'none' }}>
+                  {roundNumber}
+                </text>
+              </g>
             )}
           </svg>
         </div>
-
-        {/* ピン番号ラベル（回転しないよう外側divに配置） */}
-        {x !== null && y !== null && rotation !== 0 && (() => {
-          // 画像座標 → 表示座標に変換してラベルを正位置に表示
-          const θ = rotation * Math.PI / 180
-          const dx = (x - 0.5) * Math.cos(-θ) - (y - 0.5) * Math.sin(-θ)
-          const dy = (x - 0.5) * Math.sin(-θ) + (y - 0.5) * Math.cos(-θ)
-          const lx = (dx + 0.5) * 320
-          const ly = (dy + 0.5) * 320
-          return (
-            <div className="absolute pointer-events-none" style={{ left: lx, top: ly, transform: 'translate(-50%, -50%)' }}>
-              <span className="text-[9px] font-bold text-white drop-shadow-[0_0_2px_rgba(0,0,0,0.8)]">
-                {roundNumber}
-              </span>
-            </div>
-          )
-        })()}
-        {x !== null && y !== null && !rotation && (
-          <div className="absolute pointer-events-none" style={{ left: x * 320, top: y * 320, transform: 'translate(-50%, -50%)' }}>
-            <span className="text-[9px] font-bold text-white drop-shadow-[0_0_2px_rgba(0,0,0,0.8)]">
-              {roundNumber}
-            </span>
-          </div>
-        )}
 
         <div className="absolute bottom-1.5 left-1.5 right-1.5 bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1 text-center pointer-events-none">
           <span className="text-[10px] text-white">クリックしてプラント位置を設定</span>
