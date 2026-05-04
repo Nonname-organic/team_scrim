@@ -7,6 +7,7 @@ import { AGENTS } from '@/types'
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
 import { detectSite } from '@/lib/geometry'
 import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSelector'
+import { MatchFeedbackPanel } from '@/components/feedback/FeedbackPanel'
 
 const RESULT_COLOR = { win: '#00D4A0', loss: '#FF4655', draw: '#9B9BA4' } as const
 const ECO_OPTIONS = ['pistol', 'eco', 'anti_eco', 'semi_eco', 'semi_buy', 'full_buy', 'oper', 'second', 'third'] as const
@@ -842,6 +843,9 @@ export default function MatchDetailPage() {
             </div>
           )}
         </div>
+
+      {/* Feedback section */}
+      <MatchFeedbackPanel matchId={id} />
 
       {playerStats.length === 0 && rounds.length === 0 && (
         <div className="text-center py-12 text-muted-foreground text-sm">

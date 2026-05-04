@@ -163,6 +163,77 @@ ${JSON.stringify(rounds.slice(0, 30), null, 2)}
 データ駆動で、具体的に回答せよ。`
 }
 
+export function buildMatchFeedbackPrompt(
+  match: Record<string, unknown>,
+  rounds: Record<string, unknown>[],
+  playerStats: Record<string, unknown>[],
+  styleTag: string
+): string {
+  const atkRounds = rounds.filter(r => r.side === 'attack')
+  const defRounds = rounds.filter(r => r.side === 'defense')
+  const atkWins = atkRounds.filter(r => r.result === 'win').length
+  const defWins = defRounds.filter(r => r.result === 'win').length
+  const plantedRounds = rounds.filter(r => r.planted === true)
+  const postPlantWins = plantedRounds.filter(r => r.result === 'win').length
+
+  const stats = {
+    map: match.map,
+    result: match.result,
+    score: `${match.team_score} - ${match.opponent_score}`,
+    opponent: match.opponent_name,
+    atk_win_rate: atkRounds.length > 0
+      ? `${atkWins}/${atkRounds.length} (${Math.round(atkWins / atkRounds.length * 100)}%)`
+      : 'なし',
+    def_win_rate: defRounds.length > 0
+      ? `${defWins}/${defRounds.length} (${Math.round(defWins / defRounds.length * 100)}%)`
+      : 'なし',
+    post_plant_win_rate: plantedRounds.length > 0
+      ? `${postPlantWins}/${plantedRounds.length} (${Math.round(postPlantWins / plantedRounds.length * 100)}%)`
+      : 'なし',
+    estimated_style: styleTag,
+  }
+
+  return `あなたはVALORANTのプロコーチです。1試合のデータを分析してフィードバックを生成してください。
+
+## 試合データ
+${JSON.stringify(stats, null, 2)}
+
+## ラウンド詳細
+${JSON.stringify(rounds, null, 2)}
+
+## 選手スタッツ
+${JSON.stringify(playerStats, null, 2)}
+
+## フィードバック生成ルール
+- 具体的な行動で書く（「守りが弱い」→「Bサイトでリテイクの入りが遅い」）
+- 数値を1つ以上引用する
+- 改善アクションは次の試合で実行できる行動として書く
+- 日本語で回答すること
+
+以下のJSON形式のみで出力すること。余分なテキスト禁止。
+
+\`\`\`json
+{
+  "summary": "この試合の総括（2〜3文、数値を引用すること）",
+  "strengths": [
+    "具体的な良かった点1",
+    "具体的な良かった点2"
+  ],
+  "weaknesses": [
+    "具体的な課題1（行動として）",
+    "具体的な課題2（行動として）"
+  ],
+  "action_items": [
+    "次の試合で実行するアクション1（動詞で始める）",
+    "次の試合で実行するアクション2",
+    "次の試合で実行するアクション3"
+  ],
+  "style_tag": "${styleTag}"
+}
+\`\`\`
+`
+}
+
 export function buildCoachPromptV2(context: Record<string, unknown>): string {
   const filterInfo = context.filter_info as Record<string, unknown>
   const scope = filterInfo?.map_filter

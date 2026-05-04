@@ -12,7 +12,7 @@ const nav = [
   { href: '/scrim-input',    label: 'スクリム入力',   icon: ClipboardEdit },
   { href: '/players',        label: '選手スタッツ',   icon: Users },
   { href: '/matches',        label: '試合履歴',       icon: Swords },
-  { href: '/round-analysis', label: 'ラウンド分析',   icon: BarChart2 },
+  { href: '/round-analysis', label: '試合分析',       icon: BarChart2 },
   { href: '/ai-coach',       label: 'AIコーチ',       icon: Bot },
   { href: '/settings',       label: '設定',           icon: Settings },
 ]
