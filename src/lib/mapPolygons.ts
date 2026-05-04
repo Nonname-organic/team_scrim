@@ -39,11 +39,20 @@ export const MAP_IMAGES: Record<string, string> = {
 }
 
 /**
- * CSS rotation (degrees) to apply to the map image for correct display.
+ * CSS rotation (degrees) applied to the map container (img + SVG together).
  * Positive = clockwise, negative = counter-clockwise.
+ * Target orientation: ATK spawn visible on the left/bottom.
+ * Adjust values here if a specific map appears sideways.
  */
 export const MAP_ROTATION: Record<string, number> = {
-  haven: -90,
+  haven:   -90,
+  bind:    -90,
+  breeze:  -90,
+  icebox:  -90,
+  pearl:   -90,
+  lotus:   -90,
+  sunset:  -90,
+  abyss:   -90,
 }
 
 /**

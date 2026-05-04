@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { Upload, Save, RotateCcw, Loader2, Check, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MAPS, AGENTS } from '@/types'
-import { MAP_IMAGES, MAP_POLYGONS, normalizeMapKey } from '@/lib/mapPolygons'
+import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
 import { detectSite } from '@/lib/geometry'
 
 const TEAM_ID = process.env.NEXT_PUBLIC_DEFAULT_TEAM_ID ?? 'YOUR_TEAM_UUID'
@@ -740,71 +740,94 @@ function InlineMapPin({ mapName, x, y, roundNumber, onPinSet }: {
   roundNumber: number
   onPinSet: (x: number, y: number, site: string | null) => void
 }) {
-  const containerRef = useRef<HTMLDivElement>(null)
+  const outerRef = useRef<HTMLDivElement>(null)
   const [imgError, setImgError] = useState(false)
   const [hover, setHover] = useState<{ x: number; y: number } | null>(null)
 
-  const mapKey = normalizeMapKey(mapName)
+  const mapKey  = normalizeMapKey(mapName)
   const imageUrl = MAP_IMAGES[mapKey] ? `/api/map-image?key=${mapKey}` : null
   const polygons = MAP_POLYGONS[mapKey] ?? {}
+  const rotation = MAP_ROTATION[mapKey] ?? 0
+
+  // 画面座標 → マップ座標 (CSSのrotate(θ)の逆変換)
+  function screenToMap(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = outerRef.current?.getBoundingClientRect()
+    if (!rect) return null
+    const vx = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+    const vy = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
+    if (!rotation) return { x: vx, y: vy }
+    const θ = rotation * Math.PI / 180
+    const cx = vx - 0.5, cy = vy - 0.5
+    return {
+      x: Math.min(1, Math.max(0, cx * Math.cos(θ) + cy * Math.sin(θ) + 0.5)),
+      y: Math.min(1, Math.max(0, -cx * Math.sin(θ) + cy * Math.cos(θ) + 0.5)),
+    }
+  }
 
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
-    const rect = containerRef.current?.getBoundingClientRect()
-    if (!rect) return
-    const nx = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
-    const ny = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
-    onPinSet(nx, ny, detectSite(nx, ny, polygons))
+    const pos = screenToMap(e)
+    if (!pos) return
+    onPinSet(pos.x, pos.y, detectSite(pos.x, pos.y, polygons))
   }
 
   return (
-    <div className="flex items-start gap-3">
+    <div className="flex items-start gap-4">
+      {/* 外側div: クリック受付（回転なし） */}
       <div
-        ref={containerRef}
+        ref={outerRef}
         onClick={handleClick}
-        onMouseMove={e => {
-          const rect = e.currentTarget.getBoundingClientRect()
-          setHover({ x: (e.clientX - rect.left) / rect.width, y: (e.clientY - rect.top) / rect.height })
-        }}
+        onMouseMove={e => { const p = screenToMap(e); setHover(p) }}
         onMouseLeave={() => setHover(null)}
-        className="relative rounded-lg overflow-hidden border border-[#FF4655]/40 cursor-crosshair flex-shrink-0"
-        style={{ width: 180, height: 180 }}
+        className="relative rounded-xl overflow-hidden border border-[#FF4655]/50 cursor-crosshair flex-shrink-0 bg-muted"
+        style={{ width: 320, height: 320 }}
       >
-        {imageUrl && !imgError ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={imageUrl} alt={mapName} className="w-full h-full object-cover select-none" draggable={false} onError={() => setImgError(true)} />
-        ) : (
-          <div className="w-full h-full bg-muted flex items-center justify-center">
-            <span className="text-xs text-muted-foreground">{mapName || 'マップ未選択'}</span>
-          </div>
-        )}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none">
-          {/* Hover crosshair */}
-          {hover && (
-            <g>
-              <line x1={`${hover.x * 100}%`} y1="0" x2={`${hover.x * 100}%`} y2="100%" stroke="#FF4655" strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 3" />
-              <line x1="0" y1={`${hover.y * 100}%`} x2="100%" y2={`${hover.y * 100}%`} stroke="#FF4655" strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 3" />
-            </g>
+        {/* 内側div: img + SVGをまとめて回転 → 座標系が一致する */}
+        <div
+          className="absolute inset-0"
+          style={rotation ? { transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' } : undefined}
+        >
+          {imageUrl && !imgError ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imageUrl} alt={mapName}
+              className="w-full h-full object-cover select-none"
+              draggable={false}
+              onError={() => setImgError(true)} />
+          ) : (
+            <div className="w-full h-full bg-muted flex items-center justify-center">
+              <span className="text-xs text-muted-foreground">{mapName || 'マップ未選択'}</span>
+            </div>
           )}
-          {/* Placed pin */}
-          {x !== null && y !== null && (
-            <g>
-              <circle cx={`${x * 100}%`} cy={`${y * 100}%`} r={8} fill="#FF4655" fillOpacity={0.85} stroke="white" strokeWidth={1.5} />
-              <text x={`${x * 100}%`} y={`${y * 100}%`} dy="0.35em" textAnchor="middle" fill="white" fontSize={7} fontWeight="bold">{roundNumber}</text>
-            </g>
-          )}
-        </svg>
-        <div className="absolute bottom-1 left-1 right-1 bg-black/60 rounded text-center pointer-events-none">
-          <span className="text-[9px] text-white">クリックでピン設定</span>
+          {/* SVGは内側divに入れることで座標がマップ画像と一致 */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+            {hover && (
+              <g>
+                <line x1={`${hover.x * 100}%`} y1="0" x2={`${hover.x * 100}%`} y2="100%"
+                  stroke="#FF4655" strokeWidth="1" strokeOpacity="0.6" strokeDasharray="4 4" />
+                <line x1="0" y1={`${hover.y * 100}%`} x2="100%" y2={`${hover.y * 100}%`}
+                  stroke="#FF4655" strokeWidth="1" strokeOpacity="0.6" strokeDasharray="4 4" />
+              </g>
+            )}
+            {x !== null && y !== null && (
+              <g>
+                <circle cx={`${x * 100}%`} cy={`${y * 100}%`} r={11}
+                  fill="#FF4655" fillOpacity={0.9} stroke="white" strokeWidth={2} />
+                <text x={`${x * 100}%`} y={`${y * 100}%`} dy="0.35em"
+                  textAnchor="middle" fill="white" fontSize={9} fontWeight="bold">
+                  {roundNumber}
+                </text>
+              </g>
+            )}
+          </svg>
+        </div>
+        {/* ヒント: 回転しないよう外側divに配置 */}
+        <div className="absolute bottom-1.5 left-1.5 right-1.5 bg-black/65 backdrop-blur-sm rounded-lg px-2 py-1 text-center pointer-events-none">
+          <span className="text-[10px] text-white">クリックしてプラント位置を設定</span>
         </div>
       </div>
-      <div className="text-xs text-muted-foreground space-y-1 pt-1">
-        <p className="text-white font-medium">R{roundNumber} プラント位置</p>
+      <div className="text-xs space-y-1.5 pt-1 min-w-[80px]">
+        <p className="text-white font-semibold">R{roundNumber} プラント位置</p>
         {x !== null && y !== null ? (
-          <>
-            <p>X: {(x * 100).toFixed(1)}%</p>
-            <p>Y: {(y * 100).toFixed(1)}%</p>
-            <p className="text-[#00D4A0]">✓ 設定済み</p>
-          </>
+          <p className="text-[#00D4A0] font-medium">✓ 設定済み</p>
         ) : (
           <p className="text-muted-foreground/60">未設定</p>
         )}

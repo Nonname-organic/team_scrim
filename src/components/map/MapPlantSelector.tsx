@@ -34,25 +34,36 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
   const polygons = MAP_POLYGONS[mapKey] ?? {}
   const rotation = MAP_ROTATION[mapKey] ?? 0
 
+  // 画面座標 → マップ座標 (CSSのrotate(θ)の逆変換)
+  const screenToMap = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = containerRef.current?.getBoundingClientRect()
+    if (!rect) return null
+    const vx = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+    const vy = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
+    if (!rotation) return { x: vx, y: vy }
+    const θ = rotation * Math.PI / 180
+    const cx = vx - 0.5, cy = vy - 0.5
+    return {
+      x: Math.min(1, Math.max(0, cx * Math.cos(θ) + cy * Math.sin(θ) + 0.5)),
+      y: Math.min(1, Math.max(0, -cx * Math.sin(θ) + cy * Math.cos(θ) + 0.5)),
+    }
+  }, [rotation])
+
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!editRoundId) return
-    const rect = e.currentTarget.getBoundingClientRect()
-    setMousePos({
-      x: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
-      y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
-    })
-  }, [editRoundId])
+    const pos = screenToMap(e)
+    if (pos) setMousePos(pos)
+  }, [editRoundId, screenToMap])
 
   const handleMouseLeave = useCallback(() => setMousePos(null), [])
 
   const handleClick = useCallback(
     async (e: React.MouseEvent<HTMLDivElement>) => {
       if (!editRoundId || saving) return
-      const rect = containerRef.current?.getBoundingClientRect()
-      if (!rect) return
+      const pos = screenToMap(e)
+      if (!pos) return
 
-      const x = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
-      const y = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
+      const { x, y } = pos
       const site = detectSite(x, y, polygons)
 
       setSaving(true)
@@ -107,6 +118,11 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
         ].join(' ')}
         style={{ aspectRatio: '1 / 1' }}
       >
+        {/* 内側div: img + SVGをまとめて回転 → 座標系が一致 */}
+        <div
+          className="absolute inset-0"
+          style={rotation ? { transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' } : undefined}
+        >
         {/* Map image */}
         {imageUrl && !imgError ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -116,7 +132,6 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
             className="w-full h-full object-cover select-none"
             draggable={false}
             onError={() => setImgError(true)}
-            style={rotation ? { transform: `rotate(${rotation}deg)` } : undefined}
           />
         ) : (
           <div className="w-full h-full bg-muted flex flex-col items-center justify-center gap-2">
@@ -180,6 +195,8 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
             </g>
           )}
         </svg>
+
+        </div>{/* /内側div */}
 
         {/* Saving overlay */}
         {saving && (
