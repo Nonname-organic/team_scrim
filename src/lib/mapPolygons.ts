@@ -45,16 +45,16 @@ export const MAP_IMAGES: Record<string, string> = {
  * Adjust values here if a specific map appears sideways.
  */
 export const MAP_ROTATION: Record<string, number> = {
-  ascent:  180,
+  ascent:  -90,
   bind:    0,
-  breeze:  180,
-  haven:   -180,
+  breeze:  -180,
+  haven:   90,
   icebox:  -90,
-  lotus:   180,
-  pearl:   180,
-  split:   180,
-  sunset:  90,
-  abyss:   0,
+  lotus:   -180,
+  pearl:   -180,
+  split:   90,
+  sunset:  -90,
+  abyss:   90,
 }
 
 /**
