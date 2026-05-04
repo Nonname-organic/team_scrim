@@ -46,7 +46,7 @@ export const MAP_IMAGES: Record<string, string> = {
  */
 export const MAP_ROTATION: Record<string, number> = {
   ascent:  180,
-  bind:    180,
+  bind:    0,
   breeze:  180,
   haven:   -180,
   icebox:  -90,
@@ -54,7 +54,7 @@ export const MAP_ROTATION: Record<string, number> = {
   pearl:   180,
   split:   180,
   sunset:  90,
-  abyss:   -90,
+  abyss:   0,
 }
 
 /**
