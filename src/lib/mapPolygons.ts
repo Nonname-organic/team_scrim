@@ -54,7 +54,7 @@ export const MAP_ROTATION: Record<string, number> = {
   pearl:   90,
   split:   90,
   sunset:  90,
-  abyss:   180,
+  abyss:   -180,
 }
 
 /**
