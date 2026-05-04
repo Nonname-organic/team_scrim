@@ -505,6 +505,13 @@ export default function ScrimInputPage() {
         </div>
       </div>
 
+      {/* ── Video URL ── */}
+      <div className="bg-card border border-border rounded-xl p-5">
+        <Label>動画リンク <span className="text-muted-foreground font-normal">任意</span></Label>
+        <input className={cls} placeholder="YouTube・Google Drive などのURLを入力"
+          value={videoUrl} onChange={e => setVideoUrl(e.target.value)} />
+      </div>
+
       {/* ── Round Detail (Collapsible) ── */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <button
@@ -527,13 +534,6 @@ export default function ScrimInputPage() {
 
         {showRounds && (
           <div className="border-t border-border p-4 space-y-3">
-            {/* Video URL */}
-            <div>
-              <Label>動画リンク <span className="text-muted-foreground font-normal">任意</span></Label>
-              <input className={cls} placeholder="YouTube・Google Drive などのURLを入力"
-                value={videoUrl} onChange={e => setVideoUrl(e.target.value)} />
-            </div>
-
             {rounds.length === 0 ? (
               <p className="text-xs text-muted-foreground py-4 text-center">
                 スコアを入力するとラウンド行が自動生成されます
@@ -543,7 +543,7 @@ export default function ScrimInputPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-muted/20 border-b border-border">
-                      {['#','サイド','購入状況','結果','プラント','サイト','リテイク','FB','タイミング'].map(h => (
+                      {['#','サイド','購入状況','結果','プラント','サイト','リテイク','FB/FD','プレイタイム'].map(h => (
                         <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -573,20 +573,22 @@ export default function ScrimInputPage() {
                           </select>
                         </td>
                         <td className="px-2 py-1">
-                          <select
-                            className={cn(
-                              'border rounded px-2 py-1 text-xs font-semibold focus:border-[#FF4655] outline-none',
-                              r.result === 'win' ? 'bg-[#00D4A0]/20 border-[#00D4A0]/30 text-[#00D4A0]' :
-                              r.result === 'loss' ? 'bg-[#FF4655]/20 border-[#FF4655]/30 text-[#FF4655]' :
-                              'bg-muted border-border text-muted-foreground'
-                            )}
-                            value={r.result}
-                            onChange={e => updateRound(i, 'result', e.target.value)}
-                          >
-                            <option value=""></option>
-                            <option value="win">WIN</option>
-                            <option value="loss">LOSS</option>
-                          </select>
+                          <div className="flex gap-1">
+                            {[
+                              { value: 'win',  label: 'W', color: 'text-[#00D4A0]', bg: 'bg-[#00D4A0]/20 border-[#00D4A0]/40' },
+                              { value: 'loss', label: 'L', color: 'text-[#FF4655]', bg: 'bg-[#FF4655]/20 border-[#FF4655]/40' },
+                            ].map(opt => (
+                              <button key={opt.value} type="button"
+                                onClick={() => updateRound(i, 'result', r.result === opt.value ? '' : opt.value)}
+                                className={cn(
+                                  'px-2 py-0.5 rounded text-[10px] font-bold border transition-colors',
+                                  r.result === opt.value
+                                    ? opt.bg + ' ' + opt.color
+                                    : 'bg-transparent border-border text-muted-foreground hover:border-muted-foreground'
+                                )}
+                              >{opt.label}</button>
+                            ))}
+                          </div>
                         </td>
                         <td className="px-3 py-1.5">
                           {/* ATK: plant enabled / DEF: plant disabled */}
@@ -599,16 +601,19 @@ export default function ScrimInputPage() {
                             }} />
                         </td>
                         <td className="px-2 py-1">
-                          <select
-                            className="bg-muted border border-border rounded px-1.5 py-1 text-xs text-white focus:border-[#FF4655] outline-none w-12"
-                            value={r.site}
-                            onChange={e => updateRound(i, 'site', e.target.value)}
-                          >
-                            <option value=""></option>
-                            <option value="A">A</option>
-                            <option value="B">B</option>
-                            <option value="C">C</option>
-                          </select>
+                          <div className="flex gap-1">
+                            {['A','B','C'].map(s => (
+                              <button key={s} type="button"
+                                onClick={() => updateRound(i, 'site', r.site === s ? '' : s)}
+                                className={cn(
+                                  'px-2 py-0.5 rounded text-[10px] font-bold border transition-colors',
+                                  r.site === s
+                                    ? 'bg-[#6C63FF]/20 border-[#6C63FF]/40 text-[#6C63FF]'
+                                    : 'bg-transparent border-border text-muted-foreground hover:border-muted-foreground'
+                                )}
+                              >{s}</button>
+                            ))}
+                          </div>
                         </td>
                         <td className="px-3 py-1.5">
                           {/* ATK: retake disabled / DEF: retake enabled */}
@@ -621,16 +626,26 @@ export default function ScrimInputPage() {
                             }} />
                         </td>
                         <td className="px-2 py-1">
-                          <select
-                            className="bg-muted border border-border rounded px-1.5 py-1 text-xs text-white focus:border-[#FF4655] outline-none"
-                            value={r.fb_team === '' ? '' : r.fb_team ? 'us' : 'them'}
-                            onChange={e => updateRound(i, 'fb_team',
-                              e.target.value === '' ? '' : e.target.value === 'us')}
-                          >
-                            <option value=""></option>
-                            <option value="us">味方</option>
-                            <option value="them">相手</option>
-                          </select>
+                          <div className="flex gap-1">
+                            {[
+                              { value: 'us',   label: '味方', color: 'text-[#00D4A0]', bg: 'bg-[#00D4A0]/20 border-[#00D4A0]/40' },
+                              { value: 'them', label: '相手', color: 'text-[#FF4655]', bg: 'bg-[#FF4655]/20 border-[#FF4655]/40' },
+                            ].map(opt => {
+                              const cur = r.fb_team === '' ? '' : r.fb_team ? 'us' : 'them'
+                              return (
+                                <button key={opt.value} type="button"
+                                  onClick={() => updateRound(i, 'fb_team',
+                                    cur === opt.value ? '' : opt.value === 'us')}
+                                  className={cn(
+                                    'px-2 py-0.5 rounded text-[10px] font-bold border transition-colors whitespace-nowrap',
+                                    cur === opt.value
+                                      ? opt.bg + ' ' + opt.color
+                                      : 'bg-transparent border-border text-muted-foreground hover:border-muted-foreground'
+                                  )}
+                                >{opt.label}</button>
+                              )
+                            })}
+                          </div>
                         </td>
                         <td className="px-2 py-1">
                           <div className="flex gap-1">
