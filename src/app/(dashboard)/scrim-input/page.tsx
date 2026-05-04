@@ -675,7 +675,6 @@ export default function ScrimInputPage() {
                           <td colSpan={9} className="px-3 py-3 bg-muted/10">
                             <InlineMapPin
                               mapName={map}
-                              site={r.site}
                               x={r.plant_x}
                               y={r.plant_y}
                               roundNumber={r.round_number}
@@ -733,36 +732,8 @@ function Label({ children }: { children: React.ReactNode }) {
   return <div className="text-xs text-muted-foreground mb-1">{children}</div>
 }
 
-// ── Inline Map Pin (スクリム入力用・API呼び出しなし) ──
-// サイトのポリゴンを回転後の表示座標に変換してズームパラメータを計算
-function calcSiteZoom(
-  site: string,
-  polygons: Record<string, [number, number][]>,
-  rotation: number
-): { scale: number; cx: number; cy: number } | null {
-  const poly = polygons[site]
-  if (!poly?.length) return null
-  const θ = rotation * Math.PI / 180
-  const cos = Math.cos(θ), sin = Math.sin(θ)
-  // ポリゴン頂点を表示座標に変換
-  const pts = poly.map(([mx, my]) => {
-    const dx = mx - 0.5, dy = my - 0.5
-    return [dx * cos - dy * sin + 0.5, dx * sin + dy * cos + 0.5]
-  })
-  const xs = pts.map(p => p[0]), ys = pts.map(p => p[1])
-  const minX = Math.min(...xs), maxX = Math.max(...xs)
-  const minY = Math.min(...ys), maxY = Math.max(...ys)
-  const w = maxX - minX, h = maxY - minY
-  return {
-    scale: 0.72 / Math.max(w, h, 0.05),
-    cx: (minX + maxX) / 2,
-    cy: (minY + maxY) / 2,
-  }
-}
-
-function InlineMapPin({ mapName, site, x, y, roundNumber, onPinSet }: {
+function InlineMapPin({ mapName, x, y, roundNumber, onPinSet }: {
   mapName: string
-  site: string
   x: number | null
   y: number | null
   roundNumber: number
@@ -776,27 +747,16 @@ function InlineMapPin({ mapName, site, x, y, roundNumber, onPinSet }: {
   const imageUrl = MAP_IMAGES[mapKey] ? `/api/map-image?key=${mapKey}` : null
   const polygons = MAP_POLYGONS[mapKey] ?? {}
   const rotation = MAP_ROTATION[mapKey] ?? 0
-  const zoom     = site ? calcSiteZoom(site, polygons, rotation) : null
 
-  // 画面座標 → マップ(画像)座標
-  // ズームの逆変換 → 回転の逆変換
+  // 画面座標 → マップ(画像)座標（回転の逆変換）
   function screenToMap(e: React.MouseEvent<HTMLDivElement>) {
     const rect = outerRef.current?.getBoundingClientRect()
     if (!rect) return null
     const sx = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
     const sy = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
-
-    // ズーム逆変換: screen → display
-    let dx = sx, dy = sy
-    if (zoom) {
-      dx = (sx - 0.5) / zoom.scale + zoom.cx
-      dy = (sy - 0.5) / zoom.scale + zoom.cy
-    }
-
-    // 回転逆変換: display → image
-    if (!rotation) return { x: Math.min(1, Math.max(0, dx)), y: Math.min(1, Math.max(0, dy)) }
+    if (!rotation) return { x: sx, y: sy }
     const θ = rotation * Math.PI / 180
-    const cx = dx - 0.5, cy = dy - 0.5
+    const cx = sx - 0.5, cy = sy - 0.5
     return {
       x: Math.min(1, Math.max(0, cx * Math.cos(θ) + cy * Math.sin(θ) + 0.5)),
       y: Math.min(1, Math.max(0, -cx * Math.sin(θ) + cy * Math.cos(θ) + 0.5)),
@@ -809,15 +769,8 @@ function InlineMapPin({ mapName, site, x, y, roundNumber, onPinSet }: {
     onPinSet(pos.x, pos.y, detectSite(pos.x, pos.y, polygons))
   }
 
-  // ズーム用CSS (表示座標系でのスケール＋平行移動)
-  const zoomStyle = zoom ? {
-    transform: `scale(${zoom.scale}) translate(${(0.5 - zoom.cx) * 100}%, ${(0.5 - zoom.cy) * 100}%)`,
-    transformOrigin: 'center center',
-  } : undefined
-
   return (
     <div className="flex items-start gap-4">
-      {/* 外側div: クリック受付（変換なし） */}
       <div
         ref={outerRef}
         onClick={handleClick}
@@ -826,54 +779,63 @@ function InlineMapPin({ mapName, site, x, y, roundNumber, onPinSet }: {
         className="relative rounded-xl overflow-hidden border border-[#FF4655]/50 cursor-crosshair flex-shrink-0 bg-muted"
         style={{ width: 320, height: 320 }}
       >
-        {/* ズーム div: 表示座標系でサイトにズーム */}
-        <div className="absolute inset-0" style={zoomStyle}>
-          {/* 回転 div: img + SVG を一緒に回転 → 座標系が一致 */}
-          <div
-            className="absolute inset-0"
-            style={rotation ? { transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' } : undefined}
-          >
-            {imageUrl && !imgError ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={imageUrl} alt={mapName}
-                className="w-full h-full object-cover select-none"
-                draggable={false}
-                onError={() => setImgError(true)} />
-            ) : (
-              <div className="w-full h-full bg-muted flex items-center justify-center">
-                <span className="text-xs text-muted-foreground">{mapName || 'マップ未選択'}</span>
-              </div>
+        {/* 回転 div: img + SVG をまとめて回転 */}
+        <div
+          className="absolute inset-0"
+          style={rotation ? { transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' } : undefined}
+        >
+          {imageUrl && !imgError ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imageUrl} alt={mapName}
+              className="w-full h-full object-cover select-none"
+              draggable={false}
+              onError={() => setImgError(true)} />
+          ) : (
+            <div className="w-full h-full bg-muted flex items-center justify-center">
+              <span className="text-xs text-muted-foreground">{mapName || 'マップ未選択'}</span>
+            </div>
+          )}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none">
+            {hover && (
+              <g>
+                <line x1={`${hover.x * 100}%`} y1="0" x2={`${hover.x * 100}%`} y2="100%"
+                  stroke="#FF4655" strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 3" />
+                <line x1="0" y1={`${hover.y * 100}%`} x2="100%" y2={`${hover.y * 100}%`}
+                  stroke="#FF4655" strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 3" />
+              </g>
             )}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none">
-              {hover && (
-                <g>
-                  <line x1={`${hover.x * 100}%`} y1="0" x2={`${hover.x * 100}%`} y2="100%"
-                    stroke="#FF4655" strokeWidth="1" strokeOpacity="0.6" strokeDasharray="4 4" />
-                  <line x1="0" y1={`${hover.y * 100}%`} x2="100%" y2={`${hover.y * 100}%`}
-                    stroke="#FF4655" strokeWidth="1" strokeOpacity="0.6" strokeDasharray="4 4" />
-                </g>
-              )}
-              {x !== null && y !== null && (
-                <g>
-                  <circle cx={`${x * 100}%`} cy={`${y * 100}%`} r={11}
-                    fill="#FF4655" fillOpacity={0.9} stroke="white" strokeWidth={2} />
-                  <text x={`${x * 100}%`} y={`${y * 100}%`} dy="0.35em"
-                    textAnchor="middle" fill="white" fontSize={9} fontWeight="bold">
-                    {roundNumber}
-                  </text>
-                </g>
-              )}
-            </svg>
-          </div>
+            {x !== null && y !== null && (
+              <circle cx={`${x * 100}%`} cy={`${y * 100}%`} r={5}
+                fill="#FF4655" fillOpacity={0.95} stroke="white" strokeWidth={1.5} />
+            )}
+          </svg>
         </div>
 
-        {/* ヒント (ズーム・回転の外に配置) */}
-        <div className="absolute top-1.5 left-1.5 bg-black/65 backdrop-blur-sm rounded px-2 py-0.5 pointer-events-none">
-          <span className="text-[10px] text-white font-bold">
-            {zoom ? `${site}サイト` : 'フルマップ'}
-          </span>
-        </div>
-        <div className="absolute bottom-1.5 left-1.5 right-1.5 bg-black/65 backdrop-blur-sm rounded-lg px-2 py-1 text-center pointer-events-none">
+        {/* ピン番号ラベル（回転しないよう外側divに配置） */}
+        {x !== null && y !== null && rotation !== 0 && (() => {
+          // 画像座標 → 表示座標に変換してラベルを正位置に表示
+          const θ = rotation * Math.PI / 180
+          const dx = (x - 0.5) * Math.cos(-θ) - (y - 0.5) * Math.sin(-θ)
+          const dy = (x - 0.5) * Math.sin(-θ) + (y - 0.5) * Math.cos(-θ)
+          const lx = (dx + 0.5) * 320
+          const ly = (dy + 0.5) * 320
+          return (
+            <div className="absolute pointer-events-none" style={{ left: lx, top: ly, transform: 'translate(-50%, -50%)' }}>
+              <span className="text-[9px] font-bold text-white drop-shadow-[0_0_2px_rgba(0,0,0,0.8)]">
+                {roundNumber}
+              </span>
+            </div>
+          )
+        })()}
+        {x !== null && y !== null && !rotation && (
+          <div className="absolute pointer-events-none" style={{ left: x * 320, top: y * 320, transform: 'translate(-50%, -50%)' }}>
+            <span className="text-[9px] font-bold text-white drop-shadow-[0_0_2px_rgba(0,0,0,0.8)]">
+              {roundNumber}
+            </span>
+          </div>
+        )}
+
+        <div className="absolute bottom-1.5 left-1.5 right-1.5 bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1 text-center pointer-events-none">
           <span className="text-[10px] text-white">クリックしてプラント位置を設定</span>
         </div>
       </div>
