@@ -10,15 +10,17 @@ declare global {
 }
 
 function createPool(): Pool {
-  const url = process.env.DATABASE_URL ?? ''
-  const isRemote = url.includes('railway') || url.includes('rlwy') || url.includes('supabase')
-  return new Pool({
-    connectionString: url,
-    ssl: isRemote ? { rejectUnauthorized: false } : false,
-    max: 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 10000,
-  })
+  const url  = process.env.DATABASE_URL ?? ''
+  const host = process.env.PGHOST ?? ''
+  const isRemote =
+    url.includes('railway') || url.includes('rlwy') || url.includes('supabase') ||
+    host.includes('supabase') || host.includes('railway') || host.includes('rlwy')
+  const ssl = isRemote ? { rejectUnauthorized: false } : false
+  if (url) {
+    return new Pool({ connectionString: url, ssl, max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 10000 })
+  }
+  // PGHOST / PGPORT / PGUSER / PGPASSWORD / PGDATABASE 環境変数を使用
+  return new Pool({ ssl, max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 10000 })
 }
 
 // Singleton in dev (hot reload safe)
