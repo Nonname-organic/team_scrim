@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { Check, Minus, Zap, Loader2, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -9,6 +9,14 @@ import { usePlan } from '@/contexts/PlanContext'
 import { AIUsageBar } from '@/components/pricing/UsageBar'
 
 export default function PricingPage() {
+  return (
+    <Suspense>
+      <PricingPageInner />
+    </Suspense>
+  )
+}
+
+function PricingPageInner() {
   const { plan, aiUsageCount, aiUsageLimit, refreshPlan } = usePlan()
   const params = useSearchParams()
   const success = params.get('success')
