@@ -7,15 +7,30 @@ export const maxDuration = 60
 
 const client = new Anthropic()
 
+function repairJSON(s: string): string {
+  // Remove JS-style comments
+  s = s.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
+  // Remove trailing commas before } or ]
+  s = s.replace(/,(\s*[}\]])/g, '$1')
+  return s
+}
+
 function extractJSON(text: string): Record<string, unknown> | null {
-  const fenced = text.match(/```json\r?\n([\s\S]*?)\r?\n```/)
-  if (fenced) { try { return JSON.parse(fenced[1]) } catch {} }
-  const plain = text.match(/```\r?\n(\{[\s\S]*?\})\r?\n```/)
-  if (plain) { try { return JSON.parse(plain[1]) } catch {} }
+  // Try every ```json or ``` block in reverse order (last = actual output)
+  const blocks = [...text.matchAll(/```(?:json)?\s*\r?\n([\s\S]*?)\r?\n\s*```/g)]
+  for (const block of blocks.reverse()) {
+    const candidate = block[1].trim()
+    if (!candidate.startsWith('{')) continue
+    try { return JSON.parse(candidate) } catch {}
+    try { return JSON.parse(repairJSON(candidate)) } catch {}
+  }
+  // Raw JSON: find the outermost { }
   const start = text.indexOf('{')
   const end   = text.lastIndexOf('}')
   if (start !== -1 && end > start) {
-    try { return JSON.parse(text.slice(start, end + 1)) } catch {}
+    const slice = text.slice(start, end + 1)
+    try { return JSON.parse(slice) } catch {}
+    try { return JSON.parse(repairJSON(slice)) } catch {}
   }
   return null
 }
@@ -60,9 +75,12 @@ export async function POST(req: NextRequest) {
     const parsed  = extractJSON(rawText)
 
     if (!parsed) {
-      console.error('[feedback/ai] JSON parse failed:', rawText.slice(0, 500))
+      console.error('[feedback/ai] JSON parse failed. Raw (first 600):', rawText.slice(0, 600))
       return NextResponse.json(
-        { error: 'AI応答の解析に失敗しました。再度お試しください。' },
+        {
+          error: 'AI応答の解析に失敗しました。再度お試しください。',
+          debug_preview: rawText.slice(0, 300),
+        },
         { status: 500 }
       )
     }

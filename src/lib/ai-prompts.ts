@@ -102,12 +102,10 @@ export function buildTacticalFeedbackPrompt(
 
 出力はプロチームへのフィードバックとして簡潔かつ厳密に。日本語で回答すること。
 
-## INPUT
-\`\`\`json
+## 試合データ
 ${JSON.stringify(input, null, 2)}
-\`\`\`
 
-以下のJSON形式のみで出力すること。余分なテキスト禁止。
+以下のJSON形式のみで出力すること。余分なテキスト（説明文・前置き）は一切禁止。
 
 \`\`\`json
 {
