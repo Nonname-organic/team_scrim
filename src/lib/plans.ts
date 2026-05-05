@@ -2,6 +2,9 @@
 // Plan definitions — Single source of truth
 // ============================================================
 
+// 決済機能の有効フラグ — false の間はすべての機能をアンロックし、支払いフローを無効化
+export const PAYMENTS_ENABLED = false
+
 export type Plan = 'free' | 'pro' | 'team'
 
 export interface PlanLimits {
@@ -73,8 +76,8 @@ export const PLANS: PlanConfig[] = [
   {
     id: 'pro',
     name: 'Pro',
-    price: 980,
-    priceLabel: '¥980',
+    price: 500,
+    priceLabel: '¥500',
     tagline: '本気で上達したい個人向け',
     color: '#FFD700',
     accent: '#FFD700',
@@ -83,8 +86,8 @@ export const PLANS: PlanConfig[] = [
   {
     id: 'team',
     name: 'Team',
-    price: 2980,
-    priceLabel: '¥2,980',
+    price: 1000,
+    priceLabel: '¥1,000',
     tagline: 'チーム全体の勝率を上げる',
     color: '#3B82F6',
     accent: '#60A5FA',

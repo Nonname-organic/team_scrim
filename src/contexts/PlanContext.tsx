@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react'
 import { useAuth } from './AuthContext'
-import { PLAN_LIMITS, type Plan, type PlanLimits } from '@/lib/plans'
+import { PLAN_LIMITS, PAYMENTS_ENABLED, type Plan, type PlanLimits } from '@/lib/plans'
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -59,6 +59,16 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
   const [upgradeTrigger, setUpgradeTrigger] = useState<UpgradeTrigger | null>(null)
 
   const refreshPlan = useCallback(async () => {
+    // 決済無効中は Team プラン相当で全機能開放
+    if (!PAYMENTS_ENABLED) {
+      setPlan('team')
+      setAiUsageCount(0)
+      setAiUsageLimit(null)
+      setCanUseAI(true)
+      setLimits(PLAN_LIMITS.team)
+      setLoading(false)
+      return
+    }
     if (!teamId) return
     try {
       const res  = await fetch('/api/user/plan')

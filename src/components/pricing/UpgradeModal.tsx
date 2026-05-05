@@ -1,10 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { X, Check, Minus, Zap, Loader2, AlertCircle } from 'lucide-react'
+import { X, Check, Minus, Zap, Loader2, AlertCircle, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlan } from '@/contexts/PlanContext'
-import { PLANS, PLAN_FEATURES, type Plan } from '@/lib/plans'
+import { PLANS, PLAN_FEATURES, PAYMENTS_ENABLED, type Plan } from '@/lib/plans'
 
 export function UpgradeModal() {
   const { plan, upgradeOpen, upgradeTrigger, hideUpgrade } = usePlan()
@@ -132,6 +132,10 @@ export function UpgradeModal() {
                       </div>
                     ) : p.id === 'free' ? (
                       <div className="w-full text-center text-xs text-muted-foreground py-2" />
+                    ) : !PAYMENTS_ENABLED ? (
+                      <div className="w-full text-center text-xs text-muted-foreground border border-border rounded-lg py-2 flex items-center justify-center gap-1.5">
+                        <Clock className="w-3 h-3" /> 準備中
+                      </div>
                     ) : (
                       <button
                         onClick={() => handleUpgrade(p.id)}

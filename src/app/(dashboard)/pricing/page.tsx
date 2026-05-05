@@ -2,9 +2,9 @@
 
 import { useState, useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Check, Minus, Zap, Loader2, CheckCircle2 } from 'lucide-react'
+import { Check, Minus, Zap, Loader2, CheckCircle2, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { PLANS, PLAN_FEATURES, type Plan } from '@/lib/plans'
+import { PLANS, PLAN_FEATURES, PAYMENTS_ENABLED, type Plan } from '@/lib/plans'
 import { usePlan } from '@/contexts/PlanContext'
 import { AIUsageBar } from '@/components/pricing/UsageBar'
 
@@ -133,6 +133,10 @@ function PricingPageInner() {
                   </div>
                 ) : p.id === 'free' ? (
                   <div className="h-[42px]" />
+                ) : !PAYMENTS_ENABLED ? (
+                  <div className="w-full text-center text-sm text-muted-foreground border border-border rounded-xl py-2.5 flex items-center justify-center gap-2">
+                    <Clock className="w-4 h-4" /> 準備中
+                  </div>
                 ) : (
                   <button
                     onClick={() => handleUpgrade(p.id)}

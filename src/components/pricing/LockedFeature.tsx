@@ -3,7 +3,7 @@
 import { Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlan } from '@/contexts/PlanContext'
-import { meetsRequirement, type Plan, type PlanLimits } from '@/lib/plans'
+import { meetsRequirement, PAYMENTS_ENABLED, type Plan, type PlanLimits } from '@/lib/plans'
 import type { UpgradeTrigger } from '@/contexts/PlanContext'
 
 interface Props {
@@ -41,7 +41,8 @@ export function LockedFeature({
 }: Props) {
   const { plan, showUpgrade } = usePlan()
 
-  if (meetsRequirement(plan, requiredPlan)) {
+  // 決済無効中はすべての機能を開放
+  if (!PAYMENTS_ENABLED || meetsRequirement(plan, requiredPlan)) {
     return <>{children}</>
   }
 
