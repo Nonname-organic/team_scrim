@@ -53,8 +53,13 @@ declare global {
 }
 interface YTOpts {
   videoId: string
+  width?: string | number
+  height?: string | number
   playerVars?: Record<string, number | string>
-  events?: { onReady?: (e: { target: YTPlayer }) => void }
+  events?: {
+    onReady?: (e: { target: YTPlayer }) => void
+    onStateChange?: (e: { data: number }) => void
+  }
 }
 interface YTPlayer {
   seekTo(s: number, allow: boolean): void
@@ -527,13 +532,26 @@ function VideoPlayer({
     prevUrlRef.current = videoId
 
     if (ytPlayerRef.current) { ytPlayerRef.current.destroy(); ytPlayerRef.current = null }
+
     const div = document.createElement('div')
+    div.style.cssText = 'width:100%;height:100%;'
     ytContainerRef.current.innerHTML = ''
     ytContainerRef.current.appendChild(div)
 
     ytPlayerRef.current = new window.YT.Player(div, {
       videoId,
+      width: '100%',
+      height: '100%',
       playerVars: { autoplay: 0, controls: 1, rel: 0, modestbranding: 1 },
+      events: {
+        onReady: () => {
+          // YouTube API が生成する iframe にフルサイズを強制適用
+          const iframe = ytContainerRef.current?.querySelector('iframe')
+          if (iframe) {
+            iframe.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;border:0;'
+          }
+        },
+      },
     })
   }, [ytReady, isYouTube, videoId])
 
@@ -564,7 +582,7 @@ function VideoPlayer({
   return (
     <div className="flex-1 relative bg-black overflow-hidden">
       {isYouTube && (
-        <div ref={ytContainerRef} className="absolute inset-0 [&>div]:w-full [&>div]:h-full [&>div>iframe]:w-full [&>div>iframe]:h-full" />
+        <div ref={ytContainerRef} className="absolute inset-0" />
       )}
       {isDirect && (
         // eslint-disable-next-line jsx-a11y/media-has-caption
