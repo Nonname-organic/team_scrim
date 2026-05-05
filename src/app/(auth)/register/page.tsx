@@ -33,9 +33,14 @@ export default function RegisterPage() {
     }
 
     // 2. チームを作成してユーザーに紐付け
+    // signUp直後はCookieが未送信のため、access_tokenをヘッダーで渡す
+    const accessToken = data.session?.access_token ?? ''
     const res = await fetch('/api/auth/register', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${accessToken}`,
+      },
       body: JSON.stringify({ team_name: teamName, team_tag: teamTag }),
     })
 
