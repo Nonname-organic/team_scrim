@@ -8,6 +8,8 @@ import {
 } from 'lucide-react'
 import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSelector'
 import { useAuth } from '@/contexts/AuthContext'
+import { usePlan } from '@/contexts/PlanContext'
+import { LockedFeature } from '@/components/pricing/LockedFeature'
 
 // ── constants ────────────────────────────────────────────────────────────────
 
@@ -84,6 +86,7 @@ type SortDir = 'asc' | 'desc'
 
 export default function RoundAnalysisPage() {
   const { teamId } = useAuth()
+  const { limits, showUpgrade } = usePlan()
   const [matches, setMatches] = useState<Match[]>([])
   const [loadingMatches, setLoadingMatches] = useState(true)
   const [filterText, setFilterText] = useState('')
@@ -266,7 +269,14 @@ export default function RoundAnalysisPage() {
               <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs">読み込み中...</div>
             ) : (
               <div className="flex-1 overflow-y-auto">
-                {rounds.map(r => {
+                {/* Free プランのラウンド制限 */}
+                {(() => {
+                  const limit = limits.round_preview_limit
+                  const visible = limit !== null ? rounds.slice(0, limit) : rounds
+                  const hidden  = limit !== null ? rounds.length - visible.length : 0
+                  return (
+                    <>
+                      {visible.map(r => {
                   const isActive = activeRound?.id === r.id
                   const isWin = r.result === 'win'
                   return (
@@ -317,6 +327,25 @@ export default function RoundAnalysisPage() {
                     </button>
                   )
                 })}
+                      {/* 制限バナー */}
+                      {hidden > 0 && (
+                        <button
+                          onClick={() => showUpgrade({
+                            feature: 'round_preview_limit',
+                            title: 'すべてのラウンドを表示',
+                            message: `あと${hidden}件のラウンドが非表示です。Teamプランにアップグレードするとすべてのラウンドを分析できます。`,
+                          })}
+                          className="w-full px-3 py-3 text-center border-t border-border bg-[#FFD700]/5 hover:bg-[#FFD700]/10 transition-colors"
+                        >
+                          <div className="text-[10px] font-bold text-[#FFD700]">
+                            さらに{hidden}件 →
+                          </div>
+                          <div className="text-[9px] text-muted-foreground">Teamプランで全表示</div>
+                        </button>
+                      )}
+                    </>
+                  )
+                })()}
               </div>
             )}
 
@@ -341,41 +370,57 @@ export default function RoundAnalysisPage() {
 
           {/* ── CENTER: Video player ── */}
           <div className="flex-1 flex flex-col overflow-hidden bg-[#12121A]">
-            <VideoPlayer
-              videoUrl={analysisMatch.video_url}
-              activeRound={activeRound}
-              roundTime={activeRound ? roundTime(activeRound) : null}
-              getCurrentTimeRef={getVideoTimeRef}
-            />
-
-            {/* Round timeline strip */}
-            {rounds.length > 0 && (
-              <div className="px-3 py-2 border-t border-border flex-shrink-0 overflow-x-auto">
-                <div className="flex gap-1 min-w-max">
-                  {rounds.map(r => {
-                    const isWin = r.result === 'win'
-                    const isActive = activeRound?.id === r.id
-                    return (
-                      <button
-                        key={r.id}
-                        onClick={() => setActiveRound(isActive ? null : r)}
-                        title={`R${r.round_number} ${r.side === 'attack' ? 'ATK' : 'DEF'} ${r.result}`}
-                        className={cn(
-                          'w-6 h-6 rounded text-[9px] font-bold flex-shrink-0 border transition-all',
-                          isActive
-                            ? 'ring-1 ring-white scale-110'
-                            : 'opacity-80 hover:opacity-100',
-                          isWin
-                            ? 'bg-[#00D4A0]/20 text-[#00D4A0] border-[#00D4A0]/30'
-                            : 'bg-[#FF4655]/20 text-[#FF4655] border-[#FF4655]/30'
-                        )}
-                      >
-                        {r.round_number}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
+            {!limits.vod_analysis && analysisMatch?.video_url ? (
+              <LockedFeature
+                requiredPlan="pro"
+                trigger={{
+                  feature: 'vod_analysis',
+                  title: 'VOD連携分析を解放',
+                  message: 'ProプランにアップグレードするとVOD動画と連携し、ラウンドクリックで動画を自動シークできます。',
+                }}
+                minHeight={300}
+                className="flex-1"
+              >
+                <div />
+              </LockedFeature>
+            ) : (
+              <>
+                <VideoPlayer
+                  videoUrl={analysisMatch.video_url}
+                  activeRound={activeRound}
+                  roundTime={activeRound ? roundTime(activeRound) : null}
+                  getCurrentTimeRef={getVideoTimeRef}
+                />
+                {/* Round timeline strip */}
+                {rounds.length > 0 && (
+                  <div className="px-3 py-2 border-t border-border flex-shrink-0 overflow-x-auto">
+                    <div className="flex gap-1 min-w-max">
+                      {rounds.map(r => {
+                        const isWin = r.result === 'win'
+                        const isActive = activeRound?.id === r.id
+                        return (
+                          <button
+                            key={r.id}
+                            onClick={() => setActiveRound(isActive ? null : r)}
+                            title={`R${r.round_number} ${r.side === 'attack' ? 'ATK' : 'DEF'} ${r.result}`}
+                            className={cn(
+                              'w-6 h-6 rounded text-[9px] font-bold flex-shrink-0 border transition-all',
+                              isActive
+                                ? 'ring-1 ring-white scale-110'
+                                : 'opacity-80 hover:opacity-100',
+                              isWin
+                                ? 'bg-[#00D4A0]/20 text-[#00D4A0] border-[#00D4A0]/30'
+                                : 'bg-[#FF4655]/20 text-[#FF4655] border-[#FF4655]/30'
+                            )}
+                          >
+                            {r.round_number}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
