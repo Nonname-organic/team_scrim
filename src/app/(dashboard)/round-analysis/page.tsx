@@ -8,7 +8,6 @@ import {
 } from 'lucide-react'
 import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSelector'
 import { useAuth } from '@/contexts/AuthContext'
-import { MatchFeedbackPanel } from '@/components/feedback/FeedbackPanel'
 
 // ── constants ────────────────────────────────────────────────────────────────
 
@@ -66,6 +65,7 @@ interface YTPlayer {
   playVideo(): void
   pauseVideo(): void
   destroy(): void
+  getCurrentTime(): number
 }
 
 function getYouTubeId(url: string): string | null {
@@ -104,6 +104,10 @@ export default function RoundAnalysisPage() {
   // Per-round notes (localStorage)
   const [notes, setNotes] = useState<Record<string, string>>({})
 
+  // Per-round VOD timestamps (localStorage)
+  const [roundTimestamps, setRoundTimestamps] = useState<Record<string, number>>({})
+  const getVideoTimeRef = useRef<() => number>(() => 0)
+
   useEffect(() => {
     if (!teamId) return
     fetch('/api/matches?limit=100')
@@ -115,18 +119,22 @@ export default function RoundAnalysisPage() {
   async function enterAnalysis(m: Match) {
     setAnalysisMatch(m)
     setActiveRound(null)
+    setRoundTimestamps({})
     setLoadingRounds(true)
     try {
       const j = await fetch(`/api/matches/${m.id}`).then(r => r.json())
       const rds: Round[] = j.data?.rounds ?? []
       setRounds(rds)
-      // load notes from localStorage
-      const saved: Record<string, string> = {}
+      const savedNotes: Record<string, string> = {}
+      const savedTs: Record<string, number> = {}
       rds.forEach(r => {
-        const v = localStorage.getItem(`round-note-${r.id}`)
-        if (v) saved[r.id] = v
+        const note = localStorage.getItem(`round-note-${r.id}`)
+        if (note) savedNotes[r.id] = note
+        const ts = localStorage.getItem(`vod-ts-${m.id}-${r.id}`)
+        if (ts) savedTs[r.id] = Number(ts)
       })
-      setNotes(saved)
+      setNotes(savedNotes)
+      setRoundTimestamps(savedTs)
     } finally {
       setLoadingRounds(false)
     }
@@ -141,6 +149,18 @@ export default function RoundAnalysisPage() {
   function saveNote(roundId: string, text: string) {
     localStorage.setItem(`round-note-${roundId}`, text)
     setNotes(prev => ({ ...prev, [roundId]: text }))
+  }
+
+  function saveRoundTimestamp(roundId: string, seconds: number) {
+    if (!analysisMatch) return
+    localStorage.setItem(`vod-ts-${analysisMatch.id}-${roundId}`, String(seconds))
+    setRoundTimestamps(prev => ({ ...prev, [roundId]: seconds }))
+  }
+
+  function clearRoundTimestamp(roundId: string) {
+    if (!analysisMatch) return
+    localStorage.removeItem(`vod-ts-${analysisMatch.id}-${roundId}`)
+    setRoundTimestamps(prev => { const n = { ...prev }; delete n[roundId]; return n })
   }
 
   function handleSort(key: SortKey) {
@@ -165,7 +185,8 @@ export default function RoundAnalysisPage() {
 
   // ── Analysis view ──────────────────────────────────────────────────────────
   if (analysisMatch) {
-    const roundTime = (n: number) => vodOffset + (n - 1) * secPerRound
+    const roundTime = (r: Round) =>
+      roundTimestamps[r.id] ?? (vodOffset + (r.round_number - 1) * secPerRound)
 
     return (
       <div className="flex flex-col h-[calc(100vh-96px)] -m-6 overflow-hidden">
@@ -282,7 +303,7 @@ export default function RoundAnalysisPage() {
                             </span>
                           )}
                           {r.planted && (
-                            <span className="text-[9px] text-[#6C63FF]">🌱{r.plant_site}</span>
+                            <span className="text-[9px] text-[#6C63FF]">💣{r.plant_site}</span>
                           )}
                         </div>
                         <div className="flex items-center gap-1 mt-0.5">
@@ -323,7 +344,8 @@ export default function RoundAnalysisPage() {
             <VideoPlayer
               videoUrl={analysisMatch.video_url}
               activeRound={activeRound}
-              roundTime={activeRound ? roundTime(activeRound.round_number) : null}
+              roundTime={activeRound ? roundTime(activeRound) : null}
+              getCurrentTimeRef={getVideoTimeRef}
             />
 
             {/* Round timeline strip */}
@@ -364,7 +386,10 @@ export default function RoundAnalysisPage() {
                 <RoundDetailPanel
                   round={activeRound}
                   note={notes[activeRound.id] ?? ''}
+                  timestamp={roundTimestamps[activeRound.id] ?? null}
                   onNoteChange={(text) => saveNote(activeRound.id, text)}
+                  onSetTimestamp={() => saveRoundTimestamp(activeRound.id, getVideoTimeRef.current())}
+                  onClearTimestamp={() => clearRoundTimestamp(activeRound.id)}
                   onTimingChange={async (timing) => {
                     await fetch(`/api/rounds/${activeRound.id}`, {
                       method: 'PATCH',
@@ -378,9 +403,6 @@ export default function RoundAnalysisPage() {
               ) : (
                 <MatchStatsPanel rounds={rounds} map={analysisMatch.map} />
               )}
-              <div className="p-3">
-                <MatchFeedbackPanel matchId={analysisMatch.id} />
-              </div>
             </div>
           </div>
         </div>
@@ -498,16 +520,27 @@ function VideoPlayer({
   videoUrl,
   activeRound,
   roundTime,
+  getCurrentTimeRef,
 }: {
   videoUrl: string | null
   activeRound: Round | null
   roundTime: number | null
+  getCurrentTimeRef: React.MutableRefObject<() => number>
 }) {
   const ytPlayerRef  = useRef<YTPlayer | null>(null)
   const ytContainerRef = useRef<HTMLDivElement>(null)
   const videoRef     = useRef<HTMLVideoElement>(null)
   const [ytReady, setYtReady] = useState(false)
   const prevUrlRef = useRef<string | null>(null)
+
+  // 現在の再生位置を返す関数を親に公開
+  useEffect(() => {
+    getCurrentTimeRef.current = () => {
+      if (ytPlayerRef.current) return ytPlayerRef.current.getCurrentTime()
+      if (videoRef.current) return videoRef.current.currentTime
+      return 0
+    }
+  })
 
   const videoId = videoUrl ? getYouTubeId(videoUrl) : null
   const isYouTube = !!videoId
@@ -614,15 +647,27 @@ function VideoPlayer({
 
 // ── Round detail panel (right pane when round selected) ───────────────────────
 
+function formatTime(sec: number): string {
+  const m = Math.floor(sec / 60)
+  const s = Math.floor(sec % 60)
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
 function RoundDetailPanel({
   round: r,
   note,
+  timestamp,
   onNoteChange,
+  onSetTimestamp,
+  onClearTimestamp,
   onTimingChange,
 }: {
   round: Round
   note: string
+  timestamp: number | null
   onNoteChange: (text: string) => void
+  onSetTimestamp: () => void
+  onClearTimestamp: () => void
   onTimingChange: (t: 'early' | 'mid' | 'late' | null) => void
 }) {
   const isWin = r.result === 'win'
@@ -661,7 +706,7 @@ function RoundDetailPanel({
         )}
         {r.planted && (
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-[#6C63FF]/50 text-[#6C63FF] bg-[#6C63FF]/10">
-            🌱 {r.plant_site ? `${r.plant_site}サイト` : 'プラント'}
+            💣 {r.plant_site ? `${r.plant_site}サイト` : 'プラント'}
           </span>
         )}
         {r.retake && (
@@ -680,6 +725,33 @@ function RoundDetailPanel({
             <Flag className="w-2.5 h-2.5" fill="currentColor" /> 注目
           </span>
         )}
+      </div>
+
+      {/* VOD タイムスタンプ */}
+      <div className="space-y-1.5 bg-muted/20 border border-border/60 rounded-xl p-3">
+        <div className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+          <Play className="w-3 h-3" /> VOD開始時間
+        </div>
+        {timestamp !== null ? (
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-mono font-bold text-white">{formatTime(timestamp)}</span>
+            <span className="text-[10px] text-muted-foreground">({timestamp.toFixed(0)}秒)</span>
+            <button
+              onClick={onClearTimestamp}
+              className="ml-auto text-[10px] text-muted-foreground hover:text-[#FF4655] transition-colors"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </div>
+        ) : (
+          <div className="text-[10px] text-muted-foreground/60">未設定（自動推算）</div>
+        )}
+        <button
+          onClick={onSetTimestamp}
+          className="w-full text-xs bg-[#FF4655]/15 hover:bg-[#FF4655]/25 text-[#FF4655] border border-[#FF4655]/30 rounded-lg px-3 py-1.5 transition-colors font-medium"
+        >
+          現在の動画位置を設定
+        </button>
       </div>
 
       {/* Timing selector */}
