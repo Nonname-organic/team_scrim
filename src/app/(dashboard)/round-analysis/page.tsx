@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronUp, Search, X } from 'lucide-react'
 import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSelector'
 import { useAuth } from '@/contexts/AuthContext'
+import { MatchFeedbackPanel } from '@/components/feedback/FeedbackPanel'
 
 const ECO_LABELS: Record<string, string> = {
   pistol: 'ピストル', eco: 'エコ', anti_eco: 'アンチエコ', semi_eco: 'セミエコ',
@@ -246,7 +247,7 @@ export default function RoundAnalysisPage() {
 
                 {/* Expanded round analysis */}
                 {isSelected && (
-                  <div className="border-t border-border px-4 pb-5 pt-4">
+                  <div className="border-t border-border px-4 pb-5 pt-4 space-y-4">
                     {isLoadingThis ? (
                       <div className="text-center py-8 text-muted-foreground text-sm">読み込み中...</div>
                     ) : rounds.length === 0 ? (
@@ -259,6 +260,7 @@ export default function RoundAnalysisPage() {
                         map={m.map}
                       />
                     )}
+                    <MatchFeedbackPanel matchId={m.id} />
                   </div>
                 )}
               </div>

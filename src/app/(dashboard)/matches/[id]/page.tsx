@@ -7,7 +7,6 @@ import { AGENTS } from '@/types'
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
 import { detectSite } from '@/lib/geometry'
 import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSelector'
-import { MatchFeedbackPanel } from '@/components/feedback/FeedbackPanel'
 
 const RESULT_COLOR = { win: '#00D4A0', loss: '#FF4655', draw: '#9B9BA4' } as const
 const ECO_OPTIONS = ['pistol', 'second', 'third', 'eco', 'anti_eco', 'semi_eco', 'semi_buy', 'full_buy', 'oper'] as const
@@ -843,9 +842,6 @@ export default function MatchDetailPage() {
           )}
         </div>
 
-      {/* Feedback section */}
-      <MatchFeedbackPanel matchId={id} />
-
       {playerStats.length === 0 && rounds.length === 0 && (
         <div className="text-center py-12 text-muted-foreground text-sm">
           詳細データがありません
@@ -918,18 +914,18 @@ function InlineMapPicker({
           {existingDots.map((d, i) => (
             <circle key={i}
               cx={`${d.x * 100}%`} cy={`${d.y * 100}%`}
-              r={4} fill={d.win ? '#00D4A0' : '#FF4655'} fillOpacity={0.85}
-              stroke="rgba(0,0,0,0.5)" strokeWidth={1}
+              r={3} fill={d.win ? '#00D4A0' : '#FF4655'} fillOpacity={0.85}
+              stroke="rgba(0,0,0,0.4)" strokeWidth={0.8}
             />
           ))}
           {mouse && (
             <g>
               <line x1={`${mouse.x * 100}%`} y1="0" x2={`${mouse.x * 100}%`} y2="100%"
-                stroke="#FF4655" strokeWidth="0.8" strokeOpacity="0.6" strokeDasharray="4 4" />
+                stroke="#FF4655" strokeWidth="0.6" strokeOpacity="0.5" strokeDasharray="4 4" />
               <line x1="0" y1={`${mouse.y * 100}%`} x2="100%" y2={`${mouse.y * 100}%`}
-                stroke="#FF4655" strokeWidth="0.8" strokeOpacity="0.6" strokeDasharray="4 4" />
+                stroke="#FF4655" strokeWidth="0.6" strokeOpacity="0.5" strokeDasharray="4 4" />
               <circle cx={`${mouse.x * 100}%`} cy={`${mouse.y * 100}%`}
-                r={4} fill="#FF4655" fillOpacity={0.9} stroke="white" strokeWidth={1} />
+                r={3} fill="#FF4655" fillOpacity={0.9} stroke="white" strokeWidth={0.8} />
             </g>
           )}
         </svg>

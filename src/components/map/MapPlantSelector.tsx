@@ -23,6 +23,17 @@ interface Props {
   onCancelEdit: () => void
 }
 
+/** マップ座標 (map space) → スクリーン座標 (container space) への変換 */
+function toScreenPos(x: number, y: number, rotation: number): { sx: number; sy: number } {
+  if (!rotation) return { sx: x, sy: y }
+  const θ = rotation * Math.PI / 180
+  const cx = x - 0.5, cy = y - 0.5
+  return {
+    sx: cx * Math.cos(θ) - cy * Math.sin(θ) + 0.5,
+    sy: cx * Math.sin(θ) + cy * Math.cos(θ) + 0.5,
+  }
+}
+
 export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCancelEdit }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [saving, setSaving] = useState(false)
@@ -118,85 +129,107 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
         ].join(' ')}
         style={{ aspectRatio: '1 / 1' }}
       >
-        {/* 内側div: img + SVGをまとめて回転 → 座標系が一致 */}
+        {/* 内側div: img + ピン円をまとめて回転 */}
         <div
           className="absolute inset-0"
           style={rotation ? { transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' } : undefined}
         >
-        {/* Map image */}
-        {imageUrl && !imgError ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imageUrl}
-            alt={mapName}
-            className="w-full h-full object-cover select-none"
-            draggable={false}
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <div className="w-full h-full bg-muted flex flex-col items-center justify-center gap-2">
-            <span className="text-muted-foreground text-sm font-medium">{mapName}</span>
-            {imgError && (
-              <span className="text-muted-foreground/50 text-[10px]">画像を読み込めません</span>
+          {/* Map image */}
+          {imageUrl && !imgError ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imageUrl}
+              alt={mapName}
+              className="w-full h-full object-cover select-none"
+              draggable={false}
+              onError={() => setImgError(true)}
+            />
+          ) : (
+            <div className="w-full h-full bg-muted flex flex-col items-center justify-center gap-2">
+              <span className="text-muted-foreground text-sm font-medium">{mapName}</span>
+              {imgError && (
+                <span className="text-muted-foreground/50 text-[10px]">画像を読み込めません</span>
+              )}
+            </div>
+          )}
+
+          {/* SVG: ピン円 + カーソル十字線（回転に追従） */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="2" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+
+            {/* ピン円のみ（番号なし） */}
+            {placedRounds.map(r => {
+              const cx = `${(r.plant_x ?? 0) * 100}%`
+              const cy = `${(r.plant_y ?? 0) * 100}%`
+              const isEditing = r.id === editRoundId
+              const color = r.result === 'win' ? '#00D4A0' : '#FF4655'
+              const radius = isEditing ? 5 : 3
+
+              return (
+                <g key={r.id} filter={isEditing ? 'url(#glow)' : undefined}>
+                  {isEditing && (
+                    <circle cx={cx} cy={cy} r={8} fill="none" stroke={color} strokeWidth={1} strokeDasharray="3 2" opacity={0.8} />
+                  )}
+                  <circle cx={cx} cy={cy} r={radius} fill={color} fillOpacity={0.9} stroke="rgba(0,0,0,0.4)" strokeWidth={0.8} />
+                </g>
+              )
+            })}
+
+            {/* カーソル十字線 */}
+            {editRoundId && mousePos && (
+              <g>
+                <line
+                  x1={`${mousePos.x * 100}%`} y1="0"
+                  x2={`${mousePos.x * 100}%`} y2="100%"
+                  stroke="#FF4655" strokeWidth="0.6" strokeOpacity="0.5" strokeDasharray="4 4"
+                />
+                <line
+                  x1="0" y1={`${mousePos.y * 100}%`}
+                  x2="100%" y2={`${mousePos.y * 100}%`}
+                  stroke="#FF4655" strokeWidth="0.6" strokeOpacity="0.5" strokeDasharray="4 4"
+                />
+                <circle
+                  cx={`${mousePos.x * 100}%`} cy={`${mousePos.y * 100}%`}
+                  r={3} fill="#FF4655" fillOpacity={0.9} stroke="white" strokeWidth={0.8}
+                />
+              </g>
             )}
-          </div>
-        )}
+          </svg>
+        </div>{/* /内側div */}
 
-        {/* SVG heatmap overlay + custom crosshair cursor */}
+        {/* ラウンド番号ラベル: 回転しない独立SVGレイヤー */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <filter id="glow">
-              <feGaussianBlur stdDeviation="2" result="blur" />
-              <feMerge>
-                <feMergeNode in="blur" />
-                <feMergeNode in="SourceGraphic" />
-              </feMerge>
-            </filter>
-          </defs>
-
           {placedRounds.map(r => {
-            const cx = `${(r.plant_x ?? 0) * 100}%`
-            const cy = `${(r.plant_y ?? 0) * 100}%`
+            const { sx, sy } = toScreenPos(r.plant_x ?? 0, r.plant_y ?? 0, rotation)
             const isEditing = r.id === editRoundId
             const color = r.result === 'win' ? '#00D4A0' : '#FF4655'
-            const radius = isEditing ? 7 : 5
-
             return (
-              <g key={r.id} filter={isEditing ? 'url(#glow)' : undefined}>
-                {isEditing && (
-                  <circle cx={cx} cy={cy} r={12} fill="none" stroke={color} strokeWidth={1.5} strokeDasharray="3 2" opacity={0.8} />
-                )}
-                <circle cx={cx} cy={cy} r={radius} fill={color} fillOpacity={0.85} stroke="rgba(0,0,0,0.5)" strokeWidth={1} />
-                <text x={cx} y={cy} dy="0.35em" textAnchor="middle" fill="white"
-                  fontSize={isEditing ? 8 : 6} fontWeight="bold" fontFamily="monospace">
-                  {r.round_number}
-                </text>
-              </g>
+              <text
+                key={r.id}
+                x={`${sx * 100}%`}
+                y={`${sy * 100}%`}
+                dy="0.35em"
+                textAnchor="middle"
+                fill="white"
+                fontSize={isEditing ? 7 : 5}
+                fontWeight="bold"
+                fontFamily="monospace"
+                stroke={color}
+                strokeWidth="0.3"
+              >
+                {r.round_number}
+              </text>
             )
           })}
-
-          {/* Custom crosshair cursor */}
-          {editRoundId && mousePos && (
-            <g>
-              <line
-                x1={`${mousePos.x * 100}%`} y1="0"
-                x2={`${mousePos.x * 100}%`} y2="100%"
-                stroke="#FF4655" strokeWidth="0.8" strokeOpacity="0.6" strokeDasharray="4 4"
-              />
-              <line
-                x1="0" y1={`${mousePos.y * 100}%`}
-                x2="100%" y2={`${mousePos.y * 100}%`}
-                stroke="#FF4655" strokeWidth="0.8" strokeOpacity="0.6" strokeDasharray="4 4"
-              />
-              <circle
-                cx={`${mousePos.x * 100}%`} cy={`${mousePos.y * 100}%`}
-                r={4} fill="#FF4655" fillOpacity={0.9} stroke="white" strokeWidth={1}
-              />
-            </g>
-          )}
         </svg>
-
-        </div>{/* /内側div */}
 
         {/* Saving overlay */}
         {saving && (
