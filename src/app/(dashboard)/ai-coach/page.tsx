@@ -8,8 +8,7 @@ import {
   ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-const TEAM_ID = process.env.NEXT_PUBLIC_DEFAULT_TEAM_ID ?? ''
+import { useAuth } from '@/contexts/AuthContext'
 
 // ── Types ────────────────────────────────────────────────────
 interface MatchSummary {
@@ -29,6 +28,7 @@ interface Report {
 
 // ── Main Page ─────────────────────────────────────────────────
 export default function AICoachPage() {
+  const { teamId } = useAuth()
   const [matches, setMatches] = useState<MatchSummary[]>([])
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [mapFilter, setMapFilter] = useState('')
@@ -38,9 +38,10 @@ export default function AICoachPage() {
   const [showRaw, setShowRaw] = useState(false)
 
   useEffect(() => {
-    fetch(`/api/matches?team_id=${TEAM_ID}&limit=50`)
+    if (!teamId) return
+    fetch('/api/matches?limit=50')
       .then(r => r.json()).then(j => setMatches(j.data ?? [])).catch(() => {})
-  }, [])
+  }, [teamId])
 
   const allMaps = useMemo(() => [...new Set(matches.map(m => m.map).filter(Boolean))].sort(), [matches])
   const filteredMatches = useMemo(() => mapFilter ? matches.filter(m => m.map === mapFilter) : matches, [matches, mapFilter])
@@ -59,7 +60,7 @@ export default function AICoachPage() {
     try {
       const res = await fetch('/api/ai/analyze', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ team_id: TEAM_ID, match_ids: selectedIds.size > 0 ? [...selectedIds] : undefined, map_filter: mapFilter || undefined }),
+        body: JSON.stringify({ match_ids: selectedIds.size > 0 ? [...selectedIds] : undefined, map_filter: mapFilter || undefined }),
       })
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let json: Record<string, any>

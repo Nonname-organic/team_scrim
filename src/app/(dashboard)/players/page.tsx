@@ -7,8 +7,7 @@ import {
 } from 'recharts'
 import { cn } from '@/lib/utils'
 import type { PlayerCareerStats } from '@/types'
-
-const TEAM_ID = process.env.NEXT_PUBLIC_DEFAULT_TEAM_ID ?? 'YOUR_TEAM_UUID'
+import { useAuth } from '@/contexts/AuthContext'
 
 const ROLE_CONFIG: Record<string, { color: string; label: string }> = {
   duelist:   { color: '#FF4655', label: 'デュエリスト' },
@@ -19,19 +18,21 @@ const ROLE_CONFIG: Record<string, { color: string; label: string }> = {
 }
 
 export default function PlayersPage() {
+  const { teamId } = useAuth()
   const [players, setPlayers] = useState<(PlayerCareerStats & { ign: string; role: string })[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [radarData, setRadarData] = useState<Record<string, unknown>[] | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(`/api/players?team_id=${TEAM_ID}`)
+    if (!teamId) return
+    fetch('/api/players')
       .then(r => r.json())
       .then(json => {
         setPlayers(json.data ?? [])
         setLoading(false)
       })
-  }, [])
+  }, [teamId])
 
   useEffect(() => {
     if (!selected) { setRadarData(null); return }

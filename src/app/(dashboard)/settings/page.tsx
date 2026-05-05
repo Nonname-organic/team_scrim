@@ -1,8 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { Pencil, Trash2, Plus, Check, X } from 'lucide-react'
-
-const TEAM_ID = process.env.NEXT_PUBLIC_DEFAULT_TEAM_ID ?? ''
+import { useAuth } from '@/contexts/AuthContext'
 
 const ROLES = ['duelist', 'initiator', 'controller', 'sentinel', 'igl'] as const
 type Role = typeof ROLES[number]
@@ -19,6 +18,7 @@ interface Player { id: string; ign: string; real_name?: string; role: Role; acti
 interface Team   { id: string; name: string; tag: string; region: string }
 
 export default function SettingsPage() {
+  const { teamId } = useAuth()
   const [team, setTeam]       = useState<Team | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,13 +38,13 @@ export default function SettingsPage() {
   const [editForm, setEditForm] = useState({ ign: '', real_name: '', role: 'duelist' as Role })
   const [editSaving, setEditSaving] = useState(false)
 
-  useEffect(() => { loadAll() }, [])
+  useEffect(() => { if (teamId) loadAll() }, [teamId])
 
   async function loadAll() {
     setLoading(true)
     const [tRes, pRes] = await Promise.all([
-      fetch(`/api/teams?team_id=${TEAM_ID}`),
-      fetch(`/api/players?team_id=${TEAM_ID}&active=false`),
+      fetch('/api/teams'),
+      fetch('/api/players?active=false'),
     ])
     if (tRes.ok) { const j = await tRes.json(); setTeam(j.data) }
     if (pRes.ok) { const j = await pRes.json(); setPlayers(j.data ?? []) }
@@ -60,7 +60,7 @@ export default function SettingsPage() {
 
   async function saveTeam() {
     setTeamSaving(true)
-    const res = await fetch(`/api/teams?team_id=${TEAM_ID}`, {
+    const res = await fetch('/api/teams', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(teamForm),
@@ -76,7 +76,7 @@ export default function SettingsPage() {
     const res = await fetch('/api/players', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ team_id: TEAM_ID, ...newPlayer }),
+      body: JSON.stringify({ ...newPlayer }),
     })
     if (res.ok) {
       const j = await res.json()

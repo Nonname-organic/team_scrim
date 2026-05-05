@@ -2,8 +2,7 @@
 import { useEffect, useState, useRef } from 'react'
 import { Play, Link2, X, Check, ChevronDown, ChevronUp, Pencil } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-const TEAM_ID = process.env.NEXT_PUBLIC_DEFAULT_TEAM_ID ?? 'YOUR_TEAM_UUID'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface Match {
   id: string
@@ -36,6 +35,7 @@ function getEmbedUrl(url: string): string | null {
 const RESULT_COLOR = { win: '#00D4A0', loss: '#FF4655', draw: '#9B9BA4' } as const
 
 export default function VodPage() {
+  const { teamId } = useAuth()
   const [matches, setMatches] = useState<Match[]>([])
   const [loading, setLoading] = useState(true)
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -46,11 +46,12 @@ export default function VodPage() {
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    fetch(`/api/matches?team_id=${TEAM_ID}&limit=100`)
+    if (!teamId) return
+    fetch('/api/matches?limit=100')
       .then(r => r.json())
       .then(j => { setMatches(j.data ?? []); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [])
+  }, [teamId])
 
   useEffect(() => {
     if (editId && inputRef.current) inputRef.current.focus()

@@ -5,8 +5,7 @@ import { cn } from '@/lib/utils'
 import { MAPS, AGENTS } from '@/types'
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
 import { detectSite } from '@/lib/geometry'
-
-const TEAM_ID = process.env.NEXT_PUBLIC_DEFAULT_TEAM_ID ?? 'YOUR_TEAM_UUID'
+import { useAuth } from '@/contexts/AuthContext'
 
 // OCR: 英語エージェント名 → 日本語カタカナ正規化マップ
 const AGENT_EN_JA: Record<string, string> = {
@@ -94,6 +93,7 @@ const ECO_LABELS: Record<string, string> = {
 // Page
 // ============================================================
 export default function ScrimInputPage() {
+  const { teamId } = useAuth()
   const [players, setPlayers] = useState<Player[]>([])
 
   // Match info
@@ -123,13 +123,14 @@ export default function ScrimInputPage() {
   // エージェント使用頻度（DB から取得して dropdown をソート）
   const [agentUsage, setAgentUsage] = useState<Map<string, number>>(new Map())
   useEffect(() => {
-    fetch(`/api/agents/usage?team_id=${TEAM_ID}`)
+    if (!teamId) return
+    fetch('/api/agents/usage')
       .then(r => r.json())
       .then(j => {
         if (j.data) setAgentUsage(new Map(j.data.map((r: { agent: string; count: number }) => [r.agent, r.count])))
       })
       .catch(() => {})
-  }, [])
+  }, [teamId])
 
   // 使用頻度順（降順）→ 未使用は五十音順（AGENTS の定義順）
   const sortedAgents = useMemo(() => {
@@ -140,7 +141,8 @@ export default function ScrimInputPage() {
   }, [agentUsage])
 
   useEffect(() => {
-    fetch(`/api/players?team_id=${TEAM_ID}`)
+    if (!teamId) return
+    fetch('/api/players')
       .then(r => r.json())
       .then(j => {
         const fetched: Player[] = j.data ?? []
@@ -275,7 +277,6 @@ export default function ScrimInputPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          team_id: TEAM_ID,
           opponent_name: opponentName || '未登録',
           match_date: matchDate + 'T00:00:00',
           map, match_type: matchType,

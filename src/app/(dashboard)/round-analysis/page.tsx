@@ -3,8 +3,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import { ChevronDown, ChevronUp, Search, X } from 'lucide-react'
 import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSelector'
-
-const TEAM_ID = process.env.NEXT_PUBLIC_DEFAULT_TEAM_ID ?? 'YOUR_TEAM_UUID'
+import { useAuth } from '@/contexts/AuthContext'
 
 const ECO_LABELS: Record<string, string> = {
   pistol: 'ピストル', eco: 'エコ', anti_eco: 'アンチエコ', semi_eco: 'セミエコ',
@@ -38,6 +37,7 @@ type SortKey = 'date' | 'opponent' | 'map'
 type SortDir = 'asc' | 'desc'
 
 export default function RoundAnalysisPage() {
+  const { teamId } = useAuth()
   const [matches, setMatches] = useState<Match[]>([])
   const [selectedId, setSelectedId] = useState<string>('')
   const [roundsCache, setRoundsCache] = useState<Record<string, Round[]>>({})
@@ -52,11 +52,12 @@ export default function RoundAnalysisPage() {
 
   // Fetch match list
   useEffect(() => {
-    fetch(`/api/matches?team_id=${TEAM_ID}&limit=100`)
+    if (!teamId) return
+    fetch('/api/matches?limit=100')
       .then(r => r.json())
       .then(j => { setMatches(j.data ?? []); setLoadingMatches(false) })
       .catch(() => setLoadingMatches(false))
-  }, [])
+  }, [teamId])
 
   // Fetch rounds when match selected
   async function selectMatch(id: string) {

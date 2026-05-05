@@ -4,8 +4,7 @@ import Link from 'next/link'
 import { Upload, X, Check, Loader2, AlertCircle, UserCheck, UserX, Play, Link2, Pencil, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MAPS } from '@/types'
-
-const TEAM_ID = process.env.NEXT_PUBLIC_DEFAULT_TEAM_ID ?? 'YOUR_TEAM_UUID'
+import { useAuth } from '@/contexts/AuthContext'
 
 // ============================================================
 // Types
@@ -42,6 +41,7 @@ function getEmbedUrl(url: string): string | null {
 // ============================================================
 
 export default function MatchesPage() {
+  const { teamId } = useAuth()
   const [matches, setMatches] = useState<Match[]>([])
   const [loading, setLoading] = useState(true)
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null)
@@ -56,10 +56,11 @@ export default function MatchesPage() {
   const vodInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    fetch(`/api/matches?team_id=${TEAM_ID}`)
+    if (!teamId) return
+    fetch('/api/matches')
       .then(r => r.json())
       .then(json => { setMatches(json.data ?? []); setLoading(false) })
-  }, [])
+  }, [teamId])
 
   useEffect(() => {
     if (editVodId) vodInputRef.current?.focus()
@@ -452,7 +453,7 @@ function OcrWizardModal({ teamId, onClose, onSaved }: {
   const [playerMapping, setPlayerMapping] = useState<Record<number, string | null>>({})
 
   async function fetchRegisteredPlayers() {
-    const res = await fetch(`/api/players?team_id=${teamId}`)
+    const res = await fetch('/api/players')
     const json = await res.json()
     return (json.data ?? []) as RegisteredPlayer[]
   }
@@ -512,7 +513,7 @@ function OcrWizardModal({ teamId, onClose, onSaved }: {
       }))
       const res = await fetch('/api/ocr/save', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ team_id: teamId, ...matchForm, scoreboard_image_url: imageUrl, players: playersPayload }),
+        body: JSON.stringify({ ...matchForm, scoreboard_image_url: imageUrl, players: playersPayload }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error ?? '保存失敗')
@@ -714,7 +715,7 @@ function AddMatchModal({ teamId, onClose, onAdded }: {
       const res = await fetch('/api/matches', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          team_id: teamId, ...form,
+          ...form,
           team_score: Number(form.team_score), opponent_score: Number(form.opponent_score),
           attack_rounds_won: Number(form.attack_rounds_won) || 0, attack_rounds_played: Number(form.attack_rounds_played) || 0,
           defense_rounds_won: Number(form.defense_rounds_won) || 0, defense_rounds_played: Number(form.defense_rounds_played) || 0,

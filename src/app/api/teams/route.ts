@@ -1,33 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { queryOne } from '@/lib/db'
+import { getAuthContext, unauthorizedResponse } from '@/lib/server-auth'
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const teamId = searchParams.get('team_id')
-
-  if (!teamId) {
-    return NextResponse.json({ error: 'team_id required' }, { status: 400 })
-  }
+export async function GET() {
+  const auth = await getAuthContext()
+  if (!auth) return unauthorizedResponse()
 
   const team = await queryOne(
     'SELECT id, name, tag, region FROM teams WHERE id = $1',
-    [teamId]
+    [auth.teamId]
   )
 
-  if (!team) {
-    return NextResponse.json({ error: 'Team not found' }, { status: 404 })
-  }
-
+  if (!team) return NextResponse.json({ error: 'Team not found' }, { status: 404 })
   return NextResponse.json({ data: team })
 }
 
 export async function PATCH(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const teamId = searchParams.get('team_id')
-
-  if (!teamId) {
-    return NextResponse.json({ error: 'team_id required' }, { status: 400 })
-  }
+  const auth = await getAuthContext()
+  if (!auth) return unauthorizedResponse()
 
   const { name, tag, region } = await req.json()
 
@@ -42,7 +32,7 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
   }
 
-  values.push(teamId)
+  values.push(auth.teamId)
   const team = await queryOne(
     `UPDATE teams SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${values.length} RETURNING *`,
     values

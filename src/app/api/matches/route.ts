@@ -1,30 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
+import { getAuthContext, unauthorizedResponse } from '@/lib/server-auth'
 import type { CreateMatchInput } from '@/types'
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const teamId = searchParams.get('team_id')
-  const map = searchParams.get('map')
-  const matchType = searchParams.get('match_type')
-  const limit = Number(searchParams.get('limit') ?? 50)
+  const auth = await getAuthContext()
+  if (!auth) return unauthorizedResponse()
 
-  if (!teamId) {
-    return NextResponse.json({ error: 'team_id required' }, { status: 400 })
-  }
+  const { searchParams } = new URL(req.url)
+  const map       = searchParams.get('map')
+  const matchType = searchParams.get('match_type')
+  const limit     = Number(searchParams.get('limit') ?? 50)
 
   const conditions = ['m.team_id = $1']
-  const params: unknown[] = [teamId]
+  const params: unknown[] = [auth.teamId]
 
-  if (map) {
-    params.push(map)
-    conditions.push(`m.map = $${params.length}`)
-  }
-  if (matchType) {
-    params.push(matchType)
-    conditions.push(`m.match_type = $${params.length}`)
-  }
-
+  if (map)       { params.push(map);       conditions.push(`m.map = $${params.length}`) }
+  if (matchType) { params.push(matchType); conditions.push(`m.match_type = $${params.length}`) }
   params.push(limit)
 
   const matches = await query(
@@ -45,25 +37,20 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const body: CreateMatchInput & { team_id: string } = await req.json()
+  const auth = await getAuthContext()
+  if (!auth) return unauthorizedResponse()
 
+  const body: CreateMatchInput = await req.json()
   const {
-    team_id,
-    opponent_name,
-    match_date,
-    map,
+    opponent_name, match_date, map,
     match_type = 'scrim',
-    team_score,
-    opponent_score,
-    attack_rounds_won = 0,
-    attack_rounds_played = 0,
-    defense_rounds_won = 0,
-    defense_rounds_played = 0,
-    video_url,
-    notes,
+    team_score, opponent_score,
+    attack_rounds_won = 0, attack_rounds_played = 0,
+    defense_rounds_won = 0, defense_rounds_played = 0,
+    video_url, notes,
   } = body
 
-  if (!team_id || !opponent_name || !map || team_score == null || opponent_score == null) {
+  if (!opponent_name || !map || team_score == null || opponent_score == null) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
@@ -75,7 +62,7 @@ export async function POST(req: NextRequest) {
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
      RETURNING *`,
     [
-      team_id, opponent_name, match_date, map, match_type,
+      auth.teamId, opponent_name, match_date, map, match_type,
       team_score, opponent_score,
       attack_rounds_won, attack_rounds_played,
       defense_rounds_won, defense_rounds_played,

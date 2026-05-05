@@ -8,6 +8,7 @@ import {
   getRoundSiteStats,
   getTimingWinRates,
 } from '@/lib/analysis'
+import { getAuthContext, unauthorizedResponse } from '@/lib/server-auth'
 
 type SiteRow = { plant_site: string; side: string; wins: number; total: number; win_rate: number }
 type Entry   = { wins: number; total: number; win_rate: number }
@@ -33,24 +34,20 @@ function buildSiteWinRates(siteStats: { by_site: SiteRow[]; post_plant: Entry | 
 }
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
-  const teamId = searchParams.get('team_id')
+  const auth = await getAuthContext()
+  if (!auth) return unauthorizedResponse()
 
-  if (!teamId) {
-    return NextResponse.json({ error: 'team_id required' }, { status: 400 })
-  }
-
-  const map = searchParams.get('map') ?? undefined
+  const map = new URL(req.url).searchParams.get('map') ?? undefined
 
   try {
     const [summary, trend, economy, fbImpact, roundWinRates, siteStats, timingWinRates] = await Promise.all([
-      getDashboardSummary(teamId, map),
-      getWinRateTrend(teamId, 20, map),
-      getEconomyWinRates(teamId, map),
-      getFirstBloodImpact(teamId, map),
-      getRoundNumberWinRates(teamId, map),
-      getRoundSiteStats(teamId, map),
-      getTimingWinRates(teamId, map),
+      getDashboardSummary(auth.teamId, map),
+      getWinRateTrend(auth.teamId, 20, map),
+      getEconomyWinRates(auth.teamId, map),
+      getFirstBloodImpact(auth.teamId, map),
+      getRoundNumberWinRates(auth.teamId, map),
+      getRoundSiteStats(auth.teamId, map),
+      getTimingWinRates(auth.teamId, map),
     ])
 
     return NextResponse.json({

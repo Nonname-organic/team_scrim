@@ -10,22 +10,23 @@ import { RoundWinRates } from '@/components/dashboard/RoundWinRates'
 import { TimingWinRates } from '@/components/dashboard/TimingWinRates'
 import { AlertTriangle, FileDown } from 'lucide-react'
 import { MAPS } from '@/types'
-
-const TEAM_ID = process.env.NEXT_PUBLIC_DEFAULT_TEAM_ID ?? 'YOUR_TEAM_UUID'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function DashboardPage() {
+  const { teamId } = useAuth()
   const [data, setData] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [mapFilter, setMapFilter] = useState('')
 
   useEffect(() => {
+    if (!teamId) return
     setLoading(true)
     setError(null)
-    const params = new URLSearchParams({ team_id: TEAM_ID })
+    const params = new URLSearchParams()
     if (mapFilter) params.set('map', mapFilter)
 
-    fetch(`/api/analysis/dashboard?${params}`)
+    fetch(`/api/analysis/dashboard${params.size ? `?${params}` : ''}`)
       .then(r => {
         if (!r.ok) return r.json().then(j => { throw new Error(`${j.error ?? `HTTP ${r.status}`}${j.details ? `: ${j.details}` : ''}`) })
         return r.json()
@@ -39,7 +40,7 @@ export default function DashboardPage() {
         setError(String(e))
         setLoading(false)
       })
-  }, [mapFilter])
+  }, [mapFilter, teamId])
 
   if (loading) return <LoadingState />
   if (error || !data) return <ErrorState message={error ?? 'No data'} dbSetup={!data && !!error} />
