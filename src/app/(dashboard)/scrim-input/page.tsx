@@ -625,7 +625,6 @@ export default function ScrimInputPage() {
                             disabled={r.side !== 'defense'}
                             onChange={e => {
                               updateRound(i, 'retake', e.target.checked)
-                              if (!e.target.checked) updateRound(i, 'site', '')
                             }} />
                         </td>
                         <td className="px-2 py-1">

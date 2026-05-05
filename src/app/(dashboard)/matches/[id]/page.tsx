@@ -752,7 +752,6 @@ export default function MatchDetailPage() {
                             disabled={r.side !== 'defense'}
                             onChange={e => {
                               updateRound(i, 'retake', e.target.checked)
-                              if (!e.target.checked) updateRound(i, 'plant_site', '')
                             }}
                             className="accent-[#6C63FF] w-4 h-4"
                           />
