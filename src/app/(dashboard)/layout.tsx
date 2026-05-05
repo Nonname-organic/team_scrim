@@ -2,9 +2,16 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { LayoutDashboard, Users, Swords, Bot, TrendingUp, ClipboardEdit, BarChart2, Settings, LogOut } from 'lucide-react'
+import {
+  LayoutDashboard, Users, Swords, Bot, TrendingUp,
+  ClipboardEdit, BarChart2, Settings, LogOut, CreditCard,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
+import { PlanProvider, usePlan } from '@/contexts/PlanContext'
+import { UpgradeModal } from '@/components/pricing/UpgradeModal'
+import { PlanBadge } from '@/components/pricing/PlanBadge'
+import { AIUsageBar } from '@/components/pricing/UsageBar'
 
 const nav = [
   { href: '/',               label: 'ダッシュボード', icon: LayoutDashboard },
@@ -18,6 +25,7 @@ const nav = [
 
 function TeamInfo() {
   const { teamId } = useAuth()
+  const { plan, aiUsageLimit, showUpgrade } = usePlan()
   const [teamName, setTeamName] = useState('MY TEAM')
   const [teamTag, setTeamTag]   = useState('')
 
@@ -35,10 +43,26 @@ function TeamInfo() {
   }, [teamId])
 
   return (
-    <div>
-      <div className="text-[10px] text-muted-foreground">チーム</div>
-      <div className="text-xs font-semibold text-white mt-0.5">{teamName}</div>
-      {teamTag && <div className="text-[10px] text-muted-foreground mt-0.5">[{teamTag}]</div>}
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-[10px] text-muted-foreground">チーム</div>
+          <div className="text-xs font-semibold text-white mt-0.5">{teamName}</div>
+          {teamTag && <div className="text-[10px] text-muted-foreground mt-0.5">[{teamTag}]</div>}
+        </div>
+        <PlanBadge plan={plan} size="xs" />
+      </div>
+      {aiUsageLimit !== null && (
+        <AIUsageBar />
+      )}
+      {plan === 'free' && (
+        <button
+          onClick={() => showUpgrade()}
+          className="w-full text-[10px] font-bold text-[#FFD700] bg-[#FFD700]/10 hover:bg-[#FFD700]/20 border border-[#FFD700]/20 rounded-lg py-1.5 transition-colors"
+        >
+          ⭐ Proにアップグレード
+        </button>
+      )}
     </div>
   )
 }
@@ -79,6 +103,18 @@ function Sidebar() {
             {label}
           </Link>
         ))}
+        <Link
+          href="/pricing"
+          className={cn(
+            'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+            pathname === '/pricing'
+              ? 'bg-[#FFD700]/10 text-[#FFD700]'
+              : 'text-[#FFD700]/70 hover:text-[#FFD700] hover:bg-[#FFD700]/5'
+          )}
+        >
+          <CreditCard className="w-4 h-4 flex-shrink-0" />
+          プラン
+        </Link>
       </nav>
 
       {/* Team info + logout */}
@@ -96,15 +132,26 @@ function Sidebar() {
   )
 }
 
+function DashboardInner({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <Sidebar />
+      <main className="flex-1 ml-56 p-6 min-h-screen">
+        {children}
+      </main>
+      <UpgradeModal />
+    </>
+  )
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
-      <div className="flex min-h-screen">
-        <Sidebar />
-        <main className="flex-1 ml-56 p-6 min-h-screen">
-          {children}
-        </main>
-      </div>
+      <PlanProvider>
+        <div className="flex min-h-screen">
+          <DashboardInner>{children}</DashboardInner>
+        </div>
+      </PlanProvider>
     </AuthProvider>
   )
 }

@@ -1,8 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Bot, User, AlertCircle, Zap, Loader2, Plus, X, Trash2 } from 'lucide-react'
+import { Bot, User, AlertCircle, Zap, Loader2, Plus, X, Trash2, Lock } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { usePlan } from '@/contexts/PlanContext'
 
 interface FeedbackData {
   id: string
@@ -293,6 +294,7 @@ function CoachForm({
 }
 
 export function MatchFeedbackPanel({ matchId }: { matchId: string }) {
+  const { canUseAI, aiUsageCount, aiUsageLimit, showUpgrade } = usePlan()
   const [feedbacks, setFeedbacks]     = useState<FeedbackData[]>([])
   const [loading, setLoading]         = useState(true)
   const [aiLoading, setAiLoading]     = useState(false)
@@ -319,6 +321,18 @@ export function MatchFeedbackPanel({ matchId }: { matchId: string }) {
   useEffect(() => { fetchFeedbacks() }, [fetchFeedbacks])
 
   const runAI = async () => {
+    // プラン制限チェック
+    if (!canUseAI) {
+      const aiFeedbacks = feedbacks.filter(f => f.type === 'ai')
+      const weaknesses  = aiFeedbacks[0]?.weaknesses?.slice(0, 2) ?? []
+      showUpgrade({
+        feature: 'ai_limit',
+        title: 'AI分析の上限に達しました',
+        message: `今月のAI使用回数（${aiUsageLimit}回）を使い切りました。Proプランで月20回、Teamプランで無制限にご利用いただけます。`,
+        preview: weaknesses.length > 0 ? weaknesses : undefined,
+      })
+      return
+    }
     setAiLoading(true)
     setAiError(null)
     try {
@@ -374,12 +388,20 @@ export function MatchFeedbackPanel({ matchId }: { matchId: string }) {
           <button
             onClick={runAI}
             disabled={aiLoading}
-            className="flex items-center gap-1.5 text-xs bg-[#6C63FF]/20 hover:bg-[#6C63FF]/30 text-[#6C63FF] border border-[#6C63FF]/30 rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50"
+            title={!canUseAI ? `AI使用上限 (${aiUsageCount}/${aiUsageLimit}回) に達しました` : undefined}
+            className={cn(
+              'flex items-center gap-1.5 text-xs border rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50',
+              canUseAI
+                ? 'bg-[#6C63FF]/20 hover:bg-[#6C63FF]/30 text-[#6C63FF] border-[#6C63FF]/30'
+                : 'bg-[#FF4655]/10 hover:bg-[#FF4655]/20 text-[#FF4655] border-[#FF4655]/20'
+            )}
           >
             {aiLoading
               ? <Loader2 className="w-3 h-3 animate-spin" />
-              : <Bot className="w-3 h-3" />}
-            AI分析
+              : canUseAI
+              ? <Bot className="w-3 h-3" />
+              : <Lock className="w-3 h-3" />}
+            AI分析{!canUseAI && ` (${aiUsageCount}/${aiUsageLimit})`}
           </button>
         </div>
       </div>
