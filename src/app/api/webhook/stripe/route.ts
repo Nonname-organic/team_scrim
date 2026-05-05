@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import Stripe from 'stripe'
 import { query, queryOne } from '@/lib/db'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
-  apiVersion: '2026-04-22.dahlia',
-})
+function getStripe() {
+  const key = process.env.STRIPE_SECRET_KEY
+  if (!key) throw new Error('STRIPE_SECRET_KEY not configured')
+  return new Stripe(key, { apiVersion: '2026-04-22.dahlia' })
+}
 
 export async function POST(req: NextRequest) {
   const body = await req.text()
@@ -12,7 +14,7 @@ export async function POST(req: NextRequest) {
 
   let event: Stripe.Event
   try {
-    event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET ?? '')
+    event = getStripe().webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET ?? '')
   } catch (err) {
     console.error('[stripe webhook] signature failed', err)
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 })

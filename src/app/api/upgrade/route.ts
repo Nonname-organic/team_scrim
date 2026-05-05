@@ -4,9 +4,11 @@ import { getAuthContext } from '@/lib/server-auth'
 import { queryOne } from '@/lib/db'
 import { PLANS, type Plan } from '@/lib/plans'
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? '', {
-  apiVersion: '2026-04-22.dahlia',
-})
+function getStripe() {
+  const key = process.env.STRIPE_SECRET_KEY
+  if (!key) throw new Error('STRIPE_SECRET_KEY not configured')
+  return new Stripe(key, { apiVersion: '2026-04-22.dahlia' })
+}
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthContext()
@@ -24,6 +26,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const stripe = getStripe()
     const row = await queryOne<{ stripe_customer_id: string | null }>(
       'SELECT stripe_customer_id FROM user_teams WHERE user_id = $1 AND team_id = $2',
       [auth.userId, auth.teamId]
