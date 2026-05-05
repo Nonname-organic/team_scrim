@@ -389,6 +389,7 @@ export default function RoundAnalysisPage() {
                   timestamp={roundTimestamps[activeRound.id] ?? null}
                   onNoteChange={(text) => saveNote(activeRound.id, text)}
                   onSetTimestamp={() => saveRoundTimestamp(activeRound.id, getVideoTimeRef.current())}
+                  onSetTimestampValue={(s) => saveRoundTimestamp(activeRound.id, s)}
                   onClearTimestamp={() => clearRoundTimestamp(activeRound.id)}
                   onTimingChange={async (timing) => {
                     await fetch(`/api/rounds/${activeRound.id}`, {
@@ -653,12 +654,25 @@ function formatTime(sec: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+function parseTimeInput(input: string): number | null {
+  const s = input.trim()
+  const mmss = s.match(/^(\d+):(\d{1,2})$/)
+  if (mmss) {
+    const sec = parseInt(mmss[2], 10)
+    if (sec < 60) return parseInt(mmss[1], 10) * 60 + sec
+  }
+  const secs = parseFloat(s)
+  if (!isNaN(secs) && secs >= 0) return secs
+  return null
+}
+
 function RoundDetailPanel({
   round: r,
   note,
   timestamp,
   onNoteChange,
   onSetTimestamp,
+  onSetTimestampValue,
   onClearTimestamp,
   onTimingChange,
 }: {
@@ -667,10 +681,21 @@ function RoundDetailPanel({
   timestamp: number | null
   onNoteChange: (text: string) => void
   onSetTimestamp: () => void
+  onSetTimestampValue: (seconds: number) => void
   onClearTimestamp: () => void
   onTimingChange: (t: 'early' | 'mid' | 'late' | null) => void
 }) {
   const isWin = r.result === 'win'
+  const [timeInput, setTimeInput] = useState(timestamp !== null ? formatTime(timestamp) : '')
+  const [inputError, setInputError] = useState(false)
+
+  const handleSaveInput = () => {
+    const parsed = parseTimeInput(timeInput)
+    if (parsed === null) { setInputError(true); return }
+    setInputError(false)
+    onSetTimestampValue(parsed)
+  }
+
   return (
     <div className="p-3 space-y-3">
       {/* Round header */}
@@ -728,26 +753,52 @@ function RoundDetailPanel({
       </div>
 
       {/* VOD タイムスタンプ */}
-      <div className="space-y-1.5 bg-muted/20 border border-border/60 rounded-xl p-3">
-        <div className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-          <Play className="w-3 h-3" /> VOD開始時間
-        </div>
-        {timestamp !== null ? (
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-mono font-bold text-white">{formatTime(timestamp)}</span>
-            <span className="text-[10px] text-muted-foreground">({timestamp.toFixed(0)}秒)</span>
-            <button
-              onClick={onClearTimestamp}
-              className="ml-auto text-[10px] text-muted-foreground hover:text-[#FF4655] transition-colors"
-            >
-              <X className="w-3 h-3" />
-            </button>
+      <div className="space-y-2 bg-muted/20 border border-border/60 rounded-xl p-3">
+        <div className="flex items-center justify-between">
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+            <Play className="w-3 h-3" /> VOD開始時間
           </div>
-        ) : (
-          <div className="text-[10px] text-muted-foreground/60">未設定（自動推算）</div>
+          {timestamp !== null && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-mono font-bold text-white">{formatTime(timestamp)}</span>
+              <span className="text-[10px] text-muted-foreground">({Math.floor(timestamp)}秒)</span>
+              <button onClick={onClearTimestamp} className="text-muted-foreground hover:text-[#FF4655] transition-colors ml-1">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
+          {timestamp === null && (
+            <span className="text-[10px] text-muted-foreground/50">未設定</span>
+          )}
+        </div>
+
+        {/* 手動入力 */}
+        <div className="flex gap-1.5">
+          <input
+            type="text"
+            value={timeInput}
+            onChange={e => { setTimeInput(e.target.value); setInputError(false) }}
+            onKeyDown={e => e.key === 'Enter' && handleSaveInput()}
+            placeholder="1:23 または 83"
+            className={cn(
+              'flex-1 bg-muted/50 border rounded px-2.5 py-1.5 text-xs font-mono text-white placeholder-muted-foreground/50 outline-none transition-colors',
+              inputError ? 'border-[#FF4655]' : 'border-border focus:border-[#FF4655]'
+            )}
+          />
+          <button
+            onClick={handleSaveInput}
+            className="text-xs px-3 py-1.5 bg-muted/50 hover:bg-muted border border-border hover:border-white/30 text-white rounded transition-colors font-medium"
+          >
+            設定
+          </button>
+        </div>
+        {inputError && (
+          <div className="text-[10px] text-[#FF4655]">形式: 1:23 または 83 (秒)</div>
         )}
+
+        {/* 動画から取得 */}
         <button
-          onClick={onSetTimestamp}
+          onClick={() => { onSetTimestamp(); setTimeInput('') }}
           className="w-full text-xs bg-[#FF4655]/15 hover:bg-[#FF4655]/25 text-[#FF4655] border border-[#FF4655]/30 rounded-lg px-3 py-1.5 transition-colors font-medium"
         >
           現在の動画位置を設定
