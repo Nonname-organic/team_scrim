@@ -2,7 +2,7 @@
 // VALORANT Scrim Analyzer - TypeScript Type Definitions
 // ============================================================
 
-export type Role = 'duelist' | 'initiator' | 'controller' | 'sentinel' | 'igl'
+export type Role = 'duelist' | 'initiator' | 'controller' | 'sentinel' | 'igl' | 'flex'
 export type Side = 'attack' | 'defense'
 export type RoundResult = 'win' | 'loss'
 export type MatchResult = 'win' | 'loss' | 'draw'

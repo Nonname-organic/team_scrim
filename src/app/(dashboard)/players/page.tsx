@@ -15,6 +15,7 @@ const ROLE_CONFIG: Record<string, { color: string; label: string }> = {
   controller:{ color: '#6C63FF', label: 'コントローラー' },
   sentinel:  { color: '#00D4A0', label: 'センチネル' },
   igl:       { color: '#FFD700', label: 'IGL' },
+  flex:      { color: '#E879F9', label: 'Flex' },
 }
 
 export default function PlayersPage() {
