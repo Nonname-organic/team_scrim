@@ -48,9 +48,32 @@ interface FeedbackData {
 function parseTactical(raw: string | null | undefined): TacticalAnalysis | null {
   if (!raw) return null
   try {
+    const json = JSON.parse(raw)
+    if (!json.round_evaluation) return null
+    // tool_use 保存形式（score がフラット）を正規化
+    if (!json.score && (json.score_macro !== undefined || json.score_overall !== undefined)) {
+      json.score = {
+        macro:    json.score_macro    ?? 0,
+        micro:    json.score_micro    ?? 0,
+        teamplay: json.score_teamplay ?? 0,
+        overall:  json.score_overall  ?? 0,
+      }
+    }
+    if (!json.improvements && (json.team_improvements || json.individual_improvements)) {
+      json.improvements = {
+        team:       json.team_improvements       ?? [],
+        individual: json.individual_improvements ?? [],
+      }
+    }
+    return json as TacticalAnalysis
+  } catch {}
+  // フォールバック: ```json ブロックを探す
+  try {
     const fenced = raw.match(/```json\r?\n([\s\S]*?)\r?\n```/)
-    const json = fenced ? JSON.parse(fenced[1]) : JSON.parse(raw)
-    if (json.round_evaluation) return json as TacticalAnalysis
+    if (fenced) {
+      const json = JSON.parse(fenced[1])
+      if (json.round_evaluation) return json as TacticalAnalysis
+    }
   } catch {}
   return null
 }
