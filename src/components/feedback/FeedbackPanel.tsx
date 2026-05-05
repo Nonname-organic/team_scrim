@@ -560,7 +560,13 @@ export function MatchFeedbackPanel({ matchId }: { matchId: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ match_id: matchId }),
       })
-      if (!res.ok) { setAiError((await res.json()).error ?? 'AI分析に失敗しました'); return }
+      if (!res.ok) {
+        let msg = `AI分析に失敗しました (${res.status})`
+        if (res.status === 504) msg = 'タイムアウトしました。しばらく待ってから再度お試しください。'
+        else { try { msg = (await res.json()).error ?? msg } catch {} }
+        setAiError(msg)
+        return
+      }
       await fetchFeedbacks()
     } finally { setAiLoading(false) }
   }
