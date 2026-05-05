@@ -600,8 +600,17 @@ export function MatchFeedbackPanel({ matchId }: { matchId: string }) {
         )}
 
         {!loading && feedbacks.length === 0 && !showCoachForm && (
-          <div className="text-center py-8 text-muted-foreground text-xs">
-            フィードバックがありません。AI分析またはコーチメモを追加してください。
+          <div className="flex flex-col items-center gap-3 py-8">
+            <p className="text-xs text-muted-foreground">この試合のフィードバックはまだありません</p>
+            <button
+              onClick={runAI}
+              disabled={aiLoading}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-[#6C63FF] hover:bg-[#6C63FF]/80 text-white transition-colors disabled:opacity-50 shadow-lg shadow-[#6C63FF]/20"
+            >
+              {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
+              AI戦術分析を実行
+            </button>
+            <p className="text-[10px] text-muted-foreground">ラウンドデータを元に戦術アナリストが分析します</p>
           </div>
         )}
 
