@@ -10,12 +10,13 @@ import type { PlayerCareerStats } from '@/types'
 import { useAuth } from '@/contexts/AuthContext'
 
 const ROLE_CONFIG: Record<string, { color: string; label: string }> = {
-  duelist:   { color: '#FF4655', label: 'デュエリスト' },
-  initiator: { color: '#FF8C42', label: 'イニシエーター' },
-  controller:{ color: '#6C63FF', label: 'コントローラー' },
-  sentinel:  { color: '#00D4A0', label: 'センチネル' },
-  igl:       { color: '#FFD700', label: 'IGL' },
-  flex:      { color: '#E879F9', label: 'Flex' },
+  duelist:     { color: '#FF4655', label: 'デュエリスト' },
+  sub_duelist: { color: '#FF7A85', label: 'サブデュエリスト' },
+  initiator:   { color: '#FF8C42', label: 'イニシエーター' },
+  controller:  { color: '#6C63FF', label: 'コントローラー' },
+  sentinel:    { color: '#00D4A0', label: 'センチネル' },
+  flex:        { color: '#E879F9', label: 'Flex' },
+  igl:         { color: '#FFD700', label: 'IGL' },
 }
 
 export default function PlayersPage() {

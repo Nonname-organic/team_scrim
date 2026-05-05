@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS players (
   team_id       UUID REFERENCES teams(id) ON DELETE CASCADE,
   ign           VARCHAR(50)  NOT NULL,
   real_name     VARCHAR(100),
-  role          VARCHAR(20)  CHECK (role IN ('duelist','initiator','controller','sentinel','igl','flex')),
+  role          VARCHAR(20)  CHECK (role IN ('duelist','sub_duelist','initiator','controller','sentinel','flex','igl')),
   agent_pool    TEXT[],
   active        BOOLEAN      DEFAULT TRUE,
   created_at    TIMESTAMPTZ  DEFAULT NOW()

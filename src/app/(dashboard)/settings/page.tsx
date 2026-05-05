@@ -3,16 +3,17 @@ import { useEffect, useState } from 'react'
 import { Pencil, Trash2, Plus, Check, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 
-const ROLES = ['duelist', 'initiator', 'controller', 'sentinel', 'igl', 'flex'] as const
+const ROLES = ['duelist', 'sub_duelist', 'initiator', 'controller', 'sentinel', 'flex', 'igl'] as const
 type Role = typeof ROLES[number]
 
 const ROLE_LABELS: Record<Role, string> = {
-  duelist:    'デュエリスト',
-  initiator:  'イニシエーター',
-  controller: 'コントローラー',
-  sentinel:   'センチネル',
-  igl:        'IGL',
-  flex:       'Flex',
+  duelist:     'デュエリスト',
+  sub_duelist: 'サブデュエリスト',
+  initiator:   'イニシエーター',
+  controller:  'コントローラー',
+  sentinel:    'センチネル',
+  flex:        'Flex',
+  igl:         'IGL',
 }
 
 interface Player { id: string; ign: string; real_name?: string; role: Role; active: boolean }

@@ -305,7 +305,7 @@ function RoundDetail({
   const fbWinRate  = fbWonRounds.length  > 0 ? fbWonRounds.filter(r => r.result === 'win').length  / fbWonRounds.length  : null
   const fdWinRate  = fbLostRounds.length > 0 ? fbLostRounds.filter(r => r.result === 'win').length / fbLostRounds.length : null
 
-  const ecoTypes = ['pistol', 'eco', 'anti_eco', 'semi_eco', 'semi_buy', 'full_buy', 'oper', 'second', 'third']
+  const ecoTypes = ['pistol', 'second', 'third', 'eco', 'anti_eco', 'semi_eco', 'semi_buy', 'full_buy', 'oper']
   const ecoStats = ecoTypes.map(type => {
     const rows = rounds.filter(r => r.economy_type === type)
     const wins = rows.filter(r => r.result === 'win').length
