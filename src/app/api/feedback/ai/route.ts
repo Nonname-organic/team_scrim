@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { query, queryOne } from '@/lib/db'
-import { buildMatchFeedbackPrompt } from '@/lib/ai-prompts'
+import { buildTacticalFeedbackPrompt } from '@/lib/ai-prompts'
 
 export const maxDuration = 60
 
@@ -13,33 +13,11 @@ function extractJSON(text: string): Record<string, unknown> | null {
   const plain = text.match(/```\r?\n(\{[\s\S]*?\})\r?\n```/)
   if (plain) { try { return JSON.parse(plain[1]) } catch {} }
   const start = text.indexOf('{')
-  const end = text.lastIndexOf('}')
+  const end   = text.lastIndexOf('}')
   if (start !== -1 && end > start) {
     try { return JSON.parse(text.slice(start, end + 1)) } catch {}
   }
   return null
-}
-
-function determineStyleTag(
-  rounds: Record<string, unknown>[]
-): 'aggressive' | 'control' | 'default' | 'mixed' {
-  if (rounds.length === 0) return 'default'
-
-  const fbRounds    = rounds.filter(r => r.first_blood_team === true).length
-  const timedRounds = rounds.filter(r => r.contact_timing).length
-  const earlyRounds = rounds.filter(r => r.contact_timing === 'early').length
-  const lateRounds  = rounds.filter(r => r.contact_timing === 'late').length
-  const plantedRounds = rounds.filter(r => r.planted === true).length
-
-  const fbPct    = rounds.length > 0 ? fbRounds    / rounds.length  : 0
-  const earlyPct = timedRounds  > 0 ? earlyRounds / timedRounds    : 0
-  const latePct  = timedRounds  > 0 ? lateRounds  / timedRounds    : 0
-  const plantRate = rounds.length > 0 ? plantedRounds / rounds.length : 0
-
-  if (fbPct > 0.45 && earlyPct > 0.35) return 'aggressive'
-  if (latePct > 0.4 && plantRate > 0.45) return 'control'
-  if (fbPct > 0.3 && latePct > 0.2) return 'mixed'
-  return 'default'
 }
 
 export async function POST(req: NextRequest) {
@@ -58,7 +36,7 @@ export async function POST(req: NextRequest) {
     const [rounds, playerStats] = await Promise.all([
       query<Record<string, unknown>>(
         `SELECT round_number, side, result, economy_type, planted, plant_site,
-                first_blood_team, contact_timing, retake
+                first_blood_team, contact_timing, retake, notable
          FROM rounds WHERE match_id = $1 ORDER BY round_number`,
         [match_id]
       ),
@@ -71,17 +49,15 @@ export async function POST(req: NextRequest) {
       ),
     ])
 
-    const styleTag = determineStyleTag(rounds)
-    const prompt = buildMatchFeedbackPrompt(match, rounds, playerStats, styleTag)
-
+    const prompt  = buildTacticalFeedbackPrompt(match, rounds, playerStats)
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1500,
-      messages: [{ role: 'user', content: prompt }],
+      model:      'claude-sonnet-4-6',
+      max_tokens: 2000,
+      messages:   [{ role: 'user', content: prompt }],
     })
 
     const rawText = message.content[0].type === 'text' ? message.content[0].text : ''
-    const parsed = extractJSON(rawText)
+    const parsed  = extractJSON(rawText)
 
     if (!parsed) {
       console.error('[feedback/ai] JSON parse failed:', rawText.slice(0, 500))
@@ -91,11 +67,20 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const strengths    = Array.isArray(parsed.strengths)    ? parsed.strengths    : []
-    const weaknesses   = Array.isArray(parsed.weaknesses)   ? parsed.weaknesses   : []
-    const action_items = Array.isArray(parsed.action_items) ? parsed.action_items : []
-    const summary      = typeof parsed.summary === 'string' ? parsed.summary      : null
-    const finalStyle   = typeof parsed.style_tag === 'string' ? parsed.style_tag  : styleTag
+    // ── Map new schema → DB columns ──────────────────────────────────────────
+    const round_evaluation = typeof parsed.round_evaluation === 'string' ? parsed.round_evaluation : null
+    const good_points      = Array.isArray(parsed.good_points) ? parsed.good_points as string[] : []
+    const issues           = Array.isArray(parsed.issues) ? parsed.issues as Record<string, unknown>[] : []
+    const improv           = parsed.improvements as Record<string, unknown> | null
+    const team_improvements = Array.isArray(improv?.team) ? improv!.team as string[] : []
+    const indv_improvements = Array.isArray(improv?.individual) ? improv!.individual as string[] : []
+
+    // weaknesses: issues formatted with priority tag
+    const weaknesses = issues.map(iss =>
+      `[${(iss.priority as string)?.toUpperCase() ?? 'MID'}] ${iss.issue} — ${iss.impact}`
+    )
+
+    const action_items = [...team_improvements, ...indv_improvements]
 
     const saved = await query<Record<string, unknown>>(
       `INSERT INTO feedbacks
@@ -106,11 +91,11 @@ export async function POST(req: NextRequest) {
       [
         match_id,
         match.team_id,
-        summary,
-        JSON.stringify(strengths),
+        round_evaluation,
+        JSON.stringify(good_points),
         JSON.stringify(weaknesses),
         JSON.stringify(action_items),
-        finalStyle,
+        null,
         rawText,
         'claude-sonnet-4-6',
       ]

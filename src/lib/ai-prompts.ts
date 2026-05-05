@@ -3,6 +3,154 @@
 // VALORANTコーチ視点の分析プロンプト
 // ============================================================
 
+// ============================================================
+// Tactical Analyst Prompt — per-match structured analysis
+// ============================================================
+
+export function buildTacticalFeedbackPrompt(
+  match: Record<string, unknown>,
+  rounds: Record<string, unknown>[],
+  playerStats: Record<string, unknown>[]
+): string {
+  const atkRounds = rounds.filter(r => r.side === 'attack')
+  const defRounds = rounds.filter(r => r.side === 'defense')
+
+  const summarizePhase = (rs: Record<string, unknown>[]) => {
+    if (!rs.length) return 'なし'
+    const wins    = rs.filter(r => r.result === 'win').length
+    const fb      = rs.filter(r => r.first_blood_team === true).length
+    const planted = rs.filter(r => r.planted === true).length
+    const retake  = rs.filter(r => r.retake === true).length
+    return `${wins}W/${rs.length}R FB${fb} プラント${planted} リテイク${retake}`
+  }
+
+  const econSummary = () => {
+    const types = ['full', 'eco', 'force', 'semi_eco', 'second', 'third', 'pistol']
+    return types.flatMap(t => {
+      const rs = rounds.filter(r => r.economy_type === t)
+      if (!rs.length) return []
+      const w = rs.filter(r => r.result === 'win').length
+      return [`${t}: ${w}/${rs.length}勝`]
+    }).join(' | ') || '記録なし'
+  }
+
+  const keyFights = rounds
+    .filter(r => r.first_blood_team === true || r.retake || r.notable)
+    .slice(0, 6)
+    .map(r => {
+      const tags = [
+        r.first_blood_team === true  ? 'FB取得' : '',
+        r.first_blood_team === false ? 'FB喪失' : '',
+        r.retake    ? 'リテイク' : '',
+        r.planted   ? `プラント${r.plant_site ?? ''}` : '',
+      ].filter(Boolean).join(' ')
+      return `R${r.round_number} ${r.side === 'attack' ? 'ATK' : 'DEF'} ${r.result === 'win' ? '勝' : '負'} [${tags}]`
+    })
+
+  const plantSites = [...new Set(
+    rounds.filter(r => r.plant_site).map(r => r.plant_site)
+  )]
+
+  const input = {
+    map: match.map,
+    side: `ATK ${atkRounds.length}R / DEF ${defRounds.length}R`,
+    result: `${match.result === 'win' ? '勝利' : '敗北'} (${match.team_score}-${match.opponent_score}) vs ${match.opponent_name}`,
+    team_comp: playerStats.map(p => p.agent).filter(Boolean),
+    enemy_comp: ['未記録'],
+    economy: econSummary(),
+    timeline: {
+      early: `R1-5: ${summarizePhase(rounds.filter(r => Number(r.round_number) <= 5))}`,
+      mid:   `R6-12: ${summarizePhase(rounds.filter(r => Number(r.round_number) >= 6 && Number(r.round_number) <= 12))}`,
+      late:  `R13+: ${summarizePhase(rounds.filter(r => Number(r.round_number) >= 13))}`,
+    },
+    events: {
+      first_kill: (() => {
+        const fb = rounds.filter(r => r.first_blood_team === true).length
+        const fd = rounds.filter(r => r.first_blood_team === false).length
+        const fbWr = rounds.filter(r => r.first_blood_team === true  && r.result === 'win').length
+        const fdWr = rounds.filter(r => r.first_blood_team === false && r.result === 'win').length
+        return `FB取得 ${fb}R(勝率${fb > 0 ? Math.round(fbWr/fb*100) : 0}%) / FB喪失 ${fd}R(勝率${fd > 0 ? Math.round(fdWr/fd*100) : 0}%)`
+      })(),
+      key_fights: keyFights.length > 0 ? keyFights : ['特記ラウンドなし'],
+      utility:    ['未記録（VODで確認要）'],
+      rotations:  ['未記録（VODで確認要）'],
+    },
+    positions: plantSites.length > 0 ? plantSites : ['プラント記録なし'],
+    notes: (match.notes as string | null) ?? '特記事項なし',
+    player_stats: playerStats.map(p => ({
+      ign: p.ign, agent: p.agent,
+      kills: p.kills, deaths: p.deaths, assists: p.assists,
+      acs: p.acs, hs_pct: p.hs_pct,
+      first_bloods: p.first_bloods, first_deaths: p.first_deaths,
+    })),
+  }
+
+  return `あなたはプロe-sportsチームの戦術アナリスト兼ヘッドコーチです。
+
+目的は「勝敗の再現性を高めること」です。
+
+分析では必ず以下を行ってください：
+1. 勝敗の本質的な原因の特定（表面的な結果は禁止）
+2. 因果関係の分解（なぜ起きたか）
+3. 改善を"行動単位"で提示
+4. チームとして再現可能なルールに変換
+
+禁止事項：
+・抽象的な精神論
+・結果論のみの指摘
+・説明不足
+
+出力はプロチームへのフィードバックとして簡潔かつ厳密に。日本語で回答すること。
+
+## INPUT
+\`\`\`json
+${JSON.stringify(input, null, 2)}
+\`\`\`
+
+以下のJSON形式のみで出力すること。余分なテキスト禁止。
+
+\`\`\`json
+{
+  "round_evaluation": "この試合の戦術的評価（2〜3文、数値を必ず引用）",
+  "win_factor": "勝敗を分けた本質的要因（1文、行動として）",
+  "good_points": [
+    "具体的な良かった点（行動として、数値を含む）"
+  ],
+  "issues": [
+    {
+      "issue": "何が起きたか（行動として）",
+      "impact": "なぜ勝敗に影響するか（因果関係を明示）",
+      "priority": "high"
+    }
+  ],
+  "root_causes": [
+    "なぜその問題が発生したか（判断ミス・習慣・情報不足のいずれか）"
+  ],
+  "improvements": {
+    "team": [
+      "チームとして次の試合で変える行動（動詞で始める）"
+    ],
+    "individual": [
+      "個人として変える行動（動詞で始める、対象者が分かるように）"
+    ]
+  },
+  "rules": [
+    "チームルールとして定義する再現可能な行動原則（if-then形式推奨）"
+  ],
+  "pattern_flags": [
+    "繰り返しているパターン・癖（行動として）"
+  ],
+  "score": {
+    "macro": 0,
+    "micro": 0,
+    "teamplay": 0,
+    "overall": 0
+  }
+}
+\`\`\`
+`
+}
+
 export function buildCoachPrompt(context: Record<string, unknown>): string {
   return `あなたはVALORANTプロチームのヘッドコーチ兼アナリストです。
 T1、Sentinels、FNATICなどのトップチームのコーチング手法を理解しており、
