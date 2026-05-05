@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import {
-  LayoutDashboard, Users, Swords, Bot, TrendingUp,
+  LayoutDashboard, Users, Swords, TrendingUp,
   ClipboardEdit, BarChart2, Settings, LogOut, CreditCard,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -19,7 +19,6 @@ const nav = [
   { href: '/players',        label: '選手スタッツ',   icon: Users },
   { href: '/matches',        label: '試合履歴',       icon: Swords },
   { href: '/round-analysis', label: '試合分析',       icon: BarChart2 },
-  { href: '/ai-coach',       label: 'AIコーチ',       icon: Bot },
   { href: '/settings',       label: '設定',           icon: Settings },
 ]
 

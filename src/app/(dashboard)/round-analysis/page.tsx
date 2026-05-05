@@ -10,6 +10,7 @@ import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSele
 import { useAuth } from '@/contexts/AuthContext'
 import { usePlan } from '@/contexts/PlanContext'
 import { LockedFeature } from '@/components/pricing/LockedFeature'
+import { MatchFeedbackPanel } from '@/components/feedback/FeedbackPanel'
 
 // ── constants ────────────────────────────────────────────────────────────────
 
@@ -192,7 +193,7 @@ export default function RoundAnalysisPage() {
       roundTimestamps[r.id] ?? (vodOffset + (r.round_number - 1) * secPerRound)
 
     return (
-      <div className="flex flex-col h-[calc(100vh-96px)] -m-6 overflow-hidden">
+      <div className="flex flex-col min-h-[calc(100vh-96px)] -m-6">
         {/* Top bar */}
         <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-[#18181F] flex-shrink-0">
           <button
@@ -257,7 +258,7 @@ export default function RoundAnalysisPage() {
         )}
 
         {/* 3-pane */}
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex overflow-hidden" style={{ height: 'calc(100vh - 96px)' }}>
           {/* ── LEFT: Round list ── */}
           <div className="w-64 border-r border-border flex flex-col bg-card overflow-hidden flex-shrink-0">
             <div className="px-3 py-2 border-b border-border flex-shrink-0">
@@ -451,6 +452,11 @@ export default function RoundAnalysisPage() {
               )}
             </div>
           </div>
+        </div>
+
+        {/* ── FEEDBACK: AI分析 + コーチメモ ── */}
+        <div className="flex-shrink-0 border-t border-border bg-[#12121A] px-4 py-4">
+          <MatchFeedbackPanel matchId={analysisMatch.id} />
         </div>
       </div>
     )
