@@ -9,9 +9,9 @@ interface Row {
 }
 
 const TIMING_CFG = {
-  early: { label: 'Early', sublabel: 'ラッシュ',   color: '#FF4655' },
-  mid:   { label: 'Mid',   sublabel: 'デフォルト', color: '#9B5CF6' },
-  late:  { label: 'Late',  sublabel: 'スロウ',     color: '#E8B84B' },
+  early: { label: 'Early', sublabel: '開始 〜 1:15', color: '#FF4655' },
+  mid:   { label: 'Mid',   sublabel: '1:15 〜 0:40', color: '#9B5CF6' },
+  late:  { label: 'Late',  sublabel: '0:40 〜 終了',  color: '#E8B84B' },
 } as const
 
 export function TimingWinRates({ data: rawData }: { data: Record<string, unknown>[] }) {

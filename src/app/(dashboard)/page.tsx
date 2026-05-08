@@ -171,7 +171,7 @@ export default function DashboardPage() {
 
           <div className="bg-card rounded-xl p-5 border border-border">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-              タイミング別勝率
+              プレイタイム勝率
             </h2>
             <TimingWinRates data={(timing_win_rates ?? []) as Record<string, unknown>[]} />
           </div>
