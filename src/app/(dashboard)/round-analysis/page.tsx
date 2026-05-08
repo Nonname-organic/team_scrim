@@ -25,9 +25,9 @@ const ECO_COLOR: Record<string, string> = {
   semi_buy: '#6C63FF', full_buy: '#00D4A0', oper: '#9B59B6',
 }
 const TIMING_CFG = {
-  early: { label: 'Early', color: '#FF4655' },
-  mid:   { label: 'Mid',   color: '#6C63FF' },
-  late:  { label: 'Late',  color: '#E8B84B' },
+  early: { label: 'Early', sub: '開始〜1:15',  color: '#FF4655' },
+  mid:   { label: 'Mid',   sub: '1:15〜0:40', color: '#6C63FF' },
+  late:  { label: 'Late',  sub: '0:40〜終了',  color: '#E8B84B' },
 } as const
 
 // ── types ─────────────────────────────────────────────────────────────────────
@@ -858,7 +858,7 @@ function RoundDetailPanel({
 
       {/* Timing selector */}
       <div className="space-y-1">
-        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">プレイタイミング</div>
+        <div className="text-[10px] text-muted-foreground uppercase tracking-wider">プレイタイム</div>
         <div className="flex gap-1">
           {(['early', 'mid', 'late'] as const).map(t => {
             const cfg = TIMING_CFG[t]
@@ -867,13 +867,14 @@ function RoundDetailPanel({
               <button
                 key={t}
                 onClick={() => onTimingChange(active ? null : t)}
-                className="px-2.5 py-1 rounded-lg text-[10px] font-bold border transition-colors"
+                className="flex flex-col items-center px-2.5 py-1 rounded-lg border transition-colors"
                 style={active
                   ? { color: cfg.color, borderColor: cfg.color, background: `${cfg.color}20` }
                   : { color: '#9B9BA4', borderColor: '#2A2A3A', background: 'transparent' }
                 }
               >
-                {cfg.label}
+                <span className="text-[10px] font-bold">{cfg.label}</span>
+                <span className="text-[8px] opacity-70">{cfg.sub}</span>
               </button>
             )
           })}

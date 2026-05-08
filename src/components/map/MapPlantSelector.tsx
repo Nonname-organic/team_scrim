@@ -205,31 +205,29 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
           </svg>
         </div>{/* /内側div */}
 
-        {/* ラウンド番号ラベル: 回転しない独立SVGレイヤー */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-          {placedRounds.map(r => {
-            const { sx, sy } = toScreenPos(r.plant_x ?? 0, r.plant_y ?? 0, rotation)
-            const isEditing = r.id === editRoundId
-            const color = r.result === 'win' ? '#00D4A0' : '#FF4655'
-            return (
-              <text
-                key={r.id}
-                x={`${sx * 100}%`}
-                y={`${sy * 100}%`}
-                dy="0.35em"
-                textAnchor="middle"
-                fill="white"
-                fontSize={isEditing ? 7 : 5}
-                fontWeight="bold"
-                fontFamily="monospace"
-                stroke={color}
-                strokeWidth="0.3"
-              >
-                {r.round_number}
-              </text>
-            )
-          })}
-        </svg>
+        {/* ラウンド番号ラベル: HTML div で回転しない */}
+        {placedRounds.map(r => {
+          const { sx, sy } = toScreenPos(r.plant_x ?? 0, r.plant_y ?? 0, rotation)
+          const isEditing = r.id === editRoundId
+          const color = r.result === 'win' ? '#00D4A0' : '#FF4655'
+          const size = isEditing ? 13 : 9
+          return (
+            <div
+              key={r.id}
+              className="absolute pointer-events-none select-none leading-none font-bold font-mono"
+              style={{
+                left: `${sx * 100}%`,
+                top:  `${sy * 100}%`,
+                transform: 'translate(-50%, -50%)',
+                fontSize: size,
+                color: 'white',
+                textShadow: `0 0 2px ${color}, 0 0 1px rgba(0,0,0,0.8)`,
+              }}
+            >
+              {r.round_number}
+            </div>
+          )
+        })}
 
         {/* Saving overlay */}
         {saving && (

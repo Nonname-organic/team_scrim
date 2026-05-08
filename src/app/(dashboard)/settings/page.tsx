@@ -1,7 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Pencil, Trash2, Plus, Check, X } from 'lucide-react'
+import { Pencil, Trash2, Plus, Check, X, KeyRound, Mail } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
+import { createClient } from '@/lib/supabase/client'
 
 const ROLES = ['duelist', 'sub_duelist', 'initiator', 'controller', 'sentinel', 'flex', 'igl'] as const
 type Role = typeof ROLES[number]
@@ -12,7 +13,7 @@ const ROLE_LABELS: Record<Role, string> = {
   initiator:   'イニシエーター',
   controller:  'コントローラー',
   sentinel:    'センチネル',
-  flex:        'Flex',
+  flex:        'フレックス',
   igl:         'IGL',
 }
 
@@ -24,23 +25,35 @@ export default function SettingsPage() {
   const [team, setTeam]       = useState<Team | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
+  const [userEmail, setUserEmail] = useState<string | null>(null)
 
-  // team edit state
-  const [editTeam, setEditTeam]   = useState(false)
-  const [teamForm, setTeamForm]   = useState({ name: '', tag: '', region: 'JP' })
+  // team edit
+  const [editTeam, setEditTeam]     = useState(false)
+  const [teamForm, setTeamForm]     = useState({ name: '', tag: '', region: 'JP' })
   const [teamSaving, setTeamSaving] = useState(false)
 
-  // player add state
-  const [adding, setAdding]     = useState(false)
-  const [newPlayer, setNewPlayer] = useState({ ign: '', real_name: '', role: 'duelist' as Role })
-  const [addSaving, setAddSaving] = useState(false)
+  // player add
+  const [adding, setAdding]         = useState(false)
+  const [newPlayer, setNewPlayer]   = useState({ ign: '', real_name: '', role: 'duelist' as Role })
+  const [addSaving, setAddSaving]   = useState(false)
 
-  // player edit state
-  const [editId, setEditId]     = useState<string | null>(null)
-  const [editForm, setEditForm] = useState({ ign: '', real_name: '', role: 'duelist' as Role })
+  // player edit
+  const [editId, setEditId]         = useState<string | null>(null)
+  const [editForm, setEditForm]     = useState({ ign: '', real_name: '', role: 'duelist' as Role })
   const [editSaving, setEditSaving] = useState(false)
 
-  useEffect(() => { if (teamId) loadAll() }, [teamId])
+  // password change
+  const [pwSent, setPwSent]         = useState(false)
+  const [pwSending, setPwSending]   = useState(false)
+  const [pwError, setPwError]       = useState<string | null>(null)
+
+  useEffect(() => {
+    if (teamId) loadAll()
+    // Get current user email from Supabase session
+    createClient().auth.getSession().then(({ data }) => {
+      setUserEmail(data.session?.user?.email ?? null)
+    })
+  }, [teamId])
 
   async function loadAll() {
     setLoading(true)
@@ -117,6 +130,20 @@ export default function SettingsPage() {
     if (res.ok) setPlayers(prev => prev.filter(p => p.id !== id))
   }
 
+  // ── Password reset ────────────────────────────────────────
+  async function sendPasswordReset() {
+    if (!userEmail) return
+    setPwSending(true)
+    setPwError(null)
+    const supabase = createClient()
+    const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    })
+    if (error) setPwError(error.message)
+    else setPwSent(true)
+    setPwSending(false)
+  }
+
   if (loading) return (
     <div className="flex items-center justify-center h-96">
       <div className="w-8 h-8 rounded-full border-2 border-[#FF4655] border-t-transparent animate-spin" />
@@ -190,7 +217,6 @@ export default function SettingsPage() {
           )}
         </div>
 
-        {/* Player list */}
         <div className="space-y-2">
           {players.map(p => (
             <div key={p.id} className="rounded-lg border border-border bg-muted/20 p-3">
@@ -240,7 +266,6 @@ export default function SettingsPage() {
           ))}
         </div>
 
-        {/* Add form */}
         {adding && (
           <div className="rounded-lg border border-[#FF4655]/30 bg-[#FF4655]/5 p-4 space-y-2">
             <p className="text-xs font-semibold text-[#FF4655] mb-3">新規選手</p>
@@ -264,6 +289,52 @@ export default function SettingsPage() {
                 <X className="w-3.5 h-3.5" /> キャンセル
               </button>
             </div>
+          </div>
+        )}
+      </section>
+
+      {/* ── Password ── */}
+      <section className="bg-card border border-border rounded-xl p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <KeyRound className="w-4 h-4 text-muted-foreground" />
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">パスワード変更</h2>
+        </div>
+
+        {userEmail && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Mail className="w-3.5 h-3.5" />
+            <span>確認メール送信先: <span className="text-white">{userEmail}</span></span>
+          </div>
+        )}
+
+        {pwSent ? (
+          <div className="flex items-center gap-2 bg-[#00D4A0]/10 border border-[#00D4A0]/30 rounded-xl px-4 py-3">
+            <Check className="w-4 h-4 text-[#00D4A0] flex-shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-white">確認メールを送信しました</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                メール内のリンクをクリックして新しいパスワードを設定してください
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              登録メールアドレスに確認メールを送信します。メール内のリンクから新しいパスワードを設定できます。
+            </p>
+            {pwError && (
+              <p className="text-xs text-[#FF4655] bg-[#FF4655]/10 border border-[#FF4655]/20 rounded-lg px-3 py-2">
+                {pwError}
+              </p>
+            )}
+            <button
+              onClick={sendPasswordReset}
+              disabled={pwSending || !userEmail}
+              className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/70 text-white text-sm rounded-lg transition-colors disabled:opacity-50 border border-border"
+            >
+              <Mail className="w-3.5 h-3.5" />
+              {pwSending ? '送信中...' : '確認メールを送信'}
+            </button>
           </div>
         )}
       </section>
