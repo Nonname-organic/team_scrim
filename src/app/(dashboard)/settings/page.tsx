@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Pencil, Trash2, Plus, Check, X, KeyRound, Mail } from 'lucide-react'
+import { Pencil, Trash2, Plus, Check, X, KeyRound, Mail, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@/lib/supabase/client'
 
@@ -43,6 +43,10 @@ export default function SettingsPage() {
   const [editSaving, setEditSaving] = useState(false)
 
   // password change
+  const [pwCurrent, setPwCurrent]   = useState('')
+  const [pwNew, setPwNew]           = useState('')
+  const [pwConfirm, setPwConfirm]   = useState('')
+  const [pwShow, setPwShow]         = useState(false)
   const [pwSent, setPwSent]         = useState(false)
   const [pwSending, setPwSending]   = useState(false)
   const [pwError, setPwError]       = useState<string | null>(null)
@@ -130,17 +134,40 @@ export default function SettingsPage() {
     if (res.ok) setPlayers(prev => prev.filter(p => p.id !== id))
   }
 
-  // ── Password reset ────────────────────────────────────────
-  async function sendPasswordReset() {
+  // ── Password change ───────────────────────────────────────
+  async function changePassword(e: React.FormEvent) {
+    e.preventDefault()
     if (!userEmail) return
+    if (pwNew !== pwConfirm) { setPwError('新しいパスワードが一致しません'); return }
+    if (pwNew.length < 8)    { setPwError('パスワードは8文字以上にしてください'); return }
     setPwSending(true)
     setPwError(null)
     const supabase = createClient()
-    const { error } = await supabase.auth.resetPasswordForEmail(userEmail, {
-      redirectTo: `${window.location.origin}/reset-password`,
+
+    // 現在のパスワードを確認
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: userEmail,
+      password: pwCurrent,
     })
-    if (error) setPwError(error.message)
-    else setPwSent(true)
+    if (signInError) {
+      setPwError('現在のパスワードが正しくありません')
+      setPwSending(false)
+      return
+    }
+
+    // 新しいパスワードへ変更リクエスト
+    // Supabase の「Secure password change」が有効な場合、確認メールが自動送信される
+    const { error: updateError } = await supabase.auth.updateUser({ password: pwNew })
+    if (updateError) {
+      setPwError(updateError.message)
+      setPwSending(false)
+      return
+    }
+
+    setPwSent(true)
+    setPwCurrent('')
+    setPwNew('')
+    setPwConfirm('')
     setPwSending(false)
   }
 
@@ -311,31 +338,71 @@ export default function SettingsPage() {
           <div className="flex items-center gap-2 bg-[#00D4A0]/10 border border-[#00D4A0]/30 rounded-xl px-4 py-3">
             <Check className="w-4 h-4 text-[#00D4A0] flex-shrink-0" />
             <div>
-              <p className="text-sm font-medium text-white">確認メールを送信しました</p>
+              <p className="text-sm font-medium text-white">パスワードを変更しました</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                メール内のリンクをクリックして新しいパスワードを設定してください
+                確認メールを <span className="text-white">{userEmail}</span> に送信しました
               </p>
             </div>
           </div>
         ) : (
-          <div className="space-y-3">
-            <p className="text-xs text-muted-foreground">
-              登録メールアドレスに確認メールを送信します。メール内のリンクから新しいパスワードを設定できます。
-            </p>
+          <form onSubmit={changePassword} className="space-y-3">
             {pwError && (
               <p className="text-xs text-[#FF4655] bg-[#FF4655]/10 border border-[#FF4655]/20 rounded-lg px-3 py-2">
                 {pwError}
               </p>
             )}
+
+            <Field label="現在のパスワード">
+              <div className="relative">
+                <input
+                  type={pwShow ? 'text' : 'password'}
+                  value={pwCurrent}
+                  onChange={e => setPwCurrent(e.target.value)}
+                  required
+                  className={inputCls}
+                  placeholder="現在のパスワード"
+                  autoComplete="current-password"
+                />
+                <button type="button" onClick={() => setPwShow(v => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-white transition-colors">
+                  {pwShow ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </Field>
+
+            <Field label="新しいパスワード">
+              <input
+                type={pwShow ? 'text' : 'password'}
+                value={pwNew}
+                onChange={e => setPwNew(e.target.value)}
+                required minLength={8}
+                className={inputCls}
+                placeholder="8文字以上"
+                autoComplete="new-password"
+              />
+            </Field>
+
+            <Field label="新しいパスワード（確認）">
+              <input
+                type={pwShow ? 'text' : 'password'}
+                value={pwConfirm}
+                onChange={e => setPwConfirm(e.target.value)}
+                required
+                className={inputCls}
+                placeholder="もう一度入力"
+                autoComplete="new-password"
+              />
+            </Field>
+
             <button
-              onClick={sendPasswordReset}
-              disabled={pwSending || !userEmail}
-              className="flex items-center gap-2 px-4 py-2 bg-muted hover:bg-muted/70 text-white text-sm rounded-lg transition-colors disabled:opacity-50 border border-border"
+              type="submit"
+              disabled={pwSending || !pwCurrent || !pwNew || !pwConfirm}
+              className="flex items-center gap-2 px-4 py-2 bg-[#FF4655] hover:bg-[#e03d4a] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50"
             >
-              <Mail className="w-3.5 h-3.5" />
-              {pwSending ? '送信中...' : '確認メールを送信'}
+              <KeyRound className="w-3.5 h-3.5" />
+              {pwSending ? '確認中...' : '変更'}
             </button>
-          </div>
+          </form>
         )}
       </section>
     </div>
