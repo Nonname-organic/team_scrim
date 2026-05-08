@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import {
-  LayoutDashboard, Users, Swords, TrendingUp,
+  LayoutDashboard, Users, Swords,
   ClipboardEdit, BarChart2, Settings, LogOut, CreditCard,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -73,14 +73,17 @@ function Sidebar() {
   return (
     <aside className="w-56 bg-[#18181F] border-r border-border flex flex-col fixed h-full z-10">
       {/* Logo */}
-      <div className="px-5 py-4 border-b border-border">
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded bg-[#FF4655] flex items-center justify-center flex-shrink-0">
-            <TrendingUp className="w-4 h-4 text-white" />
-          </div>
+      <div className="px-4 py-3 border-b border-border">
+        <div className="flex items-center gap-2.5">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.png"
+            alt="Team Logo"
+            className="w-9 h-9 rounded-xl object-cover flex-shrink-0"
+          />
           <div>
-            <div className="font-bold text-sm text-white leading-none">SCRIM</div>
-            <div className="text-[10px] text-muted-foreground">ANALYZER</div>
+            <div className="font-black text-sm text-white leading-none tracking-wider">AXELIA</div>
+            <div className="text-[10px] text-muted-foreground">SCRIM ANALYZER</div>
           </div>
         </div>
       </div>

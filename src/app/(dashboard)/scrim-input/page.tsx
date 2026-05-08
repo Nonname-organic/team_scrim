@@ -435,25 +435,25 @@ export default function ScrimInputPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-border bg-muted/10">
-                <th className="text-left   px-4 py-2.5 text-xs text-muted-foreground font-medium w-8">#</th>
-                <th className="text-left   px-3 py-2.5 text-xs text-muted-foreground font-medium w-36">選手</th>
-                <th className="text-left   px-3 py-2.5 text-xs text-muted-foreground font-medium w-32">エージェント</th>
+              <tr className="border-b border-border bg-muted/10 align-middle">
+                <th className="text-left   align-middle px-4 py-2.5 text-xs text-muted-foreground font-medium w-8">#</th>
+                <th className="text-left   align-middle px-3 py-2.5 text-xs text-muted-foreground font-medium w-36">選手</th>
+                <th className="text-left   align-middle px-3 py-2.5 text-xs text-muted-foreground font-medium w-40">エージェント</th>
                 {['K','D','A','FB','FD','ACS'].map(h => (
-                  <th key={h} className="text-center px-2 py-2.5 text-xs text-muted-foreground font-medium w-16">{h}</th>
+                  <th key={h} className="text-center align-middle px-2 py-2.5 text-xs text-muted-foreground font-medium w-16">{h}</th>
                 ))}
-                <th className="text-center px-2 py-2.5 text-xs text-muted-foreground font-medium w-14">KPR</th>
-                <th className="text-center px-2 py-2.5 text-xs text-muted-foreground font-medium w-14">DPR</th>
-                <th className="text-center px-2 py-2.5 text-xs text-muted-foreground font-medium w-14">APR</th>
+                <th className="text-center align-middle px-2 py-2.5 text-xs text-muted-foreground font-medium w-14">KPR</th>
+                <th className="text-center align-middle px-2 py-2.5 text-xs text-muted-foreground font-medium w-14">DPR</th>
+                <th className="text-center align-middle px-2 py-2.5 text-xs text-muted-foreground font-medium w-14">APR</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row, i) => (
-                <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors">
-                  <td className="px-4 py-2 text-xs text-muted-foreground">{i + 1}</td>
+                <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/10 transition-colors align-middle">
+                  <td className="align-middle px-4 py-2 text-xs text-muted-foreground">{i + 1}</td>
 
                   {/* Player select */}
-                  <td className="px-3 py-2">
+                  <td className="align-middle px-3 py-2">
                     <select
                       className="bg-muted border border-border rounded-lg px-2 py-1.5 text-xs text-white focus:border-[#FF4655] outline-none w-32"
                       value={row.player_id}
@@ -467,9 +467,9 @@ export default function ScrimInputPage() {
                   </td>
 
                   {/* Agent select */}
-                  <td className="px-3 py-2">
+                  <td className="align-middle px-3 py-2">
                     <select
-                      className="bg-muted border border-border rounded-lg px-2 py-1.5 text-xs text-white focus:border-[#FF4655] outline-none w-28"
+                      className="bg-muted border border-border rounded-lg px-2 py-1.5 text-xs text-white focus:border-[#FF4655] outline-none w-36"
                       value={row.agent}
                       onChange={e => updateRow(i, 'agent', e.target.value)}
                     >
@@ -480,7 +480,7 @@ export default function ScrimInputPage() {
 
                   {/* Numeric stats */}
                   {(['kills','deaths','assists','fb','fd','acs'] as const).map(key => (
-                    <td key={key} className="px-2 py-2">
+                    <td key={key} className="align-middle px-2 py-2">
                       <input
                         type="number" min={0}
                         className="w-14 bg-muted border border-transparent hover:border-border focus:border-[#FF4655] rounded px-2 py-1 text-xs text-white outline-none text-center transition-colors"
@@ -492,13 +492,13 @@ export default function ScrimInputPage() {
                   ))}
 
                   {/* Auto-calculated rates */}
-                  <td className="px-2 py-2 text-center text-xs text-muted-foreground">
+                  <td className="align-middle px-2 py-2 text-center text-xs text-muted-foreground">
                     {calcRate(row.kills, totalRounds)}
                   </td>
-                  <td className="px-2 py-2 text-center text-xs text-muted-foreground">
+                  <td className="align-middle px-2 py-2 text-center text-xs text-muted-foreground">
                     {calcRate(row.deaths, totalRounds)}
                   </td>
-                  <td className="px-2 py-2 text-center text-xs text-muted-foreground">
+                  <td className="align-middle px-2 py-2 text-center text-xs text-muted-foreground">
                     {calcRate(row.assists, totalRounds)}
                   </td>
                 </tr>
