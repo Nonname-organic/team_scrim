@@ -291,14 +291,20 @@ export default function RoundAnalysisPage() {
                           : 'hover:bg-muted/20'
                       )}
                     >
-                      {/* Round number */}
-                      <div className={cn(
-                        'w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 border',
-                        isWin
-                          ? 'bg-[#00D4A0]/15 text-[#00D4A0] border-[#00D4A0]/30'
-                          : 'bg-[#FF4655]/15 text-[#FF4655] border-[#FF4655]/30'
-                      )}>
-                        {r.round_number}
+                      {/* 注目フラグ + ラウンド番号 */}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <Flag
+                          className={cn('w-3 h-3 transition-opacity', r.notable ? 'text-[#FF4655] opacity-100' : 'opacity-0')}
+                          fill={r.notable ? 'currentColor' : 'none'}
+                        />
+                        <div className={cn(
+                          'w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold border',
+                          isWin
+                            ? 'bg-[#00D4A0]/15 text-[#00D4A0] border-[#00D4A0]/30'
+                            : 'bg-[#FF4655]/15 text-[#FF4655] border-[#FF4655]/30'
+                        )}>
+                          {r.round_number}
+                        </div>
                       </div>
 
                       {/* Info */}
@@ -321,7 +327,6 @@ export default function RoundAnalysisPage() {
                           {r.retake && <span className="text-[8px] text-[#6C63FF] bg-[#6C63FF]/10 px-1 rounded">リテイク</span>}
                           {r.first_blood_team === true  && <span className="text-[8px] text-[#FFD700] bg-[#FFD700]/10 px-1 rounded">FB取</span>}
                           {r.first_blood_team === false && <span className="text-[8px] text-[#FF4655] bg-[#FF4655]/10 px-1 rounded">FB負</span>}
-                          {r.notable && <Flag className="w-2.5 h-2.5 text-[#FF4655]" fill="currentColor" />}
                           {notes[r.id] && <Bookmark className="w-2.5 h-2.5 text-[#3498DB]" fill="currentColor" />}
                         </div>
                       </div>
