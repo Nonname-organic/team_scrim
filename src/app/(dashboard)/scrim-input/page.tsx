@@ -436,15 +436,15 @@ export default function ScrimInputPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-muted/10">
-                <th className="text-left px-4 py-2.5 text-xs text-muted-foreground font-medium w-6">#</th>
-                <th className="text-left px-3 py-2.5 text-xs text-muted-foreground font-medium">選手</th>
-                <th className="px-3 py-2.5 text-xs text-muted-foreground font-medium">エージェント</th>
+                <th className="text-left   px-4 py-2.5 text-xs text-muted-foreground font-medium w-8">#</th>
+                <th className="text-left   px-3 py-2.5 text-xs text-muted-foreground font-medium w-36">選手</th>
+                <th className="text-left   px-3 py-2.5 text-xs text-muted-foreground font-medium w-32">エージェント</th>
                 {['K','D','A','FB','FD','ACS'].map(h => (
-                  <th key={h} className="px-2 py-2.5 text-xs text-muted-foreground font-medium text-center">{h}</th>
+                  <th key={h} className="text-center px-2 py-2.5 text-xs text-muted-foreground font-medium w-16">{h}</th>
                 ))}
-                <th className="px-2 py-2.5 text-xs text-muted-foreground font-medium text-center">KPR</th>
-                <th className="px-2 py-2.5 text-xs text-muted-foreground font-medium text-center">DPR</th>
-                <th className="px-2 py-2.5 text-xs text-muted-foreground font-medium text-center">APR</th>
+                <th className="text-center px-2 py-2.5 text-xs text-muted-foreground font-medium w-14">KPR</th>
+                <th className="text-center px-2 py-2.5 text-xs text-muted-foreground font-medium w-14">DPR</th>
+                <th className="text-center px-2 py-2.5 text-xs text-muted-foreground font-medium w-14">APR</th>
               </tr>
             </thead>
             <tbody>
