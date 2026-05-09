@@ -108,6 +108,11 @@ function parseTactical(raw: string | null | undefined): TacticalAnalysis | null 
     }
     if (!json.improvements) json.improvements = []
 
+    // 必須フィールドのデフォルト（DBデータが欠損していても render でクラッシュしないよう保護）
+    if (!json.score) json.score = { macro: 0, micro: 0, teamplay: 0, overall: 0 }
+    if (!json.rules)          json.rules          = []
+    if (!json.pattern_flags)  json.pattern_flags  = []
+
     return json as unknown as TacticalAnalysis
   }
 
