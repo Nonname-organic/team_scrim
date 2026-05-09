@@ -102,7 +102,7 @@ function Sidebar() {
             {label}
           </Link>
         ))}
-        <Link
+        {/* <Link
           href="/pricing"
           className={cn(
             'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
@@ -113,7 +113,7 @@ function Sidebar() {
         >
           <CreditCard className="w-4 h-4 flex-shrink-0" />
           プラン
-        </Link>
+        </Link> */}
       </nav>
 
       {/* Team info + logout */}

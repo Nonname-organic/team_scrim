@@ -94,14 +94,6 @@ export default function DashboardPage() {
             </button>
           ))}
 
-          {(mapFilter || typeFilter) && (
-            <button
-              onClick={() => { setMapFilter(''); setTypeFilter('') }}
-              className="text-xs text-muted-foreground hover:text-white px-2 py-1.5 rounded border border-border transition-colors"
-            >
-              リセット
-            </button>
-          )}
         </div>
       </div>
 
