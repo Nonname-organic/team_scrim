@@ -84,6 +84,13 @@ function getYouTubeId(url: string): string | null {
 
 type SortKey = 'date' | 'opponent' | 'map'
 type SortDir = 'asc' | 'desc'
+type TypeFilter = '' | 'official' | 'practice'
+
+const TYPE_LABELS: Record<string, string> = {
+  official:  'Competitive',
+  practice:  'Practice',
+  scrim:     'Scrim',
+}
 
 export default function RoundAnalysisPage() {
   const { teamId } = useAuth()
@@ -91,6 +98,7 @@ export default function RoundAnalysisPage() {
   const [matches, setMatches] = useState<Match[]>([])
   const [loadingMatches, setLoadingMatches] = useState(true)
   const [filterText, setFilterText] = useState('')
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('')
   const [sortKey, setSortKey]   = useState<SortKey>('date')
   const [sortDir, setSortDir]   = useState<SortDir>('desc')
 
@@ -174,9 +182,10 @@ export default function RoundAnalysisPage() {
 
   const filteredMatches = useMemo(() => {
     const q = filterText.toLowerCase()
-    const list = q
+    let list = q
       ? matches.filter(m => m.opponent_name.toLowerCase().includes(q) || m.map.toLowerCase().includes(q))
       : [...matches]
+    if (typeFilter) list = list.filter(m => m.match_type === typeFilter)
     list.sort((a, b) => {
       let cmp = 0
       if (sortKey === 'date') cmp = new Date(a.match_date).getTime() - new Date(b.match_date).getTime()
@@ -185,7 +194,7 @@ export default function RoundAnalysisPage() {
       return sortDir === 'asc' ? cmp : -cmp
     })
     return list
-  }, [matches, filterText, sortKey, sortDir])
+  }, [matches, filterText, typeFilter, sortKey, sortDir])
 
   // ── Analysis view ──────────────────────────────────────────────────────────
   if (analysisMatch) {
@@ -497,6 +506,28 @@ export default function RoundAnalysisPage() {
             </button>
           )}
         </div>
+
+        {/* 種別フィルター */}
+        <div className="flex gap-1">
+          {(['official', 'practice'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTypeFilter(prev => prev === t ? '' : t)}
+              className={cn(
+                'px-3 py-2 rounded-lg text-xs font-medium border transition-colors',
+                typeFilter === t
+                  ? t === 'official'
+                    ? 'bg-[#00D4A0]/15 border-[#00D4A0]/40 text-[#00D4A0]'
+                    : 'bg-[#6C63FF]/15 border-[#6C63FF]/40 text-[#6C63FF]'
+                  : 'bg-card border-border text-muted-foreground hover:text-white hover:border-white/30'
+              )}
+            >
+              {TYPE_LABELS[t]}
+            </button>
+          ))}
+        </div>
+
+        {/* ソートボタン */}
         <div className="flex gap-1">
           {SORT_BTNS.map(({ key, label }) => (
             <button
@@ -544,7 +575,7 @@ export default function RoundAnalysisPage() {
                       vs {m.opponent_name}
                     </div>
                     <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
-                      <span>{m.match_type}</span>
+                      <span>{TYPE_LABELS[m.match_type] ?? m.match_type}</span>
                       {m.video_url && <Play className="w-2.5 h-2.5 text-[#FF4655]" fill="currentColor" />}
                     </div>
                   </div>
