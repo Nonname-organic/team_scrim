@@ -35,8 +35,9 @@ export async function getDashboardSummary(
   const matchParams: unknown[] = [teamId]
   const filterClause = applyFilters(matchParams, mapFilter, matchTypeFilter)
 
+  // v_team_win_rates には match_type 列がないため mapFilter のみ適用
   const mapStatsParams: unknown[] = [teamId]
-  const mapStatsClause = applyFilters(mapStatsParams, mapFilter, matchTypeFilter)
+  const mapStatsClause = mapFilter ? ` AND map = $${mapStatsParams.push(mapFilter)}` : ''
 
   const [team, recentMatches, mapStats, topPerformers, lastReport, sideRates] = await Promise.all([
     queryOne('SELECT * FROM teams WHERE id = $1', [teamId]),

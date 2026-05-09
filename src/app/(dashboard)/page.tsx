@@ -65,6 +65,17 @@ export default function DashboardPage() {
           <p className="text-muted-foreground text-sm mt-1">チームパフォーマンス概要</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
+          {/* マップフィルター */}
+          <span className="text-xs text-muted-foreground">マップ</span>
+          <select
+            value={mapFilter}
+            onChange={e => setMapFilter(e.target.value)}
+            className="bg-muted border border-border rounded-lg px-3 py-1.5 text-sm text-white focus:border-[#FF4655] outline-none"
+          >
+            <option value="">すべて</option>
+            {MAPS.map(m => <option key={m} value={m}>{m}</option>)}
+          </select>
+
           {/* 種別フィルター */}
           {(['official', 'practice'] as const).map(t => (
             <button
@@ -83,16 +94,6 @@ export default function DashboardPage() {
             </button>
           ))}
 
-          {/* マップフィルター */}
-          <span className="text-xs text-muted-foreground">マップ</span>
-          <select
-            value={mapFilter}
-            onChange={e => setMapFilter(e.target.value)}
-            className="bg-muted border border-border rounded-lg px-3 py-1.5 text-sm text-white focus:border-[#FF4655] outline-none"
-          >
-            <option value="">すべて</option>
-            {MAPS.map(m => <option key={m} value={m}>{m}</option>)}
-          </select>
           {(mapFilter || typeFilter) && (
             <button
               onClick={() => { setMapFilter(''); setTypeFilter('') }}
