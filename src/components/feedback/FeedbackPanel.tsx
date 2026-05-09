@@ -195,8 +195,8 @@ function TacticalCard({
   feedback: FeedbackData
   tactical: TacticalAnalysis
 }) {
-  const [expanded, setExpanded] = useState(false)
   const isNewFormat = !!tactical.intent_assessment
+  const [expanded, setExpanded] = useState(isNewFormat)
   const date = new Date(feedback.created_at).toLocaleDateString('ja-JP', {
     month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
   })
@@ -349,53 +349,64 @@ function TacticalCard({
           <div className="space-y-4 border-t border-border/40 pt-4">
 
             {/* Step 3: 崩壊点 (new format) */}
-            {isNewFormat && tactical.breakdown_points && tactical.breakdown_points.length > 0 && (
+            {isNewFormat && (
               <div className="space-y-2">
                 <div className="text-[10px] font-bold text-[#FF4655] uppercase tracking-wider flex items-center gap-1">
                   <GitBranch className="w-3 h-3" /> 崩壊点
                 </div>
-                <ul className="space-y-2">
-                  {tactical.breakdown_points.map((bp, i) => (
-                    <li key={i} className="bg-[#FF4655]/5 border border-[#FF4655]/15 rounded-lg px-3 py-2 space-y-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[9px] font-black text-[#FF4655] bg-[#FF4655]/20 px-1.5 py-px rounded">{bp.round}</span>
-                        <span className="text-[11px] text-white font-medium">{bp.moment}</span>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground pl-8 leading-relaxed">{bp.description}</p>
-                    </li>
-                  ))}
-                </ul>
+                {tactical.breakdown_points && tactical.breakdown_points.length > 0 ? (
+                  <ul className="space-y-2">
+                    {tactical.breakdown_points.map((bp, i) => (
+                      <li key={i} className="bg-[#FF4655]/5 border border-[#FF4655]/15 rounded-lg px-3 py-2 space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-black text-[#FF4655] bg-[#FF4655]/20 px-1.5 py-px rounded">{bp.round}</span>
+                          <span className="text-[11px] text-white font-medium">{bp.moment}</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground pl-8 leading-relaxed">{bp.description}</p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground pl-1">—</p>
+                )}
               </div>
             )}
 
             {/* Step 4: 原因分離 (new format) */}
-            {isNewFormat && tactical.cause_analysis && (
+            {isNewFormat && (
               <div className="space-y-2">
                 <div className="text-[10px] font-bold text-[#FF8C42] uppercase tracking-wider flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" /> 原因分離
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {CAUSE_CFG.map(({ key, label, color }) => {
-                    const items = tactical.cause_analysis![key]
-                    if (!items?.length) return null
-                    return (
-                      <div key={key} className="rounded-lg p-2.5 space-y-1.5"
-                        style={{ background: `${color}08`, border: `1px solid ${color}20` }}>
-                        <div className="text-[9px] font-black uppercase tracking-wider" style={{ color }}>
-                          {label}
+                {tactical.cause_analysis ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {CAUSE_CFG.map(({ key, label, color }) => {
+                      const items = tactical.cause_analysis![key] ?? []
+                      return (
+                        <div key={key} className="rounded-lg p-2.5 space-y-1.5"
+                          style={{ background: `${color}08`, border: `1px solid ${color}20` }}>
+                          <div className="text-[9px] font-black uppercase tracking-wider" style={{ color }}>
+                            {label}
+                          </div>
+                          {items.length > 0 ? (
+                            <ul className="space-y-1">
+                              {items.map((item, i) => (
+                                <li key={i} className="text-[10px] text-muted-foreground flex gap-1.5">
+                                  <span style={{ color }} className="shrink-0 mt-px font-bold">•</span>
+                                  <span>{item}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="text-[10px] text-muted-foreground">—</p>
+                          )}
                         </div>
-                        <ul className="space-y-1">
-                          {items.map((item, i) => (
-                            <li key={i} className="text-[10px] text-muted-foreground flex gap-1.5">
-                              <span style={{ color }} className="shrink-0 mt-px font-bold">•</span>
-                              <span>{item}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )
-                  })}
-                </div>
+                      )
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground pl-1">—</p>
+                )}
               </div>
             )}
 
@@ -427,23 +438,27 @@ function TacticalCard({
             )}
 
             {/* Step 6: 改善提案 (new who/when/what/why format) */}
-            {structuredImprovements.length > 0 && (
+            {isNewFormat && (
               <div className="space-y-2">
                 <div className="text-[10px] font-bold text-[#6C63FF] uppercase tracking-wider flex items-center gap-1">
                   <Users className="w-3 h-3" /> 改善提案
                 </div>
-                <ul className="space-y-2">
-                  {structuredImprovements.map((imp, i) => (
-                    <li key={i} className="bg-[#6C63FF]/5 border border-[#6C63FF]/15 rounded-lg px-3 py-2.5 space-y-1.5">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-[9px] font-black text-[#6C63FF] bg-[#6C63FF]/20 px-1.5 py-px rounded">{imp.who}</span>
-                        <span className="text-[9px] text-muted-foreground">{imp.when}</span>
-                      </div>
-                      <p className="text-[11px] text-white font-medium">{imp.what}</p>
-                      <p className="text-[10px] text-muted-foreground leading-relaxed">{imp.why}</p>
-                    </li>
-                  ))}
-                </ul>
+                {structuredImprovements.length > 0 ? (
+                  <ul className="space-y-2">
+                    {structuredImprovements.map((imp, i) => (
+                      <li key={i} className="bg-[#6C63FF]/5 border border-[#6C63FF]/15 rounded-lg px-3 py-2.5 space-y-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[9px] font-black text-[#6C63FF] bg-[#6C63FF]/20 px-1.5 py-px rounded">{imp.who}</span>
+                          <span className="text-[9px] text-muted-foreground">{imp.when}</span>
+                        </div>
+                        <p className="text-[11px] text-white font-medium">{imp.what}</p>
+                        <p className="text-[10px] text-muted-foreground leading-relaxed">{imp.why}</p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : legacyImprovements ? null : (
+                  <p className="text-[11px] text-muted-foreground pl-1">—</p>
+                )}
               </div>
             )}
 
