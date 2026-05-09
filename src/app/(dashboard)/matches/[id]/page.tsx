@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Shield, Crosshair, Pencil, Save, X, Plus, Trash2, MapPin } from 'lucide-react'
+import { ArrowLeft, Shield, Crosshair, Pencil, Save, X, Plus, Trash2, MapPin, Flag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AGENTS } from '@/types'
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
@@ -13,6 +13,11 @@ const ECO_OPTIONS = ['pistol', 'second', 'third', 'eco', 'anti_eco', 'semi_eco',
 const ECO_LABELS: Record<string, string> = {
   pistol: 'ピストル', eco: 'エコ', anti_eco: 'アンチエコ', semi_eco: 'セミエコ',
   semi_buy: 'セミバイ', full_buy: 'フルバイ', oper: 'オペ', second: 'セカンド', third: 'サード',
+}
+const ECO_COLOR: Record<string, string> = {
+  pistol: '#FFD700', second: '#3498DB', third: '#1ABC9C',
+  eco: '#FF4655', anti_eco: '#FF8C42', semi_eco: '#FF8C42',
+  semi_buy: '#6C63FF', full_buy: '#00D4A0', oper: '#9B59B6',
 }
 const TIMING_OPTIONS = [
   { value: 'early', label: 'Early', color: '#FF4655' },
@@ -477,7 +482,7 @@ export default function MatchDetailPage() {
       {/* Round log */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-            <div className="text-sm font-semibold text-white">ラウンドログ</div>
+            <div className="text-sm font-semibold text-white">ラウンド詳細</div>
             {!editRoundMode ? (
               <button
                 onClick={enterRoundEdit}
@@ -507,43 +512,67 @@ export default function MatchDetailPage() {
           </div>
 
           {!editRoundMode ? (
-            <div className="p-4">
+            <div className="py-1">
               {rounds.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground text-sm">
                   ラウンドデータがありません。「編集」から追加できます。
                 </div>
               ) : (
                 <>
-                  <div className="flex flex-wrap gap-1.5">
+                  <div className="divide-y divide-border/40">
                     {rounds.map((r) => {
                       const isWin = r.result === 'win'
                       const side = String(r.side ?? '')
+                      const notable = Boolean(r.notable)
+                      const ecoType = r.economy_type != null ? String(r.economy_type) : null
+                      const planted = Boolean(r.planted)
+                      const retake = Boolean(r.retake)
+                      const fbTeam = r.first_blood_team === true ? true : r.first_blood_team === false ? false : null
+                      const plantSite = r.plant_site != null ? String(r.plant_site) : null
                       return (
-                        <div
-                          key={String(r.round_number)}
-                          title={`R${r.round_number} ${side} ${r.economy_type ?? ''} ${r.planted ? '🌱' : ''}`}
-                          className={cn(
-                            'w-8 h-8 rounded flex items-center justify-center text-xs font-bold cursor-default',
-                            isWin
-                              ? 'bg-[#00D4A0]/20 text-[#00D4A0] border border-[#00D4A0]/30'
-                              : 'bg-[#FF4655]/20 text-[#FF4655] border border-[#FF4655]/30'
-                          )}
-                        >
-                          {String(r.round_number)}
+                        <div key={String(r.round_number)} className="flex items-center gap-2.5 px-4 py-2">
+                          {/* 注目フラグ + ラウンド番号 */}
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <Flag
+                              className={cn('w-3 h-3 transition-opacity', notable ? 'text-[#FF4655] opacity-100' : 'opacity-0')}
+                              fill={notable ? 'currentColor' : 'none'}
+                            />
+                            <div className={cn(
+                              'w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold border',
+                              isWin
+                                ? 'bg-[#00D4A0]/15 text-[#00D4A0] border-[#00D4A0]/30'
+                                : 'bg-[#FF4655]/15 text-[#FF4655] border-[#FF4655]/30'
+                            )}>
+                              {String(r.round_number)}
+                            </div>
+                          </div>
+                          {/* Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1 flex-wrap">
+                              <span className={cn('text-[10px] font-bold', side === 'attack' ? 'text-[#FF8C42]' : 'text-[#00D4A0]')}>
+                                {side === 'attack' ? 'ATK' : 'DEF'}
+                              </span>
+                              {ecoType && (
+                                <span className="text-[9px] px-1 rounded"
+                                  style={{ color: ECO_COLOR[ecoType] ?? '#9B9BA4', background: `${ECO_COLOR[ecoType] ?? '#9B9BA4'}18` }}>
+                                  {ECO_LABELS[ecoType] ?? ecoType}
+                                </span>
+                              )}
+                              {planted && <span className="text-[9px] text-[#6C63FF]">💣{plantSite}</span>}
+                            </div>
+                            <div className="flex items-center gap-1 mt-0.5">
+                              {retake  && <span className="text-[8px] text-[#6C63FF] bg-[#6C63FF]/10 px-1 rounded">リテイク</span>}
+                              {fbTeam === true  && <span className="text-[8px] text-[#FFD700] bg-[#FFD700]/10 px-1 rounded">FB取</span>}
+                              {fbTeam === false && <span className="text-[8px] text-[#FF4655] bg-[#FF4655]/10 px-1 rounded">FB負</span>}
+                            </div>
+                          </div>
                         </div>
                       )
                     })}
                   </div>
-                  <div className="flex gap-4 mt-3 text-[10px] text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <span className="w-3 h-3 rounded bg-[#00D4A0]/20 border border-[#00D4A0]/30 inline-block" />勝利
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <span className="w-3 h-3 rounded bg-[#FF4655]/20 border border-[#FF4655]/30 inline-block" />敗北
-                    </span>
-                  </div>
 
                   {/* Plant heatmap + site win rates */}
+                  <div className="px-4 pb-4">
                   {(() => {
                     const planted = rounds.filter(r => Boolean(r.planted))
                     if (planted.length === 0) return null
@@ -617,6 +646,7 @@ export default function MatchDetailPage() {
                       </div>
                     )
                   })()}
+                  </div>
                 </>
               )}
             </div>
