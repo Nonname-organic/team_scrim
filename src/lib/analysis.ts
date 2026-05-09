@@ -9,23 +9,44 @@ import type {
 } from '@/types'
 
 // ============================================================
+// Filter clause helper — appends map/matchType conditions and returns $N references
+// ============================================================
+
+function applyFilters(
+  params: unknown[],
+  map?: string,
+  matchType?: string,
+  alias = ''
+): string {
+  const pre = alias ? `${alias}.` : ''
+  let clause = ''
+  if (map)       clause += ` AND ${pre}map = $${params.push(map)}`
+  if (matchType) clause += ` AND ${pre}match_type = $${params.push(matchType)}`
+  return clause
+}
+
+// ============================================================
 // Dashboard
 // ============================================================
 
-export async function getDashboardSummary(teamId: string, mapFilter?: string): Promise<DashboardSummary> {
-  const mapClause = mapFilter ? `AND map = $2` : ''
+export async function getDashboardSummary(
+  teamId: string, mapFilter?: string, matchTypeFilter?: string
+): Promise<DashboardSummary> {
   const matchParams: unknown[] = [teamId]
-  if (mapFilter) matchParams.push(mapFilter)
+  const filterClause = applyFilters(matchParams, mapFilter, matchTypeFilter)
+
+  const mapStatsParams: unknown[] = [teamId]
+  const mapStatsClause = applyFilters(mapStatsParams, mapFilter, matchTypeFilter)
 
   const [team, recentMatches, mapStats, topPerformers, lastReport, sideRates] = await Promise.all([
     queryOne('SELECT * FROM teams WHERE id = $1', [teamId]),
     query(
-      `SELECT * FROM matches WHERE team_id = $1 ${mapClause} ORDER BY match_date DESC LIMIT 20`,
+      `SELECT * FROM matches WHERE team_id = $1${filterClause} ORDER BY match_date DESC LIMIT 20`,
       matchParams
     ),
     query<TeamWinRates>(
-      `SELECT * FROM v_team_win_rates WHERE team_id = $1${mapFilter ? ` AND map = $2` : ''}`,
-      mapFilter ? [teamId, mapFilter] : [teamId]
+      `SELECT * FROM v_team_win_rates WHERE team_id = $1${mapStatsClause}`,
+      mapStatsParams
     ),
     query<PlayerCareerStats>(
       `SELECT * FROM v_player_career_stats WHERE team_id = $1 ORDER BY avg_acs DESC LIMIT 5`,
@@ -42,7 +63,7 @@ export async function getDashboardSummary(teamId: string, mapFilter?: string): P
               COUNT(*)::int AS total
        FROM rounds r
        JOIN matches m ON m.id = r.match_id
-       WHERE m.team_id = $1 ${mapClause}
+       WHERE m.team_id = $1${filterClause}
        GROUP BY r.side`,
       matchParams
     ),
@@ -73,10 +94,11 @@ export async function getDashboardSummary(teamId: string, mapFilter?: string): P
 // Win Rate Trend (last N matches)
 // ============================================================
 
-export async function getWinRateTrend(teamId: string, n = 20, mapFilter?: string): Promise<WinRateTrend[]> {
-  const mapClause = mapFilter ? `AND map = $3` : ''
+export async function getWinRateTrend(
+  teamId: string, n = 20, mapFilter?: string, matchTypeFilter?: string
+): Promise<WinRateTrend[]> {
   const params: unknown[] = [teamId, n]
-  if (mapFilter) params.push(mapFilter)
+  const filterClause = applyFilters(params, mapFilter, matchTypeFilter)
 
   const matches = await query<{
     match_date: string
@@ -88,7 +110,7 @@ export async function getWinRateTrend(teamId: string, n = 20, mapFilter?: string
   }>(
     `SELECT match_date, result, attack_rounds_won, attack_rounds_played,
             defense_rounds_won, defense_rounds_played
-     FROM matches WHERE team_id = $1 ${mapClause} ORDER BY match_date DESC LIMIT $2`,
+     FROM matches WHERE team_id = $1${filterClause} ORDER BY match_date DESC LIMIT $2`,
     params
   )
 
@@ -119,10 +141,9 @@ export async function getWinRateTrend(teamId: string, n = 20, mapFilter?: string
 // Economy Analysis
 // ============================================================
 
-export async function getEconomyWinRates(teamId: string, mapFilter?: string) {
-  const mapClause = mapFilter ? `AND m.map = $2` : ''
+export async function getEconomyWinRates(teamId: string, mapFilter?: string, matchTypeFilter?: string) {
   const params: unknown[] = [teamId]
-  if (mapFilter) params.push(mapFilter)
+  const filterClause = applyFilters(params, mapFilter, matchTypeFilter, 'm')
 
   const rows = await query<{
     economy_type: string
@@ -135,7 +156,7 @@ export async function getEconomyWinRates(teamId: string, mapFilter?: string) {
             ROUND(SUM(CASE WHEN r.result = 'win' THEN 1 ELSE 0 END)::NUMERIC / COUNT(*), 3) AS win_rate
      FROM rounds r
      JOIN matches m ON m.id = r.match_id
-     WHERE m.team_id = $1 AND r.economy_type IS NOT NULL ${mapClause}
+     WHERE m.team_id = $1 AND r.economy_type IS NOT NULL${filterClause}
      GROUP BY r.economy_type
      ORDER BY win_rate DESC`,
     params
@@ -147,10 +168,9 @@ export async function getEconomyWinRates(teamId: string, mapFilter?: string) {
 // First Blood Impact
 // ============================================================
 
-export async function getFirstBloodImpact(teamId: string, mapFilter?: string) {
-  const mapClause = mapFilter ? `AND m.map = $2` : ''
+export async function getFirstBloodImpact(teamId: string, mapFilter?: string, matchTypeFilter?: string) {
   const params: unknown[] = [teamId]
-  if (mapFilter) params.push(mapFilter)
+  const filterClause = applyFilters(params, mapFilter, matchTypeFilter, 'm')
 
   const rows = await query<{
     fb_team: boolean
@@ -164,7 +184,7 @@ export async function getFirstBloodImpact(teamId: string, mapFilter?: string) {
             ROUND(SUM(CASE WHEN r.result = 'win' THEN 1 ELSE 0 END)::NUMERIC / COUNT(*), 3) AS win_rate
      FROM rounds r
      JOIN matches m ON m.id = r.match_id
-     WHERE m.team_id = $1 AND r.first_blood_team IS NOT NULL ${mapClause}
+     WHERE m.team_id = $1 AND r.first_blood_team IS NOT NULL${filterClause}
      GROUP BY r.first_blood_team`,
     params
   )
@@ -212,10 +232,9 @@ export async function getSiteWinRates(teamId: string) {
 // Site & Post-plant analysis (from rounds table)
 // ============================================================
 
-export async function getRoundSiteStats(teamId: string, mapFilter?: string) {
-  const mapClause = mapFilter ? `AND m.map = $2` : ''
+export async function getRoundSiteStats(teamId: string, mapFilter?: string, matchTypeFilter?: string) {
   const params: unknown[] = [teamId]
-  if (mapFilter) params.push(mapFilter)
+  const filterClause = applyFilters(params, mapFilter, matchTypeFilter, 'm')
 
   // Post-plant overall
   const [postPlant, bySite, byMap] = await Promise.all([
@@ -224,7 +243,7 @@ export async function getRoundSiteStats(teamId: string, mapFilter?: string) {
               SUM(CASE WHEN r.result = 'win' THEN 1 ELSE 0 END) AS wins,
               ROUND(SUM(CASE WHEN r.result = 'win' THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*),0), 3) AS win_rate
        FROM rounds r JOIN matches m ON m.id = r.match_id
-       WHERE m.team_id = $1 AND r.planted = true ${mapClause}`,
+       WHERE m.team_id = $1 AND r.planted = true${filterClause}`,
       params
     ),
     // ATK execute & DEF retake by site (A/B), map-agnostic
@@ -237,7 +256,7 @@ export async function getRoundSiteStats(teamId: string, mapFilter?: string) {
               SUM(CASE WHEN r.result = 'win' THEN 1 ELSE 0 END) AS wins,
               ROUND(SUM(CASE WHEN r.result = 'win' THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*),0), 3) AS win_rate
        FROM rounds r JOIN matches m ON m.id = r.match_id
-       WHERE m.team_id = $1 AND r.planted = true AND r.plant_site IS NOT NULL ${mapClause}
+       WHERE m.team_id = $1 AND r.planted = true AND r.plant_site IS NOT NULL${filterClause}
        GROUP BY r.plant_site, r.side
        ORDER BY r.plant_site, r.side`,
       params
@@ -252,7 +271,7 @@ export async function getRoundSiteStats(teamId: string, mapFilter?: string) {
               SUM(CASE WHEN r.result = 'win' THEN 1 ELSE 0 END) AS wins,
               ROUND(SUM(CASE WHEN r.result = 'win' THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*),0), 3) AS win_rate
        FROM rounds r JOIN matches m ON m.id = r.match_id
-       WHERE m.team_id = $1 AND r.planted = true AND r.plant_site IS NOT NULL ${mapClause}
+       WHERE m.team_id = $1 AND r.planted = true AND r.plant_site IS NOT NULL${filterClause}
        GROUP BY m.map, r.plant_site, r.side
        ORDER BY m.map, r.plant_site, r.side`,
       params
@@ -266,10 +285,9 @@ export async function getRoundSiteStats(teamId: string, mapFilter?: string) {
 // Timing Win Rates (early=ラッシュ / mid=デフォルト / late=スロウ)
 // ============================================================
 
-export async function getTimingWinRates(teamId: string, mapFilter?: string) {
-  const mapClause = mapFilter ? `AND m.map = $2` : ''
+export async function getTimingWinRates(teamId: string, mapFilter?: string, matchTypeFilter?: string) {
   const params: unknown[] = [teamId]
-  if (mapFilter) params.push(mapFilter)
+  const filterClause = applyFilters(params, mapFilter, matchTypeFilter, 'm')
 
   return query<{
     contact_timing: string
@@ -284,7 +302,7 @@ export async function getTimingWinRates(teamId: string, mapFilter?: string) {
             ROUND(SUM(CASE WHEN r.result = 'win' THEN 1 ELSE 0 END)::NUMERIC / NULLIF(COUNT(*),0), 3) AS win_rate
      FROM rounds r
      JOIN matches m ON m.id = r.match_id
-     WHERE m.team_id = $1 AND r.contact_timing IS NOT NULL ${mapClause}
+     WHERE m.team_id = $1 AND r.contact_timing IS NOT NULL${filterClause}
      GROUP BY r.contact_timing, r.side
      ORDER BY r.contact_timing, r.side`,
     params
@@ -295,10 +313,9 @@ export async function getTimingWinRates(teamId: string, mapFilter?: string) {
 // Round-by-round analysis (round 1, 2, 3...)
 // ============================================================
 
-export async function getRoundNumberWinRates(teamId: string, mapFilter?: string) {
-  const mapClause = mapFilter ? `AND m.map = $2` : ''
+export async function getRoundNumberWinRates(teamId: string, mapFilter?: string, matchTypeFilter?: string) {
   const params: unknown[] = [teamId]
-  if (mapFilter) params.push(mapFilter)
+  const filterClause = applyFilters(params, mapFilter, matchTypeFilter, 'm')
 
   return query<{ round_number: number; rounds: number; wins: number; win_rate: number }>(
     `SELECT r.round_number,
@@ -307,7 +324,7 @@ export async function getRoundNumberWinRates(teamId: string, mapFilter?: string)
             ROUND(SUM(CASE WHEN r.result = 'win' THEN 1 ELSE 0 END)::NUMERIC / COUNT(*), 3) AS win_rate
      FROM rounds r
      JOIN matches m ON m.id = r.match_id
-     WHERE m.team_id = $1 ${mapClause}
+     WHERE m.team_id = $1${filterClause}
      GROUP BY r.round_number
      ORDER BY r.round_number`,
     params

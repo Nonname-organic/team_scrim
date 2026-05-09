@@ -37,17 +37,19 @@ export async function GET(req: NextRequest) {
   const auth = await getAuthContext()
   if (!auth) return unauthorizedResponse()
 
-  const map = new URL(req.url).searchParams.get('map') ?? undefined
+  const sp = new URL(req.url).searchParams
+  const map       = sp.get('map')        ?? undefined
+  const matchType = sp.get('match_type') ?? undefined
 
   try {
     const [summary, trend, economy, fbImpact, roundWinRates, siteStats, timingWinRates] = await Promise.all([
-      getDashboardSummary(auth.teamId, map),
-      getWinRateTrend(auth.teamId, 20, map),
-      getEconomyWinRates(auth.teamId, map),
-      getFirstBloodImpact(auth.teamId, map),
-      getRoundNumberWinRates(auth.teamId, map),
-      getRoundSiteStats(auth.teamId, map),
-      getTimingWinRates(auth.teamId, map),
+      getDashboardSummary(auth.teamId, map, matchType),
+      getWinRateTrend(auth.teamId, 20, map, matchType),
+      getEconomyWinRates(auth.teamId, map, matchType),
+      getFirstBloodImpact(auth.teamId, map, matchType),
+      getRoundNumberWinRates(auth.teamId, map, matchType),
+      getRoundSiteStats(auth.teamId, map, matchType),
+      getTimingWinRates(auth.teamId, map, matchType),
     ])
 
     return NextResponse.json({

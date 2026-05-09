@@ -8,10 +8,14 @@ import { SiteWinRates } from '@/components/dashboard/SiteWinRates'
 import { RecentMatches } from '@/components/dashboard/RecentMatches'
 import { RoundWinRates } from '@/components/dashboard/RoundWinRates'
 import { TimingWinRates } from '@/components/dashboard/TimingWinRates'
-import { AlertTriangle, FileDown } from 'lucide-react'
+import { AlertTriangle } from 'lucide-react'
 import { MAPS } from '@/types'
 import { useAuth } from '@/contexts/AuthContext'
 import { LockedFeature } from '@/components/pricing/LockedFeature'
+import { cn } from '@/lib/utils'
+
+type TypeFilter = '' | 'official' | 'practice'
+const TYPE_LABELS: Record<string, string> = { official: 'Competitive', practice: 'Practice' }
 
 export default function DashboardPage() {
   const { teamId } = useAuth()
@@ -19,13 +23,15 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [mapFilter, setMapFilter] = useState('')
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('')
 
   useEffect(() => {
     if (!teamId) return
     setLoading(true)
     setError(null)
     const params = new URLSearchParams()
-    if (mapFilter) params.set('map', mapFilter)
+    if (mapFilter)  params.set('map', mapFilter)
+    if (typeFilter) params.set('match_type', typeFilter)
 
     fetch(`/api/analysis/dashboard${params.size ? `?${params}` : ''}`)
       .then(r => {
@@ -41,7 +47,7 @@ export default function DashboardPage() {
         setError(String(e))
         setLoading(false)
       })
-  }, [mapFilter, teamId])
+  }, [mapFilter, typeFilter, teamId])
 
   if (loading) return <LoadingState />
   if (error || !data) return <ErrorState message={error ?? 'No data'} dbSetup={!data && !!error} />
@@ -58,31 +64,43 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-white">ダッシュボード</h1>
           <p className="text-muted-foreground text-sm mt-1">チームパフォーマンス概要</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* 種別フィルター */}
+          {(['official', 'practice'] as const).map(t => (
+            <button
+              key={t}
+              onClick={() => setTypeFilter(prev => prev === t ? '' : t)}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
+                typeFilter === t
+                  ? t === 'official'
+                    ? 'bg-[#00D4A0]/15 border-[#00D4A0]/40 text-[#00D4A0]'
+                    : 'bg-[#6C63FF]/15 border-[#6C63FF]/40 text-[#6C63FF]'
+                  : 'bg-muted border-border text-muted-foreground hover:text-white hover:border-white/30'
+              )}
+            >
+              {TYPE_LABELS[t]}
+            </button>
+          ))}
+
+          {/* マップフィルター */}
           <span className="text-xs text-muted-foreground">マップ</span>
           <select
             value={mapFilter}
             onChange={e => setMapFilter(e.target.value)}
             className="bg-muted border border-border rounded-lg px-3 py-1.5 text-sm text-white focus:border-[#FF4655] outline-none"
           >
-            <option value="">すべてのマップ</option>
+            <option value="">すべて</option>
             {MAPS.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
-          {mapFilter && (
+          {(mapFilter || typeFilter) && (
             <button
-              onClick={() => setMapFilter('')}
+              onClick={() => { setMapFilter(''); setTypeFilter('') }}
               className="text-xs text-muted-foreground hover:text-white px-2 py-1.5 rounded border border-border transition-colors"
             >
               リセット
             </button>
           )}
-          <button
-            onClick={() => window.open('/export', '_blank')}
-            className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-border text-muted-foreground hover:text-white hover:border-white/30 transition-colors"
-          >
-            <FileDown className="w-3.5 h-3.5" />
-            PDFエクスポート
-          </button>
         </div>
       </div>
 

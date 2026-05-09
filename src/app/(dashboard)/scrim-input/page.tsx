@@ -159,15 +159,16 @@ export default function ScrimInputPage() {
   }, [])
 
   // Auto-generate rounds when score changes
+  // R1-12: always firstHalfSide (first half is exactly 12 rounds in VALORANT)
+  // R13+:  opposite side (second half / overtime)
   useEffect(() => {
     const total = Number(teamScore || 0) + Number(oppScore || 0)
     if (total < 2 || total > 50) return
     const side1 = firstHalfSide || 'attack'
     const side2 = side1 === 'attack' ? 'defense' : 'attack'
-    const half = Math.ceil(total / 2)
     setRounds(Array.from({ length: total }, (_, i) => ({
       round_number: i + 1,
-      side: (i < half ? side1 : side2) as 'attack' | 'defense',
+      side: (i < 12 ? side1 : side2) as 'attack' | 'defense',
       economy: '',
       result: '',
       plant: false,
