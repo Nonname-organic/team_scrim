@@ -545,7 +545,7 @@ export default function ScrimInputPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-muted/20 border-b border-border">
-                      {['#','サイド','購入状況','結果','プラント','サイト','リテイク','FB/FD','プレイタイム','注目ラウンド'].map(h => (
+                      {['#','サイド','購入状況','結果','プラント','サイト','リテイク','FB','プレイタイム','注目ラウンド'].map(h => (
                         <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
