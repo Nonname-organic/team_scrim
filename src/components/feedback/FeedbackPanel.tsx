@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import {
   Bot, User, AlertCircle, Zap, Loader2, Plus, X, Trash2, Lock,
   Target, Shield, Users, TrendingUp, Flag, ChevronDown, ChevronUp,
+  Lightbulb, GitBranch, RefreshCw, BarChart2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlan } from '@/contexts/PlanContext'
@@ -16,16 +17,53 @@ interface TacticalIssue {
   priority: 'high' | 'mid' | 'low'
 }
 
+interface StructuredImprovement {
+  who: string
+  when: string
+  what: string
+  why: string
+}
+
+interface BreakdownPoint {
+  round: string
+  moment: string
+  description: string
+}
+
+interface CauseAnalysis {
+  structural: string[]
+  execution: string[]
+  judgment: string[]
+  information: string[]
+}
+
+interface EVEvaluation {
+  verdict: 'rational' | 'irrational' | 'situational'
+  reasoning: string
+}
+
+interface Reproducibility {
+  verdict: 'repeatable' | 'coincidence' | 'mixed'
+  evidence: string
+}
+
 interface TacticalAnalysis {
   round_evaluation: string
   win_factor: string
-  good_points: string[]
-  issues: TacticalIssue[]
-  root_causes: string[]
-  improvements: { team: string[]; individual: string[] }
+  // 7-step framework fields
+  intent_assessment?: string
+  ev_evaluation?: EVEvaluation
+  breakdown_points?: BreakdownPoint[]
+  cause_analysis?: CauseAnalysis
+  reproducibility?: Reproducibility
+  improvements: StructuredImprovement[] | { team: string[]; individual: string[] }
   rules: string[]
   pattern_flags: string[]
   score: { macro: number; micro: number; teamplay: number; overall: number }
+  // legacy fields (old format)
+  good_points?: string[]
+  issues?: TacticalIssue[]
+  root_causes?: string[]
 }
 
 interface FeedbackData {
@@ -47,10 +85,11 @@ interface FeedbackData {
 
 function parseTactical(raw: string | null | undefined): TacticalAnalysis | null {
   if (!raw) return null
-  try {
-    const json = JSON.parse(raw)
+
+  const normalize = (json: Record<string, unknown>): TacticalAnalysis | null => {
     if (!json.round_evaluation) return null
-    // tool_use 保存形式（score がフラット）を正規化
+
+    // score フラット形式を正規化（旧 tool_use 保存形式）
     if (!json.score && (json.score_macro !== undefined || json.score_overall !== undefined)) {
       json.score = {
         macro:    json.score_macro    ?? 0,
@@ -59,24 +98,53 @@ function parseTactical(raw: string | null | undefined): TacticalAnalysis | null 
         overall:  json.score_overall  ?? 0,
       }
     }
+
+    // 旧 improvements 形式を正規化
     if (!json.improvements && (json.team_improvements || json.individual_improvements)) {
       json.improvements = {
         team:       json.team_improvements       ?? [],
         individual: json.individual_improvements ?? [],
       }
     }
-    return json as TacticalAnalysis
+    if (!json.improvements) json.improvements = []
+
+    return json as unknown as TacticalAnalysis
+  }
+
+  try {
+    const json = JSON.parse(raw)
+    return normalize(json)
   } catch {}
-  // フォールバック: ```json ブロックを探す
+
   try {
     const fenced = raw.match(/```json\r?\n([\s\S]*?)\r?\n```/)
     if (fenced) {
       const json = JSON.parse(fenced[1])
-      if (json.round_evaluation) return json as TacticalAnalysis
+      return normalize(json)
     }
   } catch {}
+
   return null
 }
+
+const EV_CFG = {
+  rational:    { label: '期待値: 合理的',   color: '#00D4A0' },
+  irrational:  { label: '期待値: 非合理',   color: '#FF4655' },
+  situational: { label: '期待値: 状況依存', color: '#FF8C42' },
+}
+
+const REPRO_CFG = {
+  repeatable:  { label: '再現可能',   color: '#00D4A0' },
+  coincidence: { label: '偶然',       color: '#FF4655' },
+  mixed:       { label: '一部再現可', color: '#FF8C42' },
+}
+
+const CAUSE_CFG = [
+  { key: 'structural',  label: '構造',  color: '#6C63FF' },
+  { key: 'execution',   label: '実行',  color: '#FF4655' },
+  { key: 'judgment',    label: '判断',  color: '#FF8C42' },
+  { key: 'information', label: '情報',  color: '#3B82F6' },
+] as const
 
 const PRIORITY_CFG = {
   high: { label: 'HIGH', color: '#FF4655' },
@@ -118,7 +186,7 @@ function ScoreBar({ label, value }: { label: string; value: number }) {
   )
 }
 
-// ── New Tactical Card ─────────────────────────────────────────────────────────
+// ── New Tactical Card (7-step framework) ─────────────────────────────────────
 
 function TacticalCard({
   feedback,
@@ -128,9 +196,20 @@ function TacticalCard({
   tactical: TacticalAnalysis
 }) {
   const [expanded, setExpanded] = useState(false)
+  const isNewFormat = !!tactical.intent_assessment
   const date = new Date(feedback.created_at).toLocaleDateString('ja-JP', {
     month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
   })
+
+  const scoreColor = (v: number) => v >= 70 ? '#00D4A0' : v >= 45 ? '#FF8C42' : '#FF4655'
+
+  // improvements can be new (array of who/when/what/why) or legacy ({team, individual})
+  const structuredImprovements: StructuredImprovement[] = Array.isArray(tactical.improvements)
+    ? (tactical.improvements as StructuredImprovement[])
+    : []
+  const legacyImprovements = !Array.isArray(tactical.improvements)
+    ? (tactical.improvements as { team: string[]; individual: string[] })
+    : null
 
   return (
     <div className="border border-[#6C63FF]/30 bg-[#6C63FF]/5 rounded-xl overflow-hidden">
@@ -144,9 +223,7 @@ function TacticalCard({
           <span className="text-[10px] text-muted-foreground">{date}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-lg font-black" style={{
-            color: tactical.score.overall >= 70 ? '#00D4A0' : tactical.score.overall >= 45 ? '#FF8C42' : '#FF4655'
-          }}>
+          <span className="text-lg font-black" style={{ color: scoreColor(tactical.score.overall) }}>
             {tactical.score.overall}
           </span>
           <span className="text-[10px] text-muted-foreground">/ 100</span>
@@ -154,7 +231,7 @@ function TacticalCard({
       </div>
 
       <div className="p-4 space-y-4">
-        {/* Evaluation + Win Factor */}
+        {/* 試合評価 + 勝敗要因 */}
         <div className="space-y-1.5">
           <p className="text-xs text-muted-foreground leading-relaxed border-l-2 border-[#6C63FF]/40 pl-3">
             {tactical.round_evaluation}
@@ -167,123 +244,250 @@ function TacticalCard({
           </div>
         </div>
 
+        {isNewFormat && (
+          <>
+            {/* Step 1: 意図の推測 */}
+            {tactical.intent_assessment && (
+              <div className="space-y-1.5">
+                <div className="text-[10px] font-bold text-[#3B82F6] uppercase tracking-wider flex items-center gap-1">
+                  <Lightbulb className="w-3 h-3" /> 意図の推測
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed pl-4">
+                  {tactical.intent_assessment}
+                </p>
+              </div>
+            )}
+
+            {/* Step 2: 期待値評価 */}
+            {tactical.ev_evaluation && (
+              <div className="space-y-1.5">
+                <div className="text-[10px] font-bold text-[#6C63FF] uppercase tracking-wider flex items-center gap-1">
+                  <BarChart2 className="w-3 h-3" /> 期待値評価
+                </div>
+                <div className="flex items-start gap-2">
+                  {(() => {
+                    const cfg = EV_CFG[tactical.ev_evaluation.verdict] ?? EV_CFG.situational
+                    return (
+                      <>
+                        <span
+                          className="text-[9px] font-black px-2 py-0.5 rounded-full shrink-0 mt-0.5"
+                          style={{ color: cfg.color, background: `${cfg.color}20`, border: `1px solid ${cfg.color}40` }}
+                        >
+                          {cfg.label}
+                        </span>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          {tactical.ev_evaluation.reasoning}
+                        </p>
+                      </>
+                    )
+                  })()}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
         {/* Score bars */}
         <div className="grid grid-cols-2 gap-x-6 gap-y-2 bg-muted/10 rounded-xl p-3">
-          <ScoreBar label="マクロ"     value={tactical.score.macro} />
-          <ScoreBar label="ミクロ"     value={tactical.score.micro} />
+          <ScoreBar label="マクロ"       value={tactical.score.macro} />
+          <ScoreBar label="ミクロ"       value={tactical.score.micro} />
           <ScoreBar label="チームプレイ" value={tactical.score.teamplay} />
-          <ScoreBar label="総合"       value={tactical.score.overall} />
+          <ScoreBar label="総合"         value={tactical.score.overall} />
         </div>
 
-        {/* Good points + Issues side by side */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* Good points */}
-          <div className="space-y-2">
-            <div className="text-[10px] font-bold text-[#00D4A0] uppercase tracking-wider flex items-center gap-1">
-              <Shield className="w-3 h-3" /> 良かった点
-            </div>
-            <ul className="space-y-1.5">
-              {tactical.good_points.map((pt, i) => (
-                <li key={i} className="text-[11px] text-muted-foreground flex gap-1.5">
-                  <span className="text-[#00D4A0] shrink-0 mt-px">•</span>
-                  <span>{pt}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Issues */}
-          <div className="space-y-2">
-            <div className="text-[10px] font-bold text-[#FF4655] uppercase tracking-wider flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" /> 課題
-            </div>
-            <ul className="space-y-2">
-              {tactical.issues.map((iss, i) => {
-                const cfg = PRIORITY_CFG[iss.priority] ?? PRIORITY_CFG.mid
-                return (
-                  <li key={i} className="space-y-0.5">
-                    <div className="flex items-center gap-1.5">
-                      <span
-                        className="text-[9px] font-black px-1.5 py-px rounded"
-                        style={{ color: cfg.color, background: `${cfg.color}20` }}
-                      >
-                        {cfg.label}
-                      </span>
-                      <span className="text-[11px] text-white font-medium">{iss.issue}</span>
-                    </div>
-                    <p className="text-[10px] text-muted-foreground pl-8 leading-relaxed">{iss.impact}</p>
+        {/* Legacy: Good points + Issues */}
+        {!isNewFormat && tactical.good_points && tactical.issues && (
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <div className="text-[10px] font-bold text-[#00D4A0] uppercase tracking-wider flex items-center gap-1">
+                <Shield className="w-3 h-3" /> 良かった点
+              </div>
+              <ul className="space-y-1.5">
+                {tactical.good_points.map((pt, i) => (
+                  <li key={i} className="text-[11px] text-muted-foreground flex gap-1.5">
+                    <span className="text-[#00D4A0] shrink-0 mt-px">•</span>
+                    <span>{pt}</span>
                   </li>
-                )
-              })}
-            </ul>
+                ))}
+              </ul>
+            </div>
+            <div className="space-y-2">
+              <div className="text-[10px] font-bold text-[#FF4655] uppercase tracking-wider flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" /> 課題
+              </div>
+              <ul className="space-y-2">
+                {tactical.issues.map((iss, i) => {
+                  const cfg = PRIORITY_CFG[iss.priority] ?? PRIORITY_CFG.mid
+                  return (
+                    <li key={i} className="space-y-0.5">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[9px] font-black px-1.5 py-px rounded"
+                          style={{ color: cfg.color, background: `${cfg.color}20` }}>
+                          {cfg.label}
+                        </span>
+                        <span className="text-[11px] text-white font-medium">{iss.issue}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground pl-8 leading-relaxed">{iss.impact}</p>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Expandable: root causes, improvements, rules, pattern flags */}
+        {/* Expand toggle */}
         <button
           onClick={() => setExpanded(v => !v)}
           className="w-full flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground hover:text-white transition-colors py-1"
         >
           {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          {expanded ? '折りたたむ' : '根本原因・改善策・ルールを表示'}
+          {expanded ? '折りたたむ' : isNewFormat ? '崩壊点・原因分析・改善策を表示' : '根本原因・改善策・ルールを表示'}
         </button>
 
         {expanded && (
           <div className="space-y-4 border-t border-border/40 pt-4">
-            {/* Root causes */}
-            {tactical.root_causes.length > 0 && (
-              <div className="space-y-1.5">
-                <div className="text-[10px] font-bold text-[#FF8C42] uppercase tracking-wider">根本原因</div>
-                <ul className="space-y-1">
-                  {tactical.root_causes.map((rc, i) => (
-                    <li key={i} className="text-[11px] text-muted-foreground flex gap-1.5">
-                      <span className="text-[#FF8C42] shrink-0 mt-px font-bold">{i + 1}.</span>
-                      <span>{rc}</span>
+
+            {/* Step 3: 崩壊点 (new format) */}
+            {isNewFormat && tactical.breakdown_points && tactical.breakdown_points.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-[10px] font-bold text-[#FF4655] uppercase tracking-wider flex items-center gap-1">
+                  <GitBranch className="w-3 h-3" /> 崩壊点
+                </div>
+                <ul className="space-y-2">
+                  {tactical.breakdown_points.map((bp, i) => (
+                    <li key={i} className="bg-[#FF4655]/5 border border-[#FF4655]/15 rounded-lg px-3 py-2 space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-black text-[#FF4655] bg-[#FF4655]/20 px-1.5 py-px rounded">{bp.round}</span>
+                        <span className="text-[11px] text-white font-medium">{bp.moment}</span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground pl-8 leading-relaxed">{bp.description}</p>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
 
-            {/* Improvements */}
-            <div className="grid grid-cols-2 gap-3">
-              {tactical.improvements.team.length > 0 && (
-                <div className="space-y-1.5">
-                  <div className="text-[10px] font-bold text-[#6C63FF] uppercase tracking-wider flex items-center gap-1">
-                    <Users className="w-3 h-3" /> チーム改善
-                  </div>
-                  <ul className="space-y-1">
-                    {tactical.improvements.team.map((a, i) => (
-                      <li key={i} className="text-[11px] text-muted-foreground flex gap-1.5">
-                        <span className="text-[#6C63FF] font-bold shrink-0 mt-px">{i + 1}.</span>
-                        <span>{a}</span>
-                      </li>
-                    ))}
-                  </ul>
+            {/* Step 4: 原因分離 (new format) */}
+            {isNewFormat && tactical.cause_analysis && (
+              <div className="space-y-2">
+                <div className="text-[10px] font-bold text-[#FF8C42] uppercase tracking-wider flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> 原因分離
                 </div>
-              )}
-              {tactical.improvements.individual.length > 0 && (
-                <div className="space-y-1.5">
-                  <div className="text-[10px] font-bold text-[#3B82F6] uppercase tracking-wider flex items-center gap-1">
-                    <Zap className="w-3 h-3" /> 個人改善
-                  </div>
-                  <ul className="space-y-1">
-                    {tactical.improvements.individual.map((a, i) => (
-                      <li key={i} className="text-[11px] text-muted-foreground flex gap-1.5">
-                        <span className="text-[#3B82F6] font-bold shrink-0 mt-px">{i + 1}.</span>
-                        <span>{a}</span>
-                      </li>
-                    ))}
-                  </ul>
+                <div className="grid grid-cols-2 gap-2">
+                  {CAUSE_CFG.map(({ key, label, color }) => {
+                    const items = tactical.cause_analysis![key]
+                    if (!items?.length) return null
+                    return (
+                      <div key={key} className="rounded-lg p-2.5 space-y-1.5"
+                        style={{ background: `${color}08`, border: `1px solid ${color}20` }}>
+                        <div className="text-[9px] font-black uppercase tracking-wider" style={{ color }}>
+                          {label}
+                        </div>
+                        <ul className="space-y-1">
+                          {items.map((item, i) => (
+                            <li key={i} className="text-[10px] text-muted-foreground flex gap-1.5">
+                              <span style={{ color }} className="shrink-0 mt-px font-bold">•</span>
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )
+                  })}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* Rules */}
+            {/* Step 5: 再現性評価 (new format) */}
+            {isNewFormat && tactical.reproducibility && (
+              <div className="space-y-1.5">
+                <div className="text-[10px] font-bold text-[#00D4A0] uppercase tracking-wider flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> 再現性評価
+                </div>
+                <div className="flex items-start gap-2">
+                  {(() => {
+                    const cfg = REPRO_CFG[tactical.reproducibility.verdict] ?? REPRO_CFG.mixed
+                    return (
+                      <>
+                        <span
+                          className="text-[9px] font-black px-2 py-0.5 rounded-full shrink-0 mt-0.5"
+                          style={{ color: cfg.color, background: `${cfg.color}20`, border: `1px solid ${cfg.color}40` }}
+                        >
+                          {cfg.label}
+                        </span>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          {tactical.reproducibility.evidence}
+                        </p>
+                      </>
+                    )
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {/* Step 6: 改善提案 (new who/when/what/why format) */}
+            {structuredImprovements.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-[10px] font-bold text-[#6C63FF] uppercase tracking-wider flex items-center gap-1">
+                  <Users className="w-3 h-3" /> 改善提案
+                </div>
+                <ul className="space-y-2">
+                  {structuredImprovements.map((imp, i) => (
+                    <li key={i} className="bg-[#6C63FF]/5 border border-[#6C63FF]/15 rounded-lg px-3 py-2.5 space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[9px] font-black text-[#6C63FF] bg-[#6C63FF]/20 px-1.5 py-px rounded">{imp.who}</span>
+                        <span className="text-[9px] text-muted-foreground">{imp.when}</span>
+                      </div>
+                      <p className="text-[11px] text-white font-medium">{imp.what}</p>
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">{imp.why}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* Legacy improvements */}
+            {legacyImprovements && (
+              <div className="grid grid-cols-2 gap-3">
+                {legacyImprovements.team.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] font-bold text-[#6C63FF] uppercase tracking-wider flex items-center gap-1">
+                      <Users className="w-3 h-3" /> チーム改善
+                    </div>
+                    <ul className="space-y-1">
+                      {legacyImprovements.team.map((a, i) => (
+                        <li key={i} className="text-[11px] text-muted-foreground flex gap-1.5">
+                          <span className="text-[#6C63FF] font-bold shrink-0 mt-px">{i + 1}.</span>
+                          <span>{a}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                {legacyImprovements.individual.length > 0 && (
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] font-bold text-[#3B82F6] uppercase tracking-wider flex items-center gap-1">
+                      <Zap className="w-3 h-3" /> 個人改善
+                    </div>
+                    <ul className="space-y-1">
+                      {legacyImprovements.individual.map((a, i) => (
+                        <li key={i} className="text-[11px] text-muted-foreground flex gap-1.5">
+                          <span className="text-[#3B82F6] font-bold shrink-0 mt-px">{i + 1}.</span>
+                          <span>{a}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Step 7: チームルール */}
             {tactical.rules.length > 0 && (
               <div className="space-y-1.5">
                 <div className="text-[10px] font-bold text-[#FFD700] uppercase tracking-wider flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" /> チームルール
+                  <TrendingUp className="w-3 h-3" /> チームルール (if-then)
                 </div>
                 <ul className="space-y-1">
                   {tactical.rules.map((r, i) => (
@@ -296,7 +500,7 @@ function TacticalCard({
               </div>
             )}
 
-            {/* Pattern flags */}
+            {/* パターンフラグ */}
             {tactical.pattern_flags.length > 0 && (
               <div className="space-y-1.5">
                 <div className="text-[10px] font-bold text-[#FF4655] uppercase tracking-wider flex items-center gap-1">
@@ -304,14 +508,27 @@ function TacticalCard({
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {tactical.pattern_flags.map((pf, i) => (
-                    <span
-                      key={i}
-                      className="text-[10px] text-[#FF4655] border border-[#FF4655]/30 bg-[#FF4655]/5 rounded-full px-2 py-0.5"
-                    >
+                    <span key={i}
+                      className="text-[10px] text-[#FF4655] border border-[#FF4655]/30 bg-[#FF4655]/5 rounded-full px-2 py-0.5">
                       {pf}
                     </span>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Legacy: root causes */}
+            {!isNewFormat && tactical.root_causes && tactical.root_causes.length > 0 && (
+              <div className="space-y-1.5">
+                <div className="text-[10px] font-bold text-[#FF8C42] uppercase tracking-wider">根本原因</div>
+                <ul className="space-y-1">
+                  {tactical.root_causes.map((rc, i) => (
+                    <li key={i} className="text-[11px] text-muted-foreground flex gap-1.5">
+                      <span className="text-[#FF8C42] shrink-0 mt-px font-bold">{i + 1}.</span>
+                      <span>{rc}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
           </div>

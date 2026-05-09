@@ -4,7 +4,7 @@
 // ============================================================
 
 // ============================================================
-// Tactical Analyst Prompt — per-match structured analysis
+// Tactical Analyst Prompt — per-match structured analysis (7-step framework)
 // ============================================================
 
 export function buildTacticalFeedbackPrompt(
@@ -34,18 +34,26 @@ export function buildTacticalFeedbackPrompt(
     }).join(' | ') || '記録なし'
   }
 
-  const keyFights = rounds
-    .filter(r => r.first_blood_team === true || r.retake || r.notable)
-    .slice(0, 6)
-    .map(r => {
-      const tags = [
-        r.first_blood_team === true  ? 'FB取得' : '',
-        r.first_blood_team === false ? 'FB喪失' : '',
-        r.retake    ? 'リテイク' : '',
-        r.planted   ? `プラント${r.plant_site ?? ''}` : '',
-      ].filter(Boolean).join(' ')
-      return `R${r.round_number} ${r.side === 'attack' ? 'ATK' : 'DEF'} ${r.result === 'win' ? '勝' : '負'} [${tags}]`
-    })
+  const fb    = rounds.filter(r => r.first_blood_team === true).length
+  const fd    = rounds.filter(r => r.first_blood_team === false).length
+  const fbWr  = rounds.filter(r => r.first_blood_team === true  && r.result === 'win').length
+  const fdWr  = rounds.filter(r => r.first_blood_team === false && r.result === 'win').length
+
+  const keyRounds = rounds
+    .filter(r => r.first_blood_team !== null || r.retake || r.notable)
+    .slice(0, 10)
+    .map(r => ({
+      round: r.round_number,
+      side:  r.side,
+      result: r.result,
+      fb_taken: r.first_blood_team === true,
+      fb_lost:  r.first_blood_team === false,
+      retake:  r.retake ?? false,
+      planted: r.planted ?? false,
+      site:    r.plant_site ?? null,
+      economy: r.economy_type ?? null,
+      notable: r.notable ?? false,
+    }))
 
   const plantSites = [...new Set(
     rounds.filter(r => r.plant_site).map(r => r.plant_site)
@@ -53,100 +61,51 @@ export function buildTacticalFeedbackPrompt(
 
   const input = {
     map: match.map,
-    side: `ATK ${atkRounds.length}R / DEF ${defRounds.length}R`,
+    sides: { atk: atkRounds.length, def: defRounds.length },
     result: `${match.result === 'win' ? '勝利' : '敗北'} (${match.team_score}-${match.opponent_score}) vs ${match.opponent_name}`,
     team_comp: playerStats.map(p => p.agent).filter(Boolean),
-    enemy_comp: ['未記録'],
     economy: econSummary(),
     timeline: {
       early: `R1-5: ${summarizePhase(rounds.filter(r => Number(r.round_number) <= 5))}`,
       mid:   `R6-12: ${summarizePhase(rounds.filter(r => Number(r.round_number) >= 6 && Number(r.round_number) <= 12))}`,
       late:  `R13+: ${summarizePhase(rounds.filter(r => Number(r.round_number) >= 13))}`,
     },
-    events: {
-      first_kill: (() => {
-        const fb = rounds.filter(r => r.first_blood_team === true).length
-        const fd = rounds.filter(r => r.first_blood_team === false).length
-        const fbWr = rounds.filter(r => r.first_blood_team === true  && r.result === 'win').length
-        const fdWr = rounds.filter(r => r.first_blood_team === false && r.result === 'win').length
-        return `FB取得 ${fb}R(勝率${fb > 0 ? Math.round(fbWr/fb*100) : 0}%) / FB喪失 ${fd}R(勝率${fd > 0 ? Math.round(fdWr/fd*100) : 0}%)`
-      })(),
-      key_fights: keyFights.length > 0 ? keyFights : ['特記ラウンドなし'],
-      utility:    ['未記録（VODで確認要）'],
-      rotations:  ['未記録（VODで確認要）'],
+    first_blood: {
+      taken: `${fb}R (WR ${fb > 0 ? Math.round(fbWr/fb*100) : 0}%)`,
+      lost:  `${fd}R (WR ${fd > 0 ? Math.round(fdWr/fd*100) : 0}%)`,
     },
-    positions: plantSites.length > 0 ? plantSites : ['プラント記録なし'],
-    notes: (match.notes as string | null) ?? '特記事項なし',
+    atk_wr: atkRounds.length > 0 ? `${Math.round(atkRounds.filter(r => r.result === 'win').length / atkRounds.length * 100)}%` : 'N/A',
+    def_wr: defRounds.length > 0 ? `${Math.round(defRounds.filter(r => r.result === 'win').length / defRounds.length * 100)}%` : 'N/A',
+    post_plant_wr: (() => {
+      const pp = rounds.filter(r => r.planted)
+      return pp.length > 0 ? `${Math.round(pp.filter(r => r.result === 'win').length / pp.length * 100)}%` : 'N/A'
+    })(),
+    plant_sites: plantSites,
+    key_rounds: keyRounds,
+    notes: (match.notes as string | null) ?? null,
     player_stats: playerStats.map(p => ({
       ign: p.ign, agent: p.agent,
-      kills: p.kills, deaths: p.deaths, assists: p.assists,
+      kda: `${p.kills}/${p.deaths}/${p.assists}`,
       acs: p.acs, hs_pct: p.hs_pct,
       first_bloods: p.first_bloods, first_deaths: p.first_deaths,
     })),
   }
 
-  return `あなたはプロe-sportsチームの戦術アナリスト兼ヘッドコーチです。
-
-目的は「勝敗の再現性を高めること」です。
-
-分析では必ず以下を行ってください：
-1. 勝敗の本質的な原因の特定（表面的な結果は禁止）
-2. 因果関係の分解（なぜ起きたか）
-3. 改善を"行動単位"で提示
-4. チームとして再現可能なルールに変換
-
-禁止事項：
-・抽象的な精神論
-・結果論のみの指摘
-・説明不足
-
-出力はプロチームへのフィードバックとして簡潔かつ厳密に。日本語で回答すること。
-
-## 試合データ
+  return `## 試合データ
 ${JSON.stringify(input, null, 2)}
 
-以下のJSON形式のみで出力すること。余分なテキスト（説明文・前置き）は一切禁止。
+上記データを使い、7ステップ分析フレームワークに従って submit_analysis ツールを呼び出すこと。
 
-\`\`\`json
-{
-  "round_evaluation": "この試合の戦術的評価（2〜3文、数値を必ず引用）",
-  "win_factor": "勝敗を分けた本質的要因（1文、行動として）",
-  "good_points": [
-    "具体的な良かった点（行動として、数値を含む）"
-  ],
-  "issues": [
-    {
-      "issue": "何が起きたか（行動として）",
-      "impact": "なぜ勝敗に影響するか（因果関係を明示）",
-      "priority": "high"
-    }
-  ],
-  "root_causes": [
-    "なぜその問題が発生したか（判断ミス・習慣・情報不足のいずれか）"
-  ],
-  "improvements": {
-    "team": [
-      "チームとして次の試合で変える行動（動詞で始める）"
-    ],
-    "individual": [
-      "個人として変える行動（動詞で始める、対象者が分かるように）"
-    ]
-  },
-  "rules": [
-    "チームルールとして定義する再現可能な行動原則（if-then形式推奨）"
-  ],
-  "pattern_flags": [
-    "繰り返しているパターン・癖（行動として）"
-  ],
-  "score": {
-    "macro": 0,
-    "micro": 0,
-    "teamplay": 0,
-    "overall": 0
-  }
-}
-\`\`\`
-`
+分析の軸：
+1. intent_assessment — チームが何を狙ったかを「結果からではなく構造から」推測する
+2. ev_evaluation — その判断が合理的だったかを数値で評価する（verdict: rational/irrational/situational）
+3. breakdown_points — 勝負が決まったラウンドとタイミングを最大3件特定する
+4. cause_analysis — 問題を structural/execution/judgment/information の4種類に分類する
+5. reproducibility — この結果が再現可能か偶然かを判定する（verdict: repeatable/coincidence/mixed）
+6. improvements — who/when/what/why の4軸で改善策を具体化する（最大4件）
+7. rules — 改善をif-then形式のチームルールに変換する
+
+禁止：抽象論・精神論・結果論・数値なし根拠`
 }
 
 export function buildCoachPrompt(context: Record<string, unknown>): string {
@@ -388,24 +347,7 @@ export function buildCoachPromptV2(context: Record<string, unknown>): string {
     ? `選択された ${filterInfo.match_count} 試合のデータ`
     : '全試合データ'
 
-  return `あなたはVALORANTのプロコーチです。
-
-【分析の軸（厳守）】
-1. 問題の「行動」を特定する（結果ではなく、何をしたか・しなかったか）
-2. なぜその行動になったか（判断ミス・情報不足・習慣）
-3. プロならどうするか（具体的な別の選択肢）
-4. 再現可能な改善（次の試合で実行できる行動）
-
-【出力ルール（厳守）】
-- スタッツの羅列禁止。数値は根拠として1つだけ使う
-- 必ず「プレイ単位」で書く（「守りが弱い」ではなく「Bサイトでリテイクに入るタイミングが遅れている」）
-- 各項目2行以内
-- 納得感のある説明を優先（なぜそうなるかが伝わること）
-- 合計1200トークン以内
-
-目的：プレイヤーが「次の試合で何を変えるか」が明確になること
-
-## 分析対象
+  return `## 分析対象
 ${scope}（${filterInfo?.match_count}試合）
 
 ## チームデータ
@@ -420,40 +362,57 @@ ${JSON.stringify(context.player_stats)}
 ### エコノミー別勝率
 ${JSON.stringify(context.economy_stats)}
 
-以下のJSON形式のみで出力すること。余分なテキスト禁止。日本語で回答すること。
+上記の複数試合データを分析し、以下のJSON形式のみで出力すること。余分なテキスト禁止。日本語で回答すること。
+
+分析の軸：
+- 問題は「行動単位」で特定する（「守りが弱い」→「Bサイトでリテイクに入るタイミングが遅い」）
+- 数値は根拠として使い、スタッツ羅列は禁止
+- 「なぜその行動になるか」まで原因を掘り下げる（判断ミス・情報不足・習慣のいずれか）
+- 改善は「次の試合で実行できる行動」まで具体化する
+- 禁止：抽象論・精神論・結果論
 
 \`\`\`json
 {
   "team_style": {
     "type": "チームタイプ（例：高テンポ×低連携）",
-    "win_path": "このチームの勝ち筋（プレイ単位で）",
-    "weakness": "最大の弱点（具体的な行動として）"
+    "win_path": "このチームの勝ち筋（行動単位で）",
+    "weakness": "最大の弱点（行動として）"
   },
   "main_issue": {
     "issue": "最重要課題（何をしているか・していないか）",
     "data_evidence": "根拠となる数値1つ",
     "cause": "なぜその行動になるか（判断・習慣・情報の問題）"
   },
+  "cause_breakdown": {
+    "structural": ["構造問題（戦術・配置・マクロ）"],
+    "execution": ["実行問題（撃ち合い・スキル）"],
+    "judgment": ["判断問題（ローテ・コール）"],
+    "information": ["情報問題（取得不足・誤認識）"]
+  },
   "loss_patterns": [
-    "行動→結果の形で書く（例：XXのタイミングでYYせずに負ける）",
-    "行動→結果の形で書く"
+    "行動→結果の形（例：Bサイト展開でユーティリティを温存したまま時間切れになり負ける）"
   ],
-  "macro_improvements": [
-    "プロならこうする（具体行動）",
-    "プロならこうする（具体行動）",
-    "プロならこうする（具体行動）"
+  "improvements": [
+    {
+      "who": "誰が",
+      "when": "いつ（状況・フェーズ）",
+      "what": "何をする",
+      "why": "なぜ（期待値・因果関係）"
+    }
+  ],
+  "rules": [
+    "if-then形式のチームルール（例：if エコラウンドでフォースが過半数同意なら全員エコにする）"
   ],
   "player_feedback": [
     {
       "name": "プレイヤー名",
       "problem": "何をしているか（行動として）",
-      "improvement": "次の試合でこう変える（行動として）"
+      "improvement": "次の試合でこう変える（行動として）",
+      "why": "なぜこれが優先されるか"
     }
   ],
   "next_actions": [
-    "次の試合で実行する行動1（動詞で始める）",
-    "次の試合で実行する行動2",
-    "次の試合で実行する行動3"
+    "次の試合で実行する行動（動詞で始める）"
   ],
   "summary": "コーチ視点の総評（1〜2行、納得感を重視）"
 }

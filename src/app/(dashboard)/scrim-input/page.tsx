@@ -102,7 +102,7 @@ export default function ScrimInputPage() {
   const [teamScore, setTeamScore] = useState<number | ''>('')
   const [oppScore, setOppScore] = useState<number | ''>('')
   const [firstHalfSide, setFirstHalfSide] = useState<'attack' | 'defense' | ''>('')
-  const [matchType, setMatchType] = useState('scrim')
+  const [matchType, setMatchType] = useState('official')
   const [opponentName, setOpponentName] = useState('')
 
   // Player rows — 登録選手数に合わせて可変（最低5行）
@@ -407,9 +407,8 @@ export default function ScrimInputPage() {
           <div>
             <Label>種別</Label>
             <select className={cls} value={matchType} onChange={e => setMatchType(e.target.value)}>
-              <option value="scrim">スクリム</option>
-              <option value="official">公式</option>
-              <option value="practice">練習</option>
+              <option value="official">Competitive</option>
+              <option value="practice">Practice</option>
             </select>
           </div>
           <div className="md:col-span-2">

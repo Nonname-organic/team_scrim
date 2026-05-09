@@ -81,7 +81,7 @@ function Sidebar() {
             alt="Team Logo"
             className="w-9 h-9 rounded-xl object-cover flex-shrink-0"
           />
-          <div className="text-sm font-bold text-white tracking-wider">SCRIM ANALYZER</div>
+          <div className="text-sm font-bold text-white tracking-wider">AXELIA Analytics</div>
         </div>
       </div>
 
