@@ -15,7 +15,7 @@ import { AIUsageBar } from '@/components/pricing/UsageBar'
 
 const nav = [
   { href: '/',               label: 'ダッシュボード', icon: LayoutDashboard },
-  { href: '/scrim-input',    label: 'スクリム入力',   icon: ClipboardEdit },
+  { href: '/scrim-input',    label: '試合入力',       icon: ClipboardEdit },
   { href: '/players',        label: '選手スタッツ',   icon: Users },
   { href: '/matches',        label: '試合履歴',       icon: Swords },
   { href: '/round-analysis', label: '試合分析',       icon: BarChart2 },
