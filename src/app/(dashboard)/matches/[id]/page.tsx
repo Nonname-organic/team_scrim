@@ -20,9 +20,9 @@ const ECO_COLOR: Record<string, string> = {
   semi_buy: '#6C63FF', full_buy: '#00D4A0', oper: '#9B59B6',
 }
 const TIMING_OPTIONS = [
-  { value: 'early', label: 'Early', color: '#FF4655' },
-  { value: 'mid',   label: 'Mid',   color: '#9B5CF6' },
-  { value: 'late',  label: 'Late',  color: '#E8B84B' },
+  { value: 'early', label: 'Early', color: 'text-[#FF4655]', bg: 'bg-[#FF4655]/20 border-[#FF4655]/40' },
+  { value: 'mid',   label: 'Mid',   color: 'text-[#6C63FF]', bg: 'bg-[#6C63FF]/20 border-[#6C63FF]/40' },
+  { value: 'late',  label: 'Late',  color: 'text-[#E8B84B]', bg: 'bg-[#E8B84B]/20 border-[#E8B84B]/40' },
 ] as const
 const SITE_OPTS = ['', 'A', 'B', 'C']
 
@@ -51,6 +51,7 @@ type REdit = {
   plant_y: number | null
   first_blood_team: string
   contact_timing: string
+  notable: boolean
 }
 
 const inputCls = 'bg-muted border border-border rounded px-1.5 py-0.5 text-xs text-white focus:border-[#FF4655] outline-none w-full'
@@ -138,6 +139,7 @@ export default function MatchDetailPage() {
         plant_y: r.plant_y != null ? Number(r.plant_y) : null,
         first_blood_team: r.first_blood_team == null ? '' : String(r.first_blood_team),
         contact_timing: r.contact_timing == null ? '' : String(r.contact_timing),
+        notable: Boolean(r.notable),
       }
     }))
     setEditRoundMode(true)
@@ -158,6 +160,7 @@ export default function MatchDetailPage() {
         plant_y: null,
         first_blood_team: '',
         contact_timing: '',
+        notable: false,
       }]
     })
   }
@@ -251,6 +254,7 @@ export default function MatchDetailPage() {
             plant_y: r.plant_y,
             fb_team: r.first_blood_team,
             contact_timing: r.contact_timing || null,
+            notable: r.notable,
           })),
         }),
       }).then(r => r.json())
@@ -512,67 +516,43 @@ export default function MatchDetailPage() {
           </div>
 
           {!editRoundMode ? (
-            <div className="py-1">
+            <div className="p-4">
               {rounds.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground text-sm">
                   ラウンドデータがありません。「編集」から追加できます。
                 </div>
               ) : (
                 <>
-                  <div className="divide-y divide-border/40">
+                  <div className="flex flex-wrap gap-1.5">
                     {rounds.map((r) => {
                       const isWin = r.result === 'win'
                       const side = String(r.side ?? '')
-                      const notable = Boolean(r.notable)
-                      const ecoType = r.economy_type != null ? String(r.economy_type) : null
-                      const planted = Boolean(r.planted)
-                      const retake = Boolean(r.retake)
-                      const fbTeam = r.first_blood_team === true ? true : r.first_blood_team === false ? false : null
-                      const plantSite = r.plant_site != null ? String(r.plant_site) : null
                       return (
-                        <div key={String(r.round_number)} className="flex items-center gap-2.5 px-4 py-2">
-                          {/* 注目フラグ + ラウンド番号 */}
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                            <Flag
-                              className={cn('w-3 h-3 transition-opacity', notable ? 'text-[#FF4655] opacity-100' : 'opacity-0')}
-                              fill={notable ? 'currentColor' : 'none'}
-                            />
-                            <div className={cn(
-                              'w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold border',
-                              isWin
-                                ? 'bg-[#00D4A0]/15 text-[#00D4A0] border-[#00D4A0]/30'
-                                : 'bg-[#FF4655]/15 text-[#FF4655] border-[#FF4655]/30'
-                            )}>
-                              {String(r.round_number)}
-                            </div>
-                          </div>
-                          {/* Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1 flex-wrap">
-                              <span className={cn('text-[10px] font-bold', side === 'attack' ? 'text-[#FF8C42]' : 'text-[#00D4A0]')}>
-                                {side === 'attack' ? 'ATK' : 'DEF'}
-                              </span>
-                              {ecoType && (
-                                <span className="text-[9px] px-1 rounded"
-                                  style={{ color: ECO_COLOR[ecoType] ?? '#9B9BA4', background: `${ECO_COLOR[ecoType] ?? '#9B9BA4'}18` }}>
-                                  {ECO_LABELS[ecoType] ?? ecoType}
-                                </span>
-                              )}
-                              {planted && <span className="text-[9px] text-[#6C63FF]">💣{plantSite}</span>}
-                            </div>
-                            <div className="flex items-center gap-1 mt-0.5">
-                              {retake  && <span className="text-[8px] text-[#6C63FF] bg-[#6C63FF]/10 px-1 rounded">リテイク</span>}
-                              {fbTeam === true  && <span className="text-[8px] text-[#FFD700] bg-[#FFD700]/10 px-1 rounded">FB取</span>}
-                              {fbTeam === false && <span className="text-[8px] text-[#FF4655] bg-[#FF4655]/10 px-1 rounded">FB負</span>}
-                            </div>
-                          </div>
+                        <div
+                          key={String(r.round_number)}
+                          title={`R${r.round_number} ${side} ${r.economy_type ?? ''} ${r.planted ? '🌱' : ''}`}
+                          className={cn(
+                            'w-8 h-8 rounded flex items-center justify-center text-xs font-bold cursor-default',
+                            isWin
+                              ? 'bg-[#00D4A0]/20 text-[#00D4A0] border border-[#00D4A0]/30'
+                              : 'bg-[#FF4655]/20 text-[#FF4655] border border-[#FF4655]/30'
+                          )}
+                        >
+                          {String(r.round_number)}
                         </div>
                       )
                     })}
                   </div>
+                  <div className="flex gap-4 mt-3 text-[10px] text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <span className="w-3 h-3 rounded bg-[#00D4A0]/20 border border-[#00D4A0]/30 inline-block" />勝利
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-3 h-3 rounded bg-[#FF4655]/20 border border-[#FF4655]/30 inline-block" />敗北
+                    </span>
+                  </div>
 
                   {/* Plant heatmap + site win rates */}
-                  <div className="px-4 pb-4">
                   {(() => {
                     const planted = rounds.filter(r => Boolean(r.planted))
                     if (planted.length === 0) return null
@@ -646,7 +626,6 @@ export default function MatchDetailPage() {
                       </div>
                     )
                   })()}
-                  </div>
                 </>
               )}
             </div>
@@ -656,7 +635,7 @@ export default function MatchDetailPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border bg-muted/20">
-                      {['#', 'サイド', '購入状況', '結果', 'プラント', 'サイト', 'リテイク', 'FB', 'タイミング', ''].map(h => (
+                      {['#', 'サイド', '購入状況', '結果', 'プラント', 'サイト', 'リテイク', 'FB', 'タイミング', '注目', ''].map(h => (
                         <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium">
                           {h}
                         </th>
@@ -714,20 +693,22 @@ export default function MatchDetailPage() {
                         </td>
                         {/* 結果 */}
                         <td className="px-2 py-1">
-                          <select
-                            value={r.result}
-                            onChange={e => updateRound(i, 'result', e.target.value)}
-                            className={cn(
-                              'border rounded px-2 py-1 text-xs font-semibold focus:border-[#FF4655] outline-none',
-                              r.result === 'win'  ? 'bg-[#00D4A0]/20 border-[#00D4A0]/30 text-[#00D4A0]' :
-                              r.result === 'loss' ? 'bg-[#FF4655]/20 border-[#FF4655]/30 text-[#FF4655]' :
-                              'bg-muted border-border text-muted-foreground'
-                            )}
-                          >
-                            <option value=""></option>
-                            <option value="win">WIN</option>
-                            <option value="loss">LOSS</option>
-                          </select>
+                          <div className="flex gap-1">
+                            {[
+                              { value: 'win',  label: 'W', color: 'text-[#00D4A0]', bg: 'bg-[#00D4A0]/20 border-[#00D4A0]/40' },
+                              { value: 'loss', label: 'L', color: 'text-[#FF4655]', bg: 'bg-[#FF4655]/20 border-[#FF4655]/40' },
+                            ].map(opt => (
+                              <button key={opt.value} type="button"
+                                onClick={() => updateRound(i, 'result', r.result === opt.value ? '' : opt.value)}
+                                className={cn(
+                                  'px-2 py-0.5 rounded text-[10px] font-bold border transition-colors',
+                                  r.result === opt.value
+                                    ? opt.bg + ' ' + opt.color
+                                    : 'bg-transparent border-border text-muted-foreground hover:border-muted-foreground'
+                                )}
+                              >{opt.label}</button>
+                            ))}
+                          </div>
                         </td>
                         {/* プラント */}
                         <td className="px-3 py-1.5">
@@ -763,15 +744,19 @@ export default function MatchDetailPage() {
                         </td>
                         {/* サイト */}
                         <td className="px-2 py-1">
-                          <select
-                            value={r.plant_site}
-                            onChange={e => updateRound(i, 'plant_site', e.target.value)}
-                            className={selectCls}
-                          >
-                            {SITE_OPTS.map(o => (
-                              <option key={o} value={o}>{o || '-'}</option>
+                          <div className="flex gap-1">
+                            {['A', 'B', 'C'].map(s => (
+                              <button key={s} type="button"
+                                onClick={() => updateRound(i, 'plant_site', r.plant_site === s ? '' : s)}
+                                className={cn(
+                                  'px-2 py-0.5 rounded text-[10px] font-bold border transition-colors',
+                                  r.plant_site === s
+                                    ? 'bg-[#6C63FF]/20 border-[#6C63FF]/40 text-[#6C63FF]'
+                                    : 'bg-transparent border-border text-muted-foreground hover:border-muted-foreground'
+                                )}
+                              >{s}</button>
                             ))}
-                          </select>
+                          </div>
                         </td>
                         {/* リテイク */}
                         <td className="px-3 py-1.5">
@@ -787,35 +772,55 @@ export default function MatchDetailPage() {
                         </td>
                         {/* FB */}
                         <td className="px-2 py-1">
-                          <select
-                            value={r.first_blood_team === '' ? '' : r.first_blood_team === 'true' ? 'us' : 'them'}
-                            onChange={e => updateRound(i, 'first_blood_team',
-                              e.target.value === '' ? '' : e.target.value === 'us' ? 'true' : 'false'
-                            )}
-                            className={selectCls}
-                          >
-                            <option value=""></option>
-                            <option value="us">味方</option>
-                            <option value="them">相手</option>
-                          </select>
+                          <div className="flex gap-1">
+                            {[
+                              { value: 'us',   label: '味方', color: 'text-[#00D4A0]', bg: 'bg-[#00D4A0]/20 border-[#00D4A0]/40' },
+                              { value: 'them', label: '相手', color: 'text-[#FF4655]', bg: 'bg-[#FF4655]/20 border-[#FF4655]/40' },
+                            ].map(opt => {
+                              const cur = r.first_blood_team === '' ? '' : r.first_blood_team === 'true' ? 'us' : 'them'
+                              return (
+                                <button key={opt.value} type="button"
+                                  onClick={() => updateRound(i, 'first_blood_team',
+                                    cur === opt.value ? '' : opt.value === 'us' ? 'true' : 'false'
+                                  )}
+                                  className={cn(
+                                    'px-2 py-0.5 rounded text-[10px] font-bold border transition-colors whitespace-nowrap',
+                                    cur === opt.value
+                                      ? opt.bg + ' ' + opt.color
+                                      : 'bg-transparent border-border text-muted-foreground hover:border-muted-foreground'
+                                  )}
+                                >{opt.label}</button>
+                              )
+                            })}
+                          </div>
                         </td>
                         {/* タイミング */}
                         <td className="px-2 py-1">
-                          <div className="flex gap-0.5">
+                          <div className="flex gap-1">
                             {TIMING_OPTIONS.map(t => (
-                              <button
-                                key={t.value}
+                              <button key={t.value} type="button"
                                 onClick={() => updateRound(i, 'contact_timing', r.contact_timing === t.value ? '' : t.value)}
-                                className="px-1.5 py-0.5 rounded text-[10px] font-semibold border transition-colors"
-                                style={r.contact_timing === t.value
-                                  ? { color: t.color, borderColor: t.color, background: `${t.color}20` }
-                                  : { color: '#9B9BA4', borderColor: '#2A2A3A', background: 'transparent' }
-                                }
-                              >
-                                {t.label}
-                              </button>
+                                className={cn(
+                                  'px-2 py-0.5 rounded text-[10px] font-bold border transition-colors',
+                                  r.contact_timing === t.value
+                                    ? t.bg + ' ' + t.color
+                                    : 'bg-transparent border-border text-muted-foreground hover:border-muted-foreground'
+                                )}
+                              >{t.label}</button>
                             ))}
                           </div>
+                        </td>
+                        {/* 注目 */}
+                        <td className="px-2 py-1">
+                          <button type="button"
+                            onClick={() => updateRound(i, 'notable', !r.notable)}
+                            className={cn(
+                              'p-1 rounded transition-colors',
+                              r.notable ? 'text-[#FF4655] bg-[#FF4655]/10' : 'text-muted-foreground hover:text-white'
+                            )}
+                          >
+                            <Flag className="w-3.5 h-3.5" fill={r.notable ? 'currentColor' : 'none'} />
+                          </button>
                         </td>
                         {/* 削除 */}
                         <td className="px-2 py-1.5">

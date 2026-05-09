@@ -204,6 +204,9 @@ export async function POST(req: NextRequest) {
       },
     })
 
+    // 既存のAI分析を削除して上書き
+    await query('DELETE FROM feedbacks WHERE match_id = $1 AND type = $2', [match_id, 'ai'])
+
     const saved = await query<Record<string, unknown>>(
       `INSERT INTO feedbacks
          (match_id, team_id, type, summary, strengths, weaknesses, action_items,
