@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Send, CheckCircle2, MessageSquare, Bug, Lightbulb, HelpCircle } from 'lucide-react'
+import { Send, CheckCircle2, MessageSquare, Bug, Lightbulb, HelpCircle, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const CATEGORIES = [
@@ -21,16 +21,31 @@ export default function ContactPage() {
   const [category, setCategory] = useState<Category>('support')
   const [message, setMessage]   = useState('')
   const [sent, setSent]         = useState(false)
+  const [sending, setSending]   = useState(false)
+  const [error, setError]       = useState<string | null>(null)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSending(true)
+    setError(null)
     const cat = CATEGORIES.find(c => c.value === category)?.label ?? category
-    const subject = encodeURIComponent(`[AXELIA Analytics] ${cat}: ${name}`)
-    const body = encodeURIComponent(
-      `【AXELIA Analytics お問い合わせ】\n\n名前: ${name}\nメール: ${email}\nカテゴリ: ${cat}\n\n${message}\n\n--\nAXELIA Analytics\nhttps://axelia-analytics.vercel.app`
-    )
-    window.location.href = `mailto:axelia.esports@gmail.com?subject=${subject}&body=${body}`
-    setSent(true)
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, category: cat, message }),
+      })
+      if (!res.ok) {
+        const json = await res.json()
+        setError(json.error ?? '送信に失敗しました。時間をおいて再試行してください。')
+        return
+      }
+      setSent(true)
+    } catch {
+      setError('ネットワークエラーが発生しました。')
+    } finally {
+      setSending(false)
+    }
   }
 
   if (sent) {
@@ -143,19 +158,22 @@ export default function ContactPage() {
           />
         </div>
 
+        {error && (
+          <div className="text-sm text-[#FF4655] bg-[#FF4655]/10 border border-[#FF4655]/20 rounded-xl px-4 py-3">
+            {error}
+          </div>
+        )}
+
         <button
           type="submit"
-          disabled={!name || !email || !message}
+          disabled={!name || !email || !message || sending}
           className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#FF4655] hover:bg-[#FF4655]/80 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <Send className="w-4 h-4" />
-          メールを開いて送信
+          {sending
+            ? <><Loader2 className="w-4 h-4 animate-spin" />送信中...</>
+            : <><Send className="w-4 h-4" />送信する</>}
         </button>
       </form>
-
-      <p className="text-[11px] text-muted-foreground/60 text-center">
-        送信ボタンを押すとメールアプリが起動します
-      </p>
     </div>
   )
 }
