@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Users, Swords,
-  ClipboardEdit, BarChart2, Settings, LogOut, CreditCard,
+  ClipboardEdit, BarChart2, Settings, LogOut, CreditCard, Mail,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
@@ -20,6 +20,7 @@ const nav = [
   { href: '/matches',        label: '試合履歴',       icon: Swords },
   { href: '/round-analysis', label: '試合分析',       icon: BarChart2 },
   { href: '/settings',       label: '設定',           icon: Settings },
+  { href: '/contact',        label: 'お問い合わせ',   icon: Mail },
 ]
 
 function TeamInfo() {
