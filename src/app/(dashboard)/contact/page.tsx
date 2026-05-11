@@ -39,9 +39,9 @@ export default function ContactPage() {
         <div className="w-16 h-16 rounded-full bg-[#00D4A0]/15 flex items-center justify-center">
           <CheckCircle2 className="w-8 h-8 text-[#00D4A0]" />
         </div>
-        <h2 className="text-xl font-bold text-white">メールクライアントを開きました</h2>
+        <h2 className="text-xl font-bold text-white">メールを送信しました</h2>
         <p className="text-sm text-muted-foreground text-center max-w-sm">
-          メールアプリで内容を確認し、送信してください。
+          お問い合わせありがとうございます。内容を確認次第ご返信いたします。
         </p>
         <button
           onClick={() => setSent(false)}
@@ -154,7 +154,7 @@ export default function ContactPage() {
       </form>
 
       <p className="text-[11px] text-muted-foreground/60 text-center">
-        送信ボタンを押すとメールアプリが開きます
+        送信ボタンを押すとメールアプリが起動します
       </p>
     </div>
   )
