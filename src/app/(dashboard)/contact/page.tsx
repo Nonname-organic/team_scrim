@@ -27,9 +27,9 @@ export default function ContactPage() {
     const cat = CATEGORIES.find(c => c.value === category)?.label ?? category
     const subject = encodeURIComponent(`[AXELIA Analytics] ${cat}: ${name}`)
     const body = encodeURIComponent(
-      `名前: ${name}\nメール: ${email}\nカテゴリ: ${cat}\n\n${message}`
+      `【AXELIA Analytics お問い合わせ】\n\n名前: ${name}\nメール: ${email}\nカテゴリ: ${cat}\n\n${message}\n\n--\nAXELIA Analytics\nhttps://axelia-analytics.vercel.app`
     )
-    window.location.href = `mailto:kinnzou728@gmail.com?subject=${subject}&body=${body}`
+    window.location.href = `mailto:axelia.esports@gmail.com?subject=${subject}&body=${body}`
     setSent(true)
   }
 
