@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   const { error } = await resend.emails.send({
     from: 'AXELIA Analytics <onboarding@resend.dev>',
     to: 'axelia.esports@gmail.com',
-    reply_to: email,
+    replyTo: email,
     subject: `[AXELIA Analytics] ${category}: ${name}`,
     html: `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
