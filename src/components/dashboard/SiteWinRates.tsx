@@ -1,5 +1,7 @@
 'use client'
 
+import { useLanguage } from '@/contexts/LanguageContext'
+
 interface Entry {
   wins: number
   total: number
@@ -43,8 +45,10 @@ function Bar({ entry, label, sideColor }: { entry: Entry | undefined; label: str
 }
 
 export function SiteWinRates({ data }: Props) {
+  const { t } = useLanguage()
+
   if (!data || Object.keys(data).length === 0) {
-    return <p className="text-sm text-muted-foreground">データなし</p>
+    return <p className="text-sm text-muted-foreground">{t('dashboard.noDataShort')}</p>
   }
 
   const get = (key: string) => data[key] as Entry | undefined
@@ -58,7 +62,7 @@ export function SiteWinRates({ data }: Props) {
   const postPlant = get('post_plant')
 
   if (!sites.length && !postPlant) {
-    return <p className="text-sm text-muted-foreground">データなし</p>
+    return <p className="text-sm text-muted-foreground">{t('dashboard.noDataShort')}</p>
   }
 
   return (
@@ -68,10 +72,10 @@ export function SiteWinRates({ data }: Props) {
         {sites.map(({ key, atk, def }) => (
           <div key={key} className="bg-muted/20 border border-border/60 rounded-xl p-4 space-y-3 relative overflow-hidden">
             <div className="absolute top-0 left-0 w-1 h-full rounded-l-xl bg-[#6C63FF]/60" />
-            <div className="text-xs font-bold text-white pl-1">{key} サイト</div>
+            <div className="text-xs font-bold text-white pl-1">{key}{t('dashboard.siteSuffix')}</div>
             <div className="space-y-2.5 pl-1">
-              {atk && <Bar entry={atk} label="プラント後" sideColor="#FF8C42" />}
-              {def && <Bar entry={def} label="リテイク" sideColor="#00D4A0" />}
+              {atk && <Bar entry={atk} label={t('dashboard.postPlant')} sideColor="#FF8C42" />}
+              {def && <Bar entry={def} label={t('dashboard.retake')} sideColor="#00D4A0" />}
             </div>
           </div>
         ))}

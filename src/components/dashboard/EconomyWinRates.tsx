@@ -1,23 +1,12 @@
 'use client'
 import { cn } from '@/lib/utils'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface Row {
   economy_type: string
   rounds: number
   wins: number
   win_rate: number
-}
-
-const LABELS: Record<string, string> = {
-  pistol:   'ピストル',
-  eco:      'エコ',
-  anti_eco: 'アンチエコ',
-  semi_eco: 'セミエコ',
-  semi_buy: 'セミバイ',
-  full_buy: 'フルバイ',
-  oper:     'オペ',
-  second:   'セカンド',
-  third:    'サード',
 }
 
 const IDEAL: Record<string, number> = {
@@ -33,8 +22,9 @@ const IDEAL: Record<string, number> = {
 }
 
 export function EconomyWinRates({ data: rawData }: { data: Record<string, unknown>[] }) {
+  const { t } = useLanguage()
   const data = rawData as unknown as Row[]
-  if (!data?.length) return <Empty />
+  if (!data?.length) return <p className="text-sm text-muted-foreground">{t('dashboard.noDataShort')}</p>
 
   return (
     <div className="space-y-3">
@@ -43,13 +33,15 @@ export function EconomyWinRates({ data: rawData }: { data: Record<string, unknow
         const ideal = Math.round((IDEAL[row.economy_type] ?? 0.5) * 100)
         const isBelow = pct < ideal - 5
         const isGood  = pct >= ideal
+        const label = t(`eco.${row.economy_type}`)
+        const displayLabel = label === `eco.${row.economy_type}` ? row.economy_type : label
 
         return (
           <div key={row.economy_type} className="space-y-1.5">
             <div className="flex items-center justify-between text-xs">
               <div className="flex items-center gap-2">
                 <span className="text-white font-medium">
-                  {LABELS[row.economy_type] ?? row.economy_type}
+                  {displayLabel}
                 </span>
                 <span className="text-muted-foreground">
                   {row.wins}W / {row.rounds}R
@@ -64,7 +56,7 @@ export function EconomyWinRates({ data: rawData }: { data: Record<string, unknow
                 </span>
                 {isBelow && (
                   <span className="text-[10px] text-[#FF4655] bg-[#FF4655]/10 px-1.5 py-0.5 rounded">
-                    低
+                    {t('dashboard.ecoLow')}
                   </span>
                 )}
               </div>
@@ -87,12 +79,8 @@ export function EconomyWinRates({ data: rawData }: { data: Record<string, unknow
         )
       })}
       <p className="text-[10px] text-muted-foreground pt-1">
-        縦線 = 期待値ベースライン
+        {t('dashboard.ecoBaseline')}
       </p>
     </div>
   )
-}
-
-function Empty() {
-  return <p className="text-sm text-muted-foreground">データなし</p>
 }

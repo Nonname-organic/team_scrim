@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface Match {
   id: string
@@ -18,8 +19,10 @@ interface Match {
 }
 
 export function RecentMatches({ matches }: { matches: Record<string, unknown>[] }) {
+  const { locale, t } = useLanguage()
+
   if (!matches?.length) {
-    return <p className="text-sm text-muted-foreground">試合データなし</p>
+    return <p className="text-sm text-muted-foreground">{t('dashboard.noMatchData')}</p>
   }
 
   return (
@@ -65,7 +68,7 @@ export function RecentMatches({ matches }: { matches: Record<string, unknown>[] 
                 </span>
               </div>
               <div className="text-xs text-muted-foreground mt-0.5">
-                {new Date(match.match_date).toLocaleDateString('ja-JP')}
+                {new Date(match.match_date).toLocaleDateString(locale === 'en' ? 'en-US' : 'ja-JP')}
               </div>
             </div>
 

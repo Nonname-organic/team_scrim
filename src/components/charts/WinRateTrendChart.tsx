@@ -3,6 +3,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, ReferenceLine, Legend,
 } from 'recharts'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 interface Props {
   data: Record<string, unknown>[]
@@ -27,10 +28,12 @@ const CustomTooltip = ({ active, payload, label }: Record<string, unknown>) => {
 }
 
 export function WinRateTrendChart({ data }: Props) {
+  const { t } = useLanguage()
+
   if (!data?.length) {
     return (
       <div className="h-64 flex items-center justify-center text-muted-foreground text-sm">
-        データが不足しています（最低3試合必要）
+        {t('dashboard.insufficientData')}
       </div>
     )
   }
@@ -62,7 +65,7 @@ export function WinRateTrendChart({ data }: Props) {
         <Line
           type="monotone"
           dataKey="win_rate"
-          name="総合勝率"
+          name={t('dashboard.overallWRShort')}
           stroke="#FF4655"
           strokeWidth={2}
           dot={false}
@@ -71,7 +74,7 @@ export function WinRateTrendChart({ data }: Props) {
         <Line
           type="monotone"
           dataKey="attack_wr"
-          name="攻め勝率"
+          name={t('dashboard.attackWRShort')}
           stroke="#FF8C42"
           strokeWidth={1.5}
           dot={false}
@@ -81,7 +84,7 @@ export function WinRateTrendChart({ data }: Props) {
         <Line
           type="monotone"
           dataKey="defense_wr"
-          name="守り勝率"
+          name={t('dashboard.defenseWRShort')}
           stroke="#00D4A0"
           strokeWidth={1.5}
           dot={false}

@@ -3,6 +3,7 @@ import { useRef, useState, useCallback } from 'react'
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
 import { detectSite } from '@/lib/geometry'
 import { X } from 'lucide-react'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 export interface PlantRound {
   id: string
@@ -35,6 +36,7 @@ function toScreenPos(x: number, y: number, rotation: number): { sx: number; sy: 
 }
 
 export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCancelEdit }: Props) {
+  const { t } = useLanguage()
   const containerRef = useRef<HTMLDivElement>(null)
   const [saving, setSaving] = useState(false)
   const [imgError, setImgError] = useState(false)
@@ -100,12 +102,12 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
       {/* Header */}
       <div className="flex items-center justify-between">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          プラント位置ヒートマップ
+          {t('map.heatmap')}
         </span>
         {editingRound && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-[#FF4655]">
-              R{editingRound.round_number} の位置を設定中
+              R{editingRound.round_number}{t('map.settingPositionSuffix')}
             </span>
             <button
               onClick={onCancelEdit}
@@ -148,7 +150,7 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
             <div className="w-full h-full bg-muted flex flex-col items-center justify-center gap-2">
               <span className="text-muted-foreground text-sm font-medium">{mapName}</span>
               {imgError && (
-                <span className="text-muted-foreground/50 text-[10px]">画像を読み込めません</span>
+                <span className="text-muted-foreground/50 text-[10px]">{t('map.imageError')}</span>
               )}
             </div>
           )}
@@ -232,14 +234,14 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
         {/* Saving overlay */}
         {saving && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-            <span className="text-white text-xs font-medium">保存中...</span>
+            <span className="text-white text-xs font-medium">{t('map.saving')}</span>
           </div>
         )}
 
         {/* Edit mode hint */}
         {editRoundId && !saving && (
           <div className="absolute bottom-2 left-2 right-2 bg-black/70 backdrop-blur-sm rounded-lg px-2 py-1.5 text-center pointer-events-none">
-            <span className="text-white text-xs">マップ上をクリックしてプラント位置を設定</span>
+            <span className="text-white text-xs">{t('map.clickToSet')}</span>
           </div>
         )}
 
@@ -247,7 +249,7 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
         {placedRounds.length === 0 && !editRoundId && (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-muted-foreground text-xs bg-black/50 px-3 py-1.5 rounded-lg">
-              位置データなし — 下の表で行をクリックして入力
+              {t('map.noPositionData')}
             </span>
           </div>
         )}
@@ -256,12 +258,12 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
       {/* Legend */}
       <div className="flex gap-4 text-[10px] text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#00D4A0] inline-block" />勝利ラウンド
+          <span className="w-2.5 h-2.5 rounded-full bg-[#00D4A0] inline-block" />{t('map.winRound')}
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded-full bg-[#FF4655] inline-block" />敗北ラウンド
+          <span className="w-2.5 h-2.5 rounded-full bg-[#FF4655] inline-block" />{t('map.lossRound')}
         </span>
-        <span className="text-muted-foreground/60">丸の数字＝ラウンド番号</span>
+        <span className="text-muted-foreground/60">{t('map.roundNumberLegend')}</span>
       </div>
     </div>
   )

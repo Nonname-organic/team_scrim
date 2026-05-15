@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlan } from '@/contexts/PlanContext'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -132,44 +133,54 @@ function parseTactical(raw: string | null | undefined): TacticalAnalysis | null 
   return null
 }
 
-const EV_CFG = {
-  rational:    { label: '期待値: 合理的',   color: '#00D4A0' },
-  irrational:  { label: '期待値: 非合理',   color: '#FF4655' },
-  situational: { label: '期待値: 状況依存', color: '#FF8C42' },
-}
-
-const REPRO_CFG = {
-  repeatable:  { label: '再現可能',   color: '#00D4A0' },
-  coincidence: { label: '偶然',       color: '#FF4655' },
-  mixed:       { label: '一部再現可', color: '#FF8C42' },
-}
-
-const CAUSE_CFG = [
-  { key: 'structural',  label: '構造',  color: '#6C63FF' },
-  { key: 'execution',   label: '実行',  color: '#FF4655' },
-  { key: 'judgment',    label: '判断',  color: '#FF8C42' },
-  { key: 'information', label: '情報',  color: '#3B82F6' },
-] as const
-
 const PRIORITY_CFG = {
   high: { label: 'HIGH', color: '#FF4655' },
   mid:  { label: 'MID',  color: '#FF8C42' },
   low:  { label: 'LOW',  color: '#9B9BA4' },
 }
 
-const STYLE_CFG: Record<string, { label: string; color: string }> = {
-  aggressive: { label: '積極型',       color: '#FF4655' },
-  control:    { label: '安定型',       color: '#00D4A0' },
-  mixed:      { label: 'バランス型',   color: '#6C63FF' },
-  default:    { label: 'スタンダード', color: '#9B9BA4' },
+function getEVCFG(t: (k: string) => string) {
+  return {
+    rational:    { label: t('feedback.evRational'),    color: '#00D4A0' },
+    irrational:  { label: t('feedback.evIrrational'),  color: '#FF4655' },
+    situational: { label: t('feedback.evSituational'), color: '#FF8C42' },
+  }
 }
 
-const STYLE_OPTS = [
-  { value: 'aggressive', label: '積極型',       color: '#FF4655' },
-  { value: 'control',    label: '安定型',       color: '#00D4A0' },
-  { value: 'mixed',      label: 'バランス型',   color: '#6C63FF' },
-  { value: 'default',    label: 'スタンダード', color: '#9B9BA4' },
-]
+function getREPROCFG(t: (k: string) => string) {
+  return {
+    repeatable:  { label: t('feedback.reproRepeatable'),  color: '#00D4A0' },
+    coincidence: { label: t('feedback.reproCoincidence'), color: '#FF4655' },
+    mixed:       { label: t('feedback.reproMixed'),       color: '#FF8C42' },
+  }
+}
+
+function getCAUSECFG(t: (k: string) => string) {
+  return [
+    { key: 'structural' as const,  label: t('feedback.causeStructural'),  color: '#6C63FF' },
+    { key: 'execution' as const,   label: t('feedback.causeExecution'),   color: '#FF4655' },
+    { key: 'judgment' as const,    label: t('feedback.causeJudgment'),    color: '#FF8C42' },
+    { key: 'information' as const, label: t('feedback.causeInformation'), color: '#3B82F6' },
+  ]
+}
+
+function getSTYLECFG(t: (k: string) => string): Record<string, { label: string; color: string }> {
+  return {
+    aggressive: { label: t('feedback.styleAggressive'), color: '#FF4655' },
+    control:    { label: t('feedback.styleControl'),    color: '#00D4A0' },
+    mixed:      { label: t('feedback.styleMixed'),      color: '#6C63FF' },
+    default:    { label: t('feedback.styleDefault'),    color: '#9B9BA4' },
+  }
+}
+
+function getSTYLEOPTS(t: (k: string) => string) {
+  return [
+    { value: 'aggressive', label: t('feedback.styleAggressive'), color: '#FF4655' },
+    { value: 'control',    label: t('feedback.styleControl'),    color: '#00D4A0' },
+    { value: 'mixed',      label: t('feedback.styleMixed'),      color: '#6C63FF' },
+    { value: 'default',    label: t('feedback.styleDefault'),    color: '#9B9BA4' },
+  ]
+}
 
 // ── Score Bar ─────────────────────────────────────────────────────────────────
 
@@ -200,9 +211,13 @@ function TacticalCard({
   feedback: FeedbackData
   tactical: TacticalAnalysis
 }) {
+  const { locale, t } = useLanguage()
   const isNewFormat = !!tactical.intent_assessment
   const [expanded, setExpanded] = useState(isNewFormat)
-  const date = new Date(feedback.created_at).toLocaleDateString('ja-JP', {
+  const EV_CFG = getEVCFG(t)
+  const REPRO_CFG = getREPROCFG(t)
+  const CAUSE_CFG = getCAUSECFG(t)
+  const date = new Date(feedback.created_at).toLocaleDateString(locale === 'en' ? 'en-US' : 'ja-JP', {
     month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
   })
 
@@ -224,7 +239,7 @@ function TacticalCard({
           <div className="w-6 h-6 rounded-md bg-[#6C63FF]/20 flex items-center justify-center">
             <Bot className="w-3.5 h-3.5 text-[#6C63FF]" />
           </div>
-          <span className="text-xs font-semibold text-white">AI 戦術分析</span>
+          <span className="text-xs font-semibold text-white">{t('feedback.aiTacticalTitle')}</span>
           <span className="text-[10px] text-muted-foreground">{date}</span>
         </div>
         <div className="flex items-center gap-2">
@@ -255,7 +270,7 @@ function TacticalCard({
             {tactical.intent_assessment && (
               <div className="space-y-1.5">
                 <div className="text-[10px] font-bold text-[#3B82F6] uppercase tracking-wider flex items-center gap-1">
-                  <Lightbulb className="w-3 h-3" /> 意図の推測
+                  <Lightbulb className="w-3 h-3" /> {t('feedback.stepIntent')}
                 </div>
                 <p className="text-[11px] text-muted-foreground leading-relaxed pl-4">
                   {tactical.intent_assessment}
@@ -267,7 +282,7 @@ function TacticalCard({
             {tactical.ev_evaluation && (
               <div className="space-y-1.5">
                 <div className="text-[10px] font-bold text-[#6C63FF] uppercase tracking-wider flex items-center gap-1">
-                  <BarChart2 className="w-3 h-3" /> 期待値評価
+                  <BarChart2 className="w-3 h-3" /> {t('feedback.stepEV')}
                 </div>
                 <div className="flex items-start gap-2">
                   {(() => {
@@ -294,10 +309,10 @@ function TacticalCard({
 
         {/* Score bars */}
         <div className="grid grid-cols-2 gap-x-6 gap-y-2 bg-muted/10 rounded-xl p-3">
-          <ScoreBar label="マクロ"       value={tactical.score.macro} />
-          <ScoreBar label="ミクロ"       value={tactical.score.micro} />
-          <ScoreBar label="チームプレイ" value={tactical.score.teamplay} />
-          <ScoreBar label="総合"         value={tactical.score.overall} />
+          <ScoreBar label={locale === 'en' ? 'Macro'     : 'マクロ'}       value={tactical.score.macro} />
+          <ScoreBar label={locale === 'en' ? 'Micro'     : 'ミクロ'}       value={tactical.score.micro} />
+          <ScoreBar label={locale === 'en' ? 'Teamplay'  : 'チームプレイ'} value={tactical.score.teamplay} />
+          <ScoreBar label={locale === 'en' ? 'Overall'   : '総合'}         value={tactical.score.overall} />
         </div>
 
         {/* Legacy: Good points + Issues */}
@@ -305,7 +320,7 @@ function TacticalCard({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <div className="text-[10px] font-bold text-[#00D4A0] uppercase tracking-wider flex items-center gap-1">
-                <Shield className="w-3 h-3" /> 良かった点
+                <Shield className="w-3 h-3" /> {t('feedback.goodPoints')}
               </div>
               <ul className="space-y-1.5">
                 {tactical.good_points.map((pt, i) => (
@@ -318,7 +333,7 @@ function TacticalCard({
             </div>
             <div className="space-y-2">
               <div className="text-[10px] font-bold text-[#FF4655] uppercase tracking-wider flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" /> 課題
+                <AlertCircle className="w-3 h-3" /> {t('feedback.issues')}
               </div>
               <ul className="space-y-2">
                 {tactical.issues.map((iss, i) => {
@@ -347,7 +362,7 @@ function TacticalCard({
           className="w-full flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground hover:text-white transition-colors py-1"
         >
           {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          {expanded ? '折りたたむ' : isNewFormat ? '崩壊点・原因分析・改善策を表示' : '根本原因・改善策・ルールを表示'}
+          {expanded ? t('feedback.collapseBtn') : isNewFormat ? t('feedback.expandNewFormat') : t('feedback.expandLegacy')}
         </button>
 
         {expanded && (
@@ -357,7 +372,7 @@ function TacticalCard({
             {isNewFormat && (
               <div className="space-y-2">
                 <div className="text-[10px] font-bold text-[#FF4655] uppercase tracking-wider flex items-center gap-1">
-                  <GitBranch className="w-3 h-3" /> 崩壊点
+                  <GitBranch className="w-3 h-3" /> {t('feedback.stepBreakdown')}
                 </div>
                 {tactical.breakdown_points && tactical.breakdown_points.length > 0 ? (
                   <ul className="space-y-2">
@@ -381,7 +396,7 @@ function TacticalCard({
             {isNewFormat && (
               <div className="space-y-2">
                 <div className="text-[10px] font-bold text-[#FF8C42] uppercase tracking-wider flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> 原因分離
+                  <AlertCircle className="w-3 h-3" /> {t('feedback.stepCause')}
                 </div>
                 {tactical.cause_analysis ? (
                   <div className="grid grid-cols-2 gap-2">
@@ -419,7 +434,7 @@ function TacticalCard({
             {isNewFormat && tactical.reproducibility && (
               <div className="space-y-1.5">
                 <div className="text-[10px] font-bold text-[#00D4A0] uppercase tracking-wider flex items-center gap-1">
-                  <RefreshCw className="w-3 h-3" /> 再現性評価
+                  <RefreshCw className="w-3 h-3" /> {t('feedback.stepRepro')}
                 </div>
                 <div className="flex items-start gap-2">
                   {(() => {
@@ -446,7 +461,7 @@ function TacticalCard({
             {isNewFormat && (
               <div className="space-y-2">
                 <div className="text-[10px] font-bold text-[#6C63FF] uppercase tracking-wider flex items-center gap-1">
-                  <Users className="w-3 h-3" /> 改善提案
+                  <Users className="w-3 h-3" /> {t('feedback.stepImprovement')}
                 </div>
                 {structuredImprovements.length > 0 ? (
                   <ul className="space-y-2">
@@ -473,7 +488,7 @@ function TacticalCard({
                 {legacyImprovements.team.length > 0 && (
                   <div className="space-y-1.5">
                     <div className="text-[10px] font-bold text-[#6C63FF] uppercase tracking-wider flex items-center gap-1">
-                      <Users className="w-3 h-3" /> チーム改善
+                      <Users className="w-3 h-3" /> {t('feedback.teamImprovement')}
                     </div>
                     <ul className="space-y-1">
                       {legacyImprovements.team.map((a, i) => (
@@ -488,7 +503,7 @@ function TacticalCard({
                 {legacyImprovements.individual.length > 0 && (
                   <div className="space-y-1.5">
                     <div className="text-[10px] font-bold text-[#3B82F6] uppercase tracking-wider flex items-center gap-1">
-                      <Zap className="w-3 h-3" /> 個人改善
+                      <Zap className="w-3 h-3" /> {t('feedback.individualImprovement')}
                     </div>
                     <ul className="space-y-1">
                       {legacyImprovements.individual.map((a, i) => (
@@ -507,7 +522,7 @@ function TacticalCard({
             {tactical.rules.length > 0 && (
               <div className="space-y-1.5">
                 <div className="text-[10px] font-bold text-[#FFD700] uppercase tracking-wider flex items-center gap-1">
-                  <TrendingUp className="w-3 h-3" /> チームルール (if-then)
+                  <TrendingUp className="w-3 h-3" /> {t('feedback.stepRules')}
                 </div>
                 <ul className="space-y-1">
                   {tactical.rules.map((r, i) => (
@@ -524,7 +539,7 @@ function TacticalCard({
             {tactical.pattern_flags.length > 0 && (
               <div className="space-y-1.5">
                 <div className="text-[10px] font-bold text-[#FF4655] uppercase tracking-wider flex items-center gap-1">
-                  <Flag className="w-3 h-3" /> パターンフラグ
+                  <Flag className="w-3 h-3" /> {t('feedback.stepPatterns')}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {tactical.pattern_flags.map((pf, i) => (
@@ -540,7 +555,7 @@ function TacticalCard({
             {/* Legacy: root causes */}
             {!isNewFormat && tactical.root_causes && tactical.root_causes.length > 0 && (
               <div className="space-y-1.5">
-                <div className="text-[10px] font-bold text-[#FF8C42] uppercase tracking-wider">根本原因</div>
+                <div className="text-[10px] font-bold text-[#FF8C42] uppercase tracking-wider">{t('feedback.rootCauses')}</div>
                 <ul className="space-y-1">
                   {tactical.root_causes.map((rc, i) => (
                     <li key={i} className="text-[11px] text-muted-foreground flex gap-1.5">
@@ -567,8 +582,10 @@ function LegacyCard({
   feedback: FeedbackData
   onDelete?: (id: string) => void
 }) {
+  const { locale, t } = useLanguage()
+  const STYLE_CFG = getSTYLECFG(t)
   const isAI = feedback.type === 'ai'
-  const date = new Date(feedback.created_at).toLocaleDateString('ja-JP', {
+  const date = new Date(feedback.created_at).toLocaleDateString(locale === 'en' ? 'en-US' : 'ja-JP', {
     month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit',
   })
 
@@ -582,7 +599,7 @@ function LegacyCard({
           <div className={cn('w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0', isAI ? 'bg-[#6C63FF]/20' : 'bg-muted')}>
             {isAI ? <Bot className="w-3.5 h-3.5 text-[#6C63FF]" /> : <User className="w-3.5 h-3.5 text-muted-foreground" />}
           </div>
-          <span className="text-xs font-semibold text-white">{isAI ? 'AI分析' : 'コーチメモ'}</span>
+          <span className="text-xs font-semibold text-white">{isAI ? t('feedback.aiLabel') : t('feedback.coachNoteLabel')}</span>
           {feedback.style_tag && (() => {
             const cfg = STYLE_CFG[feedback.style_tag] ?? { label: feedback.style_tag, color: '#9B9BA4' }
             return (
@@ -612,7 +629,7 @@ function LegacyCard({
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {feedback.strengths.length > 0 && (
           <div className="space-y-1.5">
-            <div className="text-[10px] font-bold text-[#00D4A0] uppercase tracking-wider">✓ 良かった点</div>
+            <div className="text-[10px] font-bold text-[#00D4A0] uppercase tracking-wider">✓ {t('feedback.goodPoints')}</div>
             <ul className="space-y-1">
               {feedback.strengths.map((s, i) => (
                 <li key={i} className="text-[11px] text-muted-foreground flex gap-1.5">
@@ -625,7 +642,7 @@ function LegacyCard({
         {feedback.weaknesses.length > 0 && (
           <div className="space-y-1.5">
             <div className="text-[10px] font-bold text-[#FF4655] uppercase tracking-wider flex items-center gap-1">
-              <AlertCircle className="w-3 h-3" /> 課題
+              <AlertCircle className="w-3 h-3" /> {t('feedback.issues')}
             </div>
             <ul className="space-y-1">
               {feedback.weaknesses.map((w, i) => (
@@ -639,7 +656,7 @@ function LegacyCard({
         {feedback.action_items.length > 0 && (
           <div className="space-y-1.5">
             <div className="text-[10px] font-bold text-[#FF8C42] uppercase tracking-wider flex items-center gap-1">
-              <Zap className="w-3 h-3" /> 改善アクション
+              <Zap className="w-3 h-3" /> {t('feedback.actionItems')}
             </div>
             <ul className="space-y-1">
               {feedback.action_items.map((a, i) => (
@@ -660,6 +677,8 @@ function LegacyCard({
 function CoachForm({
   matchId, onSaved, onCancel,
 }: { matchId: string; onSaved: () => void; onCancel: () => void }) {
+  const { t } = useLanguage()
+  const STYLE_OPTS = getSTYLEOPTS(t)
   const [summary, setSummary]       = useState('')
   const [strengths, setStrengths]   = useState('')
   const [weaknesses, setWeaknesses] = useState('')
@@ -692,23 +711,23 @@ function CoachForm({
   return (
     <div className="p-4 bg-muted/10 border border-border rounded-xl space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-white">コーチメモを追加</span>
+        <span className="text-xs font-semibold text-white">{t('feedback.addCoachNote')}</span>
         <button onClick={onCancel} className="text-muted-foreground hover:text-white transition-colors">
           <X className="w-3.5 h-3.5" />
         </button>
       </div>
 
       <div className="space-y-1">
-        <label className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">総括</label>
+        <label className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{t('feedback.summary')}</label>
         <textarea rows={2} value={summary} onChange={e => setSummary(e.target.value)}
-          placeholder="試合全体の印象・総評を入力" className={textCls} />
+          placeholder={t('feedback.summaryPlaceholder')} className={textCls} />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         {[
-          { label: '良かった点', color: '#00D4A0', value: strengths, set: setStrengths, placeholder: '1行1項目\n例：Bサイトの守り' },
-          { label: '課題', color: '#FF4655', value: weaknesses, set: setWeaknesses, placeholder: '1行1項目\n例：エコラウンドの管理' },
-          { label: '改善アクション', color: '#FF8C42', value: actions, set: setActions, placeholder: '1行1項目\n例：フォースの基準を決める' },
+          { label: t('feedback.goodPoints'),  color: '#00D4A0', value: strengths, set: setStrengths, placeholder: t('feedback.strengthsPlaceholder') },
+          { label: t('feedback.issues'),       color: '#FF4655', value: weaknesses, set: setWeaknesses, placeholder: t('feedback.weaknessesPlaceholder') },
+          { label: t('feedback.actionItems'),  color: '#FF8C42', value: actions, set: setActions, placeholder: t('feedback.actionsPlaceholder') },
         ].map(({ label, color, value, set, placeholder }) => (
           <div key={label} className="space-y-1">
             <label className="text-[10px] font-bold uppercase tracking-wider" style={{ color }}>{label}</label>
@@ -719,7 +738,7 @@ function CoachForm({
       </div>
 
       <div className="space-y-1.5">
-        <label className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">プレイスタイル診断</label>
+        <label className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{t('feedback.styleDiagnosis')}</label>
         <div className="flex flex-wrap gap-2">
           {STYLE_OPTS.map(o => (
             <button key={o.value} onClick={() => setStyleTag(styleTag === o.value ? '' : o.value)}
@@ -735,11 +754,11 @@ function CoachForm({
 
       <div className="flex justify-end gap-2">
         <button onClick={onCancel} className="text-xs text-muted-foreground hover:text-white border border-border rounded-lg px-3 py-1.5 transition-colors">
-          キャンセル
+          {t('common.cancel')}
         </button>
         <button onClick={save} disabled={saving}
           className="text-xs bg-[#FF4655] hover:bg-[#FF4655]/80 text-white rounded-lg px-4 py-1.5 transition-colors disabled:opacity-50">
-          {saving ? '保存中...' : '保存'}
+          {saving ? t('common.saving') : t('common.save')}
         </button>
       </div>
     </div>
@@ -750,6 +769,7 @@ function CoachForm({
 
 export function MatchFeedbackPanel({ matchId }: { matchId: string }) {
   const { canUseAI, aiUsageCount, aiUsageLimit, showUpgrade } = usePlan()
+  const { t } = useLanguage()
   const [feedbacks, setFeedbacks]         = useState<FeedbackData[]>([])
   const [loading, setLoading]             = useState(true)
   const [aiLoading, setAiLoading]         = useState(false)
@@ -783,8 +803,10 @@ export function MatchFeedbackPanel({ matchId }: { matchId: string }) {
       const prev = feedbacks.find(f => f.type === 'ai')
       showUpgrade({
         feature: 'ai_limit',
-        title: 'AI分析の上限に達しました',
-        message: `今月のAI使用回数（${aiUsageLimit}回）を使い切りました。Proプランで月20回、Teamプランで無制限にご利用いただけます。`,
+        title: t('common.loading') === 'Loading...' ? 'AI Analysis Limit Reached' : 'AI分析の上限に達しました',
+        message: t('common.loading') === 'Loading...'
+          ? `You've used all ${aiUsageLimit} AI analyses this month. Upgrade to Pro for 20/month or Team for unlimited.`
+          : `今月のAI使用回数（${aiUsageLimit}回）を使い切りました。Proプランで月20回、Teamプランで無制限にご利用いただけます。`,
         preview: prev?.tactical?.pattern_flags?.slice(0, 2) ?? prev?.weaknesses?.slice(0, 2),
       })
       return
@@ -798,8 +820,8 @@ export function MatchFeedbackPanel({ matchId }: { matchId: string }) {
         body: JSON.stringify({ match_id: matchId }),
       })
       if (!res.ok) {
-        let msg = `AI分析に失敗しました (${res.status})`
-        if (res.status === 504) msg = 'タイムアウトしました。しばらく待ってから再度お試しください。'
+        let msg = t('common.loading') === 'Loading...' ? `AI analysis failed (${res.status})` : `AI分析に失敗しました (${res.status})`
+        if (res.status === 504) msg = t('common.loading') === 'Loading...' ? 'Request timed out. Please try again later.' : 'タイムアウトしました。しばらく待ってから再度お試しください。'
         else { try { msg = (await res.json()).error ?? msg } catch {} }
         setAiError(msg)
         return
@@ -821,7 +843,7 @@ export function MatchFeedbackPanel({ matchId }: { matchId: string }) {
       {/* Header */}
       <div className="px-5 py-3 border-b border-border flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-white">試合フィードバック</span>
+          <span className="text-sm font-semibold text-white">{t('feedback.panelTitle')}</span>
           {feedbacks.length > 0 && (
             <span className="text-[10px] text-muted-foreground bg-muted rounded-full px-2 py-0.5">{feedbacks.length}件</span>
           )}
@@ -834,7 +856,7 @@ export function MatchFeedbackPanel({ matchId }: { matchId: string }) {
               showCoachForm ? 'bg-white/10 text-white border-white/30' : 'text-muted-foreground hover:text-white border-border hover:border-white/30'
             )}
           >
-            <Plus className="w-3 h-3" /> コーチメモ
+            <Plus className="w-3 h-3" /> {t('feedback.coachNoteLabel')}
           </button>
           <button
             onClick={runAI}
@@ -848,14 +870,14 @@ export function MatchFeedbackPanel({ matchId }: { matchId: string }) {
             )}
           >
             {aiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : canUseAI ? <Bot className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-            AI分析{!canUseAI && ` (${aiUsageCount}/${aiUsageLimit})`}
+            {t('feedback.aiLabel')}{!canUseAI && ` (${aiUsageCount}/${aiUsageLimit})`}
           </button>
         </div>
       </div>
 
       {/* Body */}
       <div className="p-4 space-y-3">
-        {loading && <div className="text-center py-6 text-muted-foreground text-xs">読み込み中...</div>}
+        {loading && <div className="text-center py-6 text-muted-foreground text-xs">{t('feedback.loading')}</div>}
 
         {!loading && aiError && (
           <div className="text-xs text-[#FF4655] bg-[#FF4655]/10 border border-[#FF4655]/20 rounded-lg px-3 py-2">{aiError}</div>
@@ -867,22 +889,22 @@ export function MatchFeedbackPanel({ matchId }: { matchId: string }) {
 
         {!loading && feedbacks.length === 0 && !showCoachForm && (
           <div className="flex flex-col items-center gap-3 py-8">
-            <p className="text-xs text-muted-foreground">この試合のフィードバックはまだありません</p>
+            <p className="text-xs text-muted-foreground">{t('feedback.noFeedback')}</p>
             <button
               onClick={runAI}
               disabled={aiLoading}
               className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-[#6C63FF] hover:bg-[#6C63FF]/80 text-white transition-colors disabled:opacity-50 shadow-lg shadow-[#6C63FF]/20"
             >
               {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
-              AI戦術分析を実行
+              {t('feedback.runAiTactical')}
             </button>
-            <p className="text-[10px] text-muted-foreground">ラウンドデータを元に戦術アナリストが分析します</p>
+            <p className="text-[10px] text-muted-foreground">{t('feedback.aiAnalysisDesc')}</p>
           </div>
         )}
 
         {aiFeedbacks.length > 0 && (
           <div className="space-y-2">
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">AI分析</div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{t('feedback.aiLabel')}</div>
             {aiFeedbacks.map(f =>
               f.tactical
                 ? <TacticalCard key={f.id} feedback={f} tactical={f.tactical} />
@@ -893,7 +915,7 @@ export function MatchFeedbackPanel({ matchId }: { matchId: string }) {
 
         {coachFeedbacks.length > 0 && (
           <div className="space-y-2">
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">コーチメモ</div>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{t('feedback.coachNoteLabel')}</div>
             {coachFeedbacks.map(f => <LegacyCard key={f.id} feedback={f} onDelete={deleteFeedback} />)}
           </div>
         )}

@@ -7,13 +7,10 @@ import { AGENTS } from '@/types'
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
 import { detectSite } from '@/lib/geometry'
 import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSelector'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 const RESULT_COLOR = { win: '#00D4A0', loss: '#FF4655', draw: '#9B9BA4' } as const
 const ECO_OPTIONS = ['pistol', 'second', 'third', 'eco', 'anti_eco', 'semi_eco', 'semi_buy', 'full_buy', 'oper'] as const
-const ECO_LABELS: Record<string, string> = {
-  pistol: 'ピストル', eco: 'エコ', anti_eco: 'アンチエコ', semi_eco: 'セミエコ',
-  semi_buy: 'セミバイ', full_buy: 'フルバイ', oper: 'オペ', second: 'セカンド', third: 'サード',
-}
 const ECO_COLOR: Record<string, string> = {
   pistol: '#FFD700', second: '#3498DB', third: '#1ABC9C',
   eco: '#FF4655', anti_eco: '#FF8C42', semi_eco: '#FF8C42',
@@ -60,6 +57,7 @@ const selectCls = 'bg-muted border border-border rounded px-1 py-0.5 text-xs tex
 export default function MatchDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const { locale, t } = useLanguage()
   const [data, setData] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
   const [editMode, setEditMode] = useState(false)
@@ -80,10 +78,10 @@ export default function MatchDetailPage() {
   }, [id])
 
   if (loading) return (
-    <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">読み込み中...</div>
+    <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">{t('common.loading')}</div>
   )
   if (!data) return (
-    <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">試合が見つかりません</div>
+    <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">{t('matches.noMatches')}</div>
   )
 
   const match = data.match as Record<string, unknown>
@@ -91,11 +89,11 @@ export default function MatchDetailPage() {
   const rounds = (data.rounds ?? []) as Record<string, unknown>[]
 
   const result = String(match.result ?? 'draw') as 'win' | 'loss' | 'draw'
-  const resultLabel = result === 'win' ? '勝利' : result === 'loss' ? '敗北' : '引き分け'
+  const resultLabel = result === 'win' ? t('matches.roundWin') : result === 'loss' ? t('matches.roundLoss') : t('common.noData')
   const resultColor = RESULT_COLOR[result]
 
   const matchDate = match.match_date
-    ? new Date(String(match.match_date)).toLocaleDateString('ja-JP')
+    ? new Date(String(match.match_date)).toLocaleDateString(locale === 'en' ? 'en-US' : 'ja-JP')
     : ''
 
   const attackWins = Number(match.attack_rounds_won ?? 0)
@@ -346,13 +344,13 @@ export default function MatchDetailPage() {
       {(playerStats.length > 0 || editMode) && (
         <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-            <div className="text-sm font-semibold text-white">選手スタッツ</div>
+            <div className="text-sm font-semibold text-white">{t('matches.playerStatsTitle')}</div>
             {!editMode ? (
               <button
                 onClick={enterEdit}
                 className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white border border-border hover:border-white/30 rounded-lg px-3 py-1.5 transition-colors"
               >
-                <Pencil className="w-3 h-3" /> 編集
+                <Pencil className="w-3 h-3" /> {t('common.edit')}
               </button>
             ) : (
               <div className="flex items-center gap-2">
@@ -362,21 +360,21 @@ export default function MatchDetailPage() {
                   disabled={saving}
                   className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white border border-border rounded-lg px-3 py-1.5 transition-colors"
                 >
-                  <X className="w-3 h-3" /> キャンセル
+                  <X className="w-3 h-3" /> {t('common.cancel')}
                 </button>
                 <button
                   onClick={saveAll}
                   disabled={saving}
                   className="flex items-center gap-1.5 text-xs bg-[#FF4655] hover:bg-[#FF4655]/80 text-white rounded-lg px-3 py-1.5 transition-colors"
                 >
-                  <Save className="w-3 h-3" /> {saving ? '保存中...' : '保存'}
+                  <Save className="w-3 h-3" /> {saving ? t('common.saving') : t('common.save')}
                 </button>
               </div>
             )}
           </div>
           {editMode && (
             <div className="px-5 py-3 border-b border-border flex items-center gap-3">
-              <label className="text-xs text-muted-foreground whitespace-nowrap">試合日</label>
+              <label className="text-xs text-muted-foreground whitespace-nowrap">{t('matches.matchDateEdit')}</label>
               <input
                 type="date"
                 value={editDate}
@@ -389,7 +387,7 @@ export default function MatchDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  {['選手', 'エージェント', 'K', 'D', 'A', 'ACS', 'KD', 'FB', 'FD'].map(h => (
+                  {[t('matches.headerPlayer'), t('common.agent'), 'K', 'D', 'A', 'ACS', 'KD', 'FB', 'FD'].map(h => (
                     <th key={h} className="px-4 py-2.5 text-left text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
                       {h}
                     </th>
@@ -486,13 +484,13 @@ export default function MatchDetailPage() {
       {/* Round log */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
           <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-            <div className="text-sm font-semibold text-white">ラウンド詳細</div>
+            <div className="text-sm font-semibold text-white">{t('matches.roundDetailTitle')}</div>
             {!editRoundMode ? (
               <button
                 onClick={enterRoundEdit}
                 className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white border border-border hover:border-white/30 rounded-lg px-3 py-1.5 transition-colors"
               >
-                <Pencil className="w-3 h-3" /> 編集
+                <Pencil className="w-3 h-3" /> {t('common.edit')}
               </button>
             ) : (
               <div className="flex items-center gap-2">
@@ -502,14 +500,14 @@ export default function MatchDetailPage() {
                   disabled={saving}
                   className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white border border-border rounded-lg px-3 py-1.5 transition-colors"
                 >
-                  <X className="w-3 h-3" /> キャンセル
+                  <X className="w-3 h-3" /> {t('common.cancel')}
                 </button>
                 <button
                   onClick={saveRounds}
                   disabled={saving}
                   className="flex items-center gap-1.5 text-xs bg-[#FF4655] hover:bg-[#FF4655]/80 text-white rounded-lg px-3 py-1.5 transition-colors"
                 >
-                  <Save className="w-3 h-3" /> {saving ? '保存中...' : '保存'}
+                  <Save className="w-3 h-3" /> {saving ? t('common.saving') : t('common.save')}
                 </button>
               </div>
             )}
@@ -519,7 +517,7 @@ export default function MatchDetailPage() {
             <div className="p-4">
               {rounds.length === 0 ? (
                 <div className="text-center py-6 text-muted-foreground text-sm">
-                  ラウンドデータがありません。「編集」から追加できます。
+                  {t('matches.noRoundData')}
                 </div>
               ) : (
                 <>
@@ -545,10 +543,10 @@ export default function MatchDetailPage() {
                   </div>
                   <div className="flex gap-4 mt-3 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-1">
-                      <span className="w-3 h-3 rounded bg-[#00D4A0]/20 border border-[#00D4A0]/30 inline-block" />勝利
+                      <span className="w-3 h-3 rounded bg-[#00D4A0]/20 border border-[#00D4A0]/30 inline-block" />{t('matches.roundWin')}
                     </span>
                     <span className="flex items-center gap-1">
-                      <span className="w-3 h-3 rounded bg-[#FF4655]/20 border border-[#FF4655]/30 inline-block" />敗北
+                      <span className="w-3 h-3 rounded bg-[#FF4655]/20 border border-[#FF4655]/30 inline-block" />{t('matches.roundLoss')}
                     </span>
                   </div>
 
@@ -586,17 +584,17 @@ export default function MatchDetailPage() {
                         {siteStats.length > 0 && (
                           <div className="space-y-3">
                             <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                              サイト別勝率
+                              {t('matches.siteWinRatesTitle')}
                             </div>
                             {siteStats.map(s => (
                               <div key={s.site} className="space-y-1.5">
-                                <div className="text-xs font-semibold text-white">{s.site}サイト</div>
+                                <div className="text-xs font-semibold text-white">{s.site}{t('dashboard.siteSuffix')}</div>
                                 {s.atk.total > 0 && (() => {
                                   const wr = Math.round((s.atk.wins / s.atk.total) * 100)
                                   return (
                                     <div>
                                       <div className="flex justify-between text-[10px] mb-0.5">
-                                        <span className="text-muted-foreground">ATK実行</span>
+                                        <span className="text-muted-foreground">{t('matches.atkExecution')}</span>
                                         <span className={wr >= 50 ? 'text-[#00D4A0] font-bold' : 'text-[#FF4655] font-bold'}>{wr}% <span className="text-muted-foreground/60 font-normal">{s.atk.wins}/{s.atk.total}</span></span>
                                       </div>
                                       <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
@@ -610,7 +608,7 @@ export default function MatchDetailPage() {
                                   return (
                                     <div>
                                       <div className="flex justify-between text-[10px] mb-0.5">
-                                        <span className="text-muted-foreground">リテイク</span>
+                                        <span className="text-muted-foreground">{t('matches.retake')}</span>
                                         <span className={wr >= 50 ? 'text-[#00D4A0] font-bold' : 'text-[#FF4655] font-bold'}>{wr}% <span className="text-muted-foreground/60 font-normal">{s.retake.wins}/{s.retake.total}</span></span>
                                       </div>
                                       <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
@@ -635,7 +633,7 @@ export default function MatchDetailPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border bg-muted/20">
-                      {['#', 'サイド', '購入状況', '結果', 'プラント', 'サイト', 'リテイク', 'FB', 'タイミング', '注目', ''].map(h => (
+                      {['#', t('matches.headerSide'), t('matches.headerEconomy'), t('matches.headerResult'), t('matches.headerPlant'), t('matches.headerSite'), t('matches.headerRetake'), 'FB', t('matches.headerTiming'), t('matches.headerNotable'), ''].map(h => (
                         <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium">
                           {h}
                         </th>
@@ -687,7 +685,7 @@ export default function MatchDetailPage() {
                           >
                             <option value=""></option>
                             {ECO_OPTIONS.map(o => (
-                              <option key={o} value={o}>{ECO_LABELS[o]}</option>
+                              <option key={o} value={o}>{t(`eco.${o}`)}</option>
                             ))}
                           </select>
                         </td>
