@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { usePlan } from '@/contexts/PlanContext'
 import { LockedFeature } from '@/components/pricing/LockedFeature'
 import { MatchFeedbackPanel } from '@/components/feedback/FeedbackPanel'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 // ── constants ────────────────────────────────────────────────────────────────
 
@@ -95,6 +96,7 @@ const TYPE_LABELS: Record<string, string> = {
 export default function RoundAnalysisPage() {
   const { teamId } = useAuth()
   const { limits, showUpgrade } = usePlan()
+  const { t } = useLanguage()
   const [matches, setMatches] = useState<Match[]>([])
   const [loadingMatches, setLoadingMatches] = useState(true)
   const [filterText, setFilterText] = useState('')
@@ -209,7 +211,7 @@ export default function RoundAnalysisPage() {
             onClick={exitAnalysis}
             className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white transition-colors"
           >
-            <ArrowLeft className="w-3.5 h-3.5" /> 試合一覧
+            <ArrowLeft className="w-3.5 h-3.5" /> {t('analysis.backToList')}
           </button>
           <div className="w-px h-4 bg-border" />
           <div className="flex items-center gap-2">
@@ -235,7 +237,7 @@ export default function RoundAnalysisPage() {
                   : 'text-muted-foreground border-border hover:text-white hover:border-white/30'
               )}
             >
-              <Settings2 className="w-3 h-3" /> VOD設定
+              <Settings2 className="w-3 h-3" /> {t('analysis.vodSettings')}
             </button>
           </div>
         </div>
@@ -243,7 +245,7 @@ export default function RoundAnalysisPage() {
         {/* VOD settings bar */}
         {showVodSettings && (
           <div className="flex items-center gap-4 px-4 py-2 border-b border-border bg-card flex-shrink-0 text-xs">
-            <span className="text-muted-foreground">R1開始時間</span>
+            <span className="text-muted-foreground">{t('analysis.vodOffset')}</span>
             <div className="flex items-center gap-1.5">
               <input
                 type="number" min={0}
@@ -251,9 +253,9 @@ export default function RoundAnalysisPage() {
                 onChange={e => setVodOffset(Number(e.target.value))}
                 className="w-20 bg-muted/50 border border-border rounded px-2 py-1 text-white text-xs outline-none focus:border-[#FF4655]"
               />
-              <span className="text-muted-foreground">秒</span>
+              <span className="text-muted-foreground">{t('analysis.sec')}</span>
             </div>
-            <span className="text-muted-foreground ml-2">ラウンド平均時間</span>
+            <span className="text-muted-foreground ml-2">{t('analysis.secPerRound')}</span>
             <div className="flex items-center gap-1.5">
               <input
                 type="number" min={60} max={200}
@@ -261,7 +263,7 @@ export default function RoundAnalysisPage() {
                 onChange={e => setSecPerRound(Number(e.target.value))}
                 className="w-20 bg-muted/50 border border-border rounded px-2 py-1 text-white text-xs outline-none focus:border-[#FF4655]"
               />
-              <span className="text-muted-foreground">秒/ラウンド</span>
+              <span className="text-muted-foreground">{t('analysis.secPerRoundUnit')}</span>
             </div>
           </div>
         )}
@@ -272,11 +274,11 @@ export default function RoundAnalysisPage() {
           <div className="w-64 border-r border-border flex flex-col bg-card overflow-hidden flex-shrink-0">
             <div className="px-3 py-2 border-b border-border flex-shrink-0">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                ラウンド一覧 ({rounds.length})
+                {t('analysis.roundList')} ({rounds.length})
               </span>
             </div>
             {loadingRounds ? (
-              <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs">読み込み中...</div>
+              <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs">{t('analysis.loading')}</div>
             ) : (
               <div className="flex-1 overflow-y-auto">
                 {/* Free プランのラウンド制限 */}
@@ -478,16 +480,16 @@ export default function RoundAnalysisPage() {
 
   // ── Match list view ──────────────────────────────────────────────────────
   const SORT_BTNS: { key: SortKey; label: string }[] = [
-    { key: 'date',     label: '日時' },
-    { key: 'opponent', label: 'チーム名' },
-    { key: 'map',      label: 'マップ' },
+    { key: 'date',     label: t('analysis.byDate') },
+    { key: 'opponent', label: t('analysis.byTeam') },
+    { key: 'map',      label: t('analysis.byMap') },
   ]
 
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-white">試合 <span className="text-[#FF4655]">分析</span></h1>
-        <p className="text-muted-foreground text-sm mt-0.5">試合を選択してVOD連携分析を開始</p>
+        <h1 className="text-2xl font-bold text-white">{t('analysis.title')} <span className="text-[#FF4655]">{t('analysis.titleAccent')}</span></h1>
+        <p className="text-muted-foreground text-sm mt-0.5">{t('analysis.subtitle')}</p>
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
@@ -495,7 +497,7 @@ export default function RoundAnalysisPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
           <input
             type="text"
-            placeholder="チーム名・マップで絞り込み"
+            placeholder={t('analysis.filterPlaceholder')}
             value={filterText}
             onChange={e => setFilterText(e.target.value)}
             className="w-full bg-card border border-border rounded-lg pl-9 pr-8 py-2 text-sm text-white placeholder:text-muted-foreground focus:border-[#FF4655] outline-none"
@@ -548,10 +550,10 @@ export default function RoundAnalysisPage() {
       </div>
 
       {loadingMatches ? (
-        <div className="text-center py-16 text-muted-foreground text-sm">読み込み中...</div>
+        <div className="text-center py-16 text-muted-foreground text-sm">{t('analysis.loading')}</div>
       ) : filteredMatches.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground text-sm">
-          {filterText ? '一致する試合がありません' : '試合データがありません'}
+          {filterText ? t('analysis.noMatchesFilter') : t('analysis.noMatches')}
         </div>
       ) : (
         <div className="space-y-2">
@@ -598,6 +600,19 @@ export default function RoundAnalysisPage() {
           })}
         </div>
       )}
+    </div>
+  )
+}
+
+function VideoNoVod() {
+  const { t } = useLanguage()
+  return (
+    <div className="flex-1 flex items-center justify-center bg-[#0D0D14]">
+      <div className="text-center space-y-2">
+        <Play className="w-12 h-12 text-muted-foreground/30 mx-auto" />
+        <p className="text-muted-foreground text-sm">{t('analysis.noVod')}</p>
+        <p className="text-muted-foreground/60 text-xs">{t('matches.subtitle')}</p>
+      </div>
     </div>
   )
 }
@@ -690,13 +705,7 @@ function VideoPlayer({
 
   if (!videoUrl) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-[#0D0D14]">
-        <div className="text-center space-y-2">
-          <Play className="w-12 h-12 text-muted-foreground/30 mx-auto" />
-          <p className="text-muted-foreground text-sm">VODが未設定です</p>
-          <p className="text-muted-foreground/60 text-xs">試合履歴からVOD URLを設定してください</p>
-        </div>
-      </div>
+      <VideoNoVod />
     )
   }
 
@@ -942,6 +951,7 @@ function RoundDetailPanel({
 // ── Match stats panel (right pane when no round selected) ─────────────────────
 
 function MatchStatsPanel({ rounds, map }: { rounds: Round[]; map: string }) {
+  const { t } = useLanguage()
   const atk  = rounds.filter(r => r.side === 'attack')
   const def  = rounds.filter(r => r.side === 'defense')
   const atkW = atk.filter(r => r.result === 'win').length
@@ -966,21 +976,21 @@ function MatchStatsPanel({ rounds, map }: { rounds: Round[]; map: string }) {
 
   if (rounds.length === 0) return (
     <div className="flex-1 flex items-center justify-center p-4">
-      <p className="text-muted-foreground text-xs text-center">ラウンドを選択すると詳細を表示</p>
+      <p className="text-muted-foreground text-xs text-center">{t('analysis.noRounds')}</p>
     </div>
   )
 
   return (
     <div className="p-3 space-y-3">
-      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">試合スタッツ</div>
+      <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('analysis.matchStats')}</div>
 
       {/* KPI */}
       <div className="grid grid-cols-2 gap-2">
         {[
-          { label: 'ATK勝率', wins: atkW, total: atk.length, color: '#FF8C42' },
-          { label: 'DEF勝率', wins: defW, total: def.length, color: '#00D4A0' },
-          { label: 'プラント後', wins: ppW, total: planted.length, color: '#6C63FF' },
-          { label: 'FB取得時', wins: fbW.filter(r => r.result === 'win').length, total: fbW.length, color: '#FFD700' },
+          { label: t('analysis.atkWinRate'), wins: atkW, total: atk.length, color: '#FF8C42' },
+          { label: t('analysis.defWinRate'), wins: defW, total: def.length, color: '#00D4A0' },
+          { label: t('analysis.postPlant'), wins: ppW, total: planted.length, color: '#6C63FF' },
+          { label: t('analysis.fbTaken'), wins: fbW.filter(r => r.result === 'win').length, total: fbW.length, color: '#FFD700' },
         ].map(c => {
           const pct = c.total > 0 ? Math.round(c.wins / c.total * 100) : null
           return (
@@ -999,7 +1009,7 @@ function MatchStatsPanel({ rounds, map }: { rounds: Round[]; map: string }) {
       {/* Eco stats */}
       {ecoStats.length > 0 && (
         <div className="space-y-2">
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">購入状況別</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{t('analysis.economyBreakdown')}</div>
           {ecoStats.map(e => {
             const wr = e.wr !== null ? Math.round(e.wr * 100) : 0
             const color = ECO_COLOR[e.type] ?? '#9B9BA4'
@@ -1023,7 +1033,7 @@ function MatchStatsPanel({ rounds, map }: { rounds: Round[]; map: string }) {
       {/* Map heatmap */}
       {plantRounds.length > 0 && (
         <div>
-          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">プラント位置</div>
+          <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">{t('analysis.plantPositions')}</div>
           <MapPlantSelector
             mapName={map}
             rounds={plantRounds}

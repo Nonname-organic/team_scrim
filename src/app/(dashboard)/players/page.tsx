@@ -8,6 +8,7 @@ import {
 import { cn } from '@/lib/utils'
 import type { PlayerCareerStats } from '@/types'
 import { useAuth } from '@/contexts/AuthContext'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 const ROLE_CONFIG: Record<string, { color: string; label: string }> = {
   duelist:     { color: '#FF4655', label: 'デュエリスト' },
@@ -21,6 +22,7 @@ const ROLE_CONFIG: Record<string, { color: string; label: string }> = {
 
 export default function PlayersPage() {
   const { teamId } = useAuth()
+  const { t } = useLanguage()
   const [players, setPlayers] = useState<(PlayerCareerStats & { ign: string; role: string })[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [radarData, setRadarData] = useState<Record<string, unknown>[] | null>(null)
@@ -43,15 +45,15 @@ export default function PlayersPage() {
       .then(json => setRadarData(json.data?.radar ?? null))
   }, [selected])
 
-  if (loading) return <div className="text-muted-foreground text-sm p-8">読み込み中...</div>
+  if (loading) return <div className="text-muted-foreground text-sm p-8">{t('common.loading')}</div>
 
   const selectedPlayer = players.find(p => p.player_id === selected)
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">プレイヤー</h1>
-        <p className="text-muted-foreground text-sm mt-1">選手スタッツ・パフォーマンス分析</p>
+        <h1 className="text-2xl font-bold text-white">{t('players.title')}</h1>
+        <p className="text-muted-foreground text-sm mt-1">{t('players.subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -59,10 +61,10 @@ export default function PlayersPage() {
         <div className="lg:col-span-2 space-y-2">
           {/* Stats table header */}
           <div className="grid grid-cols-5 text-[10px] text-muted-foreground uppercase tracking-wider px-3 py-2">
-            <div className="col-span-2">選手</div>
+            <div className="col-span-2">{t('players.ign')}</div>
             <div className="text-right">ACS</div>
             <div className="text-right">KD</div>
-            <div className="text-right">試合</div>
+            <div className="text-right">{t('players.matches')}</div>
           </div>
 
           {players.map(p => {
@@ -148,15 +150,15 @@ export default function PlayersPage() {
                 href={`/players/${selectedPlayer.player_id}`}
                 className="mt-4 block text-center text-xs text-[#FF4655] hover:underline"
               >
-                詳細ページ →
+                {t('players.viewProfile')}
               </Link>
             </div>
           ) : (
             <div className="h-full flex items-center justify-center text-center py-12">
               <div>
-                <div className="text-muted-foreground text-sm">選手を選択</div>
+                <div className="text-muted-foreground text-sm">{t('players.selectPlayer')}</div>
                 <div className="text-muted-foreground text-xs mt-1">
-                  レーダーチャートを表示します
+                  {t('players.radarHint')}
                 </div>
               </div>
             </div>

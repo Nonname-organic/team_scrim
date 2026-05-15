@@ -4,24 +4,25 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Users, Swords,
-  ClipboardEdit, BarChart2, Settings, LogOut, CreditCard, Mail, BookOpen,
+  ClipboardEdit, BarChart2, Settings, LogOut, Mail, BookOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { PlanProvider, usePlan } from '@/contexts/PlanContext'
+import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext'
 import { UpgradeModal } from '@/components/pricing/UpgradeModal'
 import { PlanBadge } from '@/components/pricing/PlanBadge'
 import { AIUsageBar } from '@/components/pricing/UsageBar'
 
-const nav = [
-  { href: '/',               label: 'ダッシュボード', icon: LayoutDashboard },
-  { href: '/scrim-input',    label: '試合入力',       icon: ClipboardEdit },
-  { href: '/players',        label: '選手スタッツ',   icon: Users },
-  { href: '/matches',        label: '試合履歴',       icon: Swords },
-  { href: '/round-analysis', label: '試合分析',       icon: BarChart2 },
-  { href: '/settings',       label: '設定',           icon: Settings },
-  { href: '/guide',          label: '使い方ガイド',   icon: BookOpen },
-  { href: '/contact',        label: 'お問い合わせ',   icon: Mail },
+const NAV_ITEMS = [
+  { href: '/',               key: 'nav.dashboard',     icon: LayoutDashboard },
+  { href: '/scrim-input',    key: 'nav.matchInput',    icon: ClipboardEdit },
+  { href: '/players',        key: 'nav.playerStats',   icon: Users },
+  { href: '/matches',        key: 'nav.matchHistory',  icon: Swords },
+  { href: '/round-analysis', key: 'nav.matchAnalysis', icon: BarChart2 },
+  { href: '/settings',       key: 'nav.settings',      icon: Settings },
+  { href: '/guide',          key: 'nav.guide',         icon: BookOpen },
+  { href: '/contact',        key: 'nav.contact',       icon: Mail },
 ]
 
 function TeamInfo() {
@@ -71,6 +72,7 @@ function TeamInfo() {
 function Sidebar() {
   const pathname = usePathname()
   const { logout } = useAuth()
+  const { locale, setLocale, t } = useLanguage()
 
   return (
     <aside className="w-56 bg-[#18181F] border-r border-border flex flex-col fixed h-full z-10">
@@ -89,7 +91,7 @@ function Sidebar() {
 
       {/* Nav */}
       <nav className="flex-1 p-2 space-y-0.5">
-        {nav.map(({ href, label, icon: Icon }) => (
+        {NAV_ITEMS.map(({ href, key, icon: Icon }) => (
           <Link
             key={href}
             href={href}
@@ -101,32 +103,48 @@ function Sidebar() {
             )}
           >
             <Icon className="w-4 h-4 flex-shrink-0" />
-            {label}
+            {t(key)}
           </Link>
         ))}
-        {/* <Link
-          href="/pricing"
-          className={cn(
-            'flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
-            pathname === '/pricing'
-              ? 'bg-[#FFD700]/10 text-[#FFD700]'
-              : 'text-[#FFD700]/70 hover:text-[#FFD700] hover:bg-[#FFD700]/5'
-          )}
-        >
-          <CreditCard className="w-4 h-4 flex-shrink-0" />
-          プラン
-        </Link> */}
       </nav>
 
-      {/* Team info + logout */}
+      {/* Team info + language toggle + logout */}
       <div className="px-4 py-3 border-t border-border space-y-2">
         <TeamInfo />
+
+        {/* Language toggle */}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-muted-foreground mr-1">Lang</span>
+          <button
+            onClick={() => setLocale('ja')}
+            className={cn(
+              'px-2.5 py-1 rounded text-[10px] font-bold border transition-colors',
+              locale === 'ja'
+                ? 'bg-[#FF4655]/15 border-[#FF4655]/50 text-[#FF4655]'
+                : 'border-border text-muted-foreground hover:text-white hover:border-white/30'
+            )}
+          >
+            JA
+          </button>
+          <button
+            onClick={() => setLocale('en')}
+            className={cn(
+              'px-2.5 py-1 rounded text-[10px] font-bold border transition-colors',
+              locale === 'en'
+                ? 'bg-[#FF4655]/15 border-[#FF4655]/50 text-[#FF4655]'
+                : 'border-border text-muted-foreground hover:text-white hover:border-white/30'
+            )}
+          >
+            EN
+          </button>
+        </div>
+
         <button
           onClick={logout}
           className="w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
         >
           <LogOut className="w-3.5 h-3.5" />
-          ログアウト
+          {t('nav.logout')}
         </button>
       </div>
     </aside>
@@ -149,9 +167,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <AuthProvider>
       <PlanProvider>
-        <div className="flex min-h-screen">
-          <DashboardInner>{children}</DashboardInner>
-        </div>
+        <LanguageProvider>
+          <div className="flex min-h-screen">
+            <DashboardInner>{children}</DashboardInner>
+          </div>
+        </LanguageProvider>
       </PlanProvider>
     </AuthProvider>
   )

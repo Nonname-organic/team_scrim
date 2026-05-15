@@ -5,6 +5,7 @@ import { Upload, X, Check, Loader2, AlertCircle, UserCheck, UserX, Play, Link2, 
 import { cn } from '@/lib/utils'
 import { MAPS } from '@/types'
 import { useAuth } from '@/contexts/AuthContext'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 // ============================================================
 // Types
@@ -42,6 +43,7 @@ function getEmbedUrl(url: string): string | null {
 
 export default function MatchesPage() {
   const { teamId } = useAuth()
+  const { t } = useLanguage()
   const [matches, setMatches] = useState<Match[]>([])
   const [loading, setLoading] = useState(true)
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null)
@@ -135,8 +137,8 @@ export default function MatchesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-white">マッチ</h1>
-          <p className="text-muted-foreground text-sm mt-1">試合履歴・詳細分析</p>
+          <h1 className="text-2xl font-bold text-white">{t('matches.title')}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t('matches.subtitle')}</p>
         </div>
       </div>
 
@@ -177,7 +179,7 @@ export default function MatchesPage() {
 
       {/* Match list */}
       {loading ? (
-        <div className="text-muted-foreground text-sm p-8 text-center">読み込み中...</div>
+        <div className="text-muted-foreground text-sm p-8 text-center">{t('common.loading')}</div>
       ) : matches.length === 0 ? (
         <EmptyState />
       ) : (
@@ -223,15 +225,16 @@ export default function MatchesPage() {
 // ============================================================
 
 function MatchTableHeader() {
+  const { t } = useLanguage()
   return (
     <div className="grid grid-cols-8 text-[10px] text-muted-foreground uppercase tracking-wider px-4 py-2">
-      <div className="col-span-2">対戦</div>
-      <div>マップ</div>
-      <div className="text-center">スコア</div>
-      <div className="text-center">ATK%</div>
-      <div className="text-center">DEF%</div>
-      <div className="text-right">日付</div>
-      <div className="text-right">VOD</div>
+      <div className="col-span-2">{t('common.opponent')}</div>
+      <div>{t('common.map')}</div>
+      <div className="text-center">{t('common.score')}</div>
+      <div className="text-center">{t('matches.atkPct')}</div>
+      <div className="text-center">{t('matches.defPct')}</div>
+      <div className="text-right">{t('common.date')}</div>
+      <div className="text-right">{t('matches.vod')}</div>
     </div>
   )
 }
@@ -268,6 +271,7 @@ function MatchItem({
   onDeleteConfirm: () => void
   onDeleteCancel: () => void
 }) {
+  const { t } = useLanguage()
   const isWin = m.result === 'win'
   const isLoss = m.result === 'loss'
   const atkPct = m.attack_rounds_played > 0
@@ -336,7 +340,7 @@ function MatchItem({
                     : 'bg-[#FF4655]/10 text-[#FF4655] hover:bg-[#FF4655]/20'
                 )}>
                 <Play className="w-3 h-3" />
-                {isVideoActive ? '閉じる' : '再生'}
+                {isVideoActive ? t('matches.stopPlay') : t('matches.play')}
               </button>
               <button onClick={e => onOpenVodEdit(m, e)}
                 className="p-1.5 rounded-lg text-muted-foreground hover:text-white border border-border hover:border-white/30 transition-colors">
@@ -346,7 +350,7 @@ function MatchItem({
           ) : (
             <button onClick={e => onOpenVodEdit(m, e)}
               className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-white border border-border hover:border-white/30 transition-colors">
-              <Link2 className="w-3 h-3" /> VOD
+              <Link2 className="w-3 h-3" /> {t('matches.addVod')}
             </button>
           )}
           {/* Delete */}
@@ -354,11 +358,11 @@ function MatchItem({
             <div className="flex items-center gap-1">
               <button onClick={onDeleteConfirm} disabled={isDeleting}
                 className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs bg-[#FF4655] text-white hover:bg-[#e03e4d] transition-colors disabled:opacity-50">
-                {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : '削除'}
+                {isDeleting ? <Loader2 className="w-3 h-3 animate-spin" /> : t('matches.confirmDelete')}
               </button>
               <button onClick={onDeleteCancel}
                 className="px-2 py-1.5 rounded-lg text-xs border border-border text-muted-foreground hover:text-white transition-colors">
-                戻す
+                {t('matches.restore')}
               </button>
             </div>
           ) : (
@@ -380,16 +384,16 @@ function MatchItem({
             value={vodInput}
             onChange={e => onVodInputChange(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') onVodSave(); if (e.key === 'Escape') onVodCancel() }}
-            placeholder="YouTube URL または動画URLを入力..."
+            placeholder={t('matches.vodUrl')}
             className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-1.5 text-sm text-white placeholder:text-muted-foreground focus:border-[#FF4655] outline-none"
           />
           <button onClick={onVodSave} disabled={vodSaving}
             className="px-3 py-1.5 rounded-lg bg-[#FF4655] text-white text-xs font-medium hover:bg-[#FF4655]/80 disabled:opacity-50 transition-colors">
-            {vodSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : '保存'}
+            {vodSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : t('common.save')}
           </button>
           <button onClick={onVodCancel}
             className="px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-white transition-colors">
-            キャンセル
+            {t('common.cancel')}
           </button>
         </div>
       )}
@@ -406,11 +410,11 @@ function MatchItem({
           />
           <button onClick={onDateSave} disabled={dateSaving}
             className="px-3 py-1.5 rounded-lg bg-[#FF4655] text-white text-xs font-medium hover:bg-[#FF4655]/80 disabled:opacity-50 transition-colors">
-            {dateSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : '保存'}
+            {dateSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : t('matches.saveDate')}
           </button>
           <button onClick={onDateCancel}
             className="px-3 py-1.5 rounded-lg border border-border text-xs text-muted-foreground hover:text-white transition-colors">
-            キャンセル
+            {t('common.cancel')}
           </button>
         </div>
       )}
@@ -839,12 +843,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 function EmptyState() {
+  const { t } = useLanguage()
   return (
     <div className="bg-card rounded-xl border border-border p-12 text-center">
-      <div className="text-muted-foreground text-sm mb-4">試合データがありません</div>
+      <div className="text-muted-foreground text-sm mb-4">{t('matches.noMatches')}</div>
       <Link href="/scrim-input"
         className="px-5 py-2 bg-[#FF4655] hover:bg-[#e03e4d] text-white text-sm font-semibold rounded-lg transition-colors inline-block">
-        スクリム入力へ
+        {t('matches.goToInput')}
       </Link>
     </div>
   )

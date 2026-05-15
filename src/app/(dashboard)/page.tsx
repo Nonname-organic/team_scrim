@@ -13,12 +13,14 @@ import { MAPS } from '@/types'
 import { useAuth } from '@/contexts/AuthContext'
 import { LockedFeature } from '@/components/pricing/LockedFeature'
 import { cn } from '@/lib/utils'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 type TypeFilter = '' | 'official' | 'practice'
 const TYPE_LABELS: Record<string, string> = { official: 'Competitive', practice: 'Practice' }
 
 export default function DashboardPage() {
   const { teamId } = useAuth()
+  const { t } = useLanguage()
   const [data, setData] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +42,7 @@ export default function DashboardPage() {
       })
       .then(json => {
         setData(json.data ?? null)
-        if (!json.data) setError('データがありません。まず試合を追加してください。')
+        if (!json.data) setError(t('dashboard.noData'))
         setLoading(false)
       })
       .catch(e => {
@@ -61,18 +63,18 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">ダッシュボード</h1>
-          <p className="text-muted-foreground text-sm mt-1">チームパフォーマンス概要</p>
+          <h1 className="text-2xl font-bold text-white">{t('dashboard.title')}</h1>
+          <p className="text-muted-foreground text-sm mt-1">{t('dashboard.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* マップフィルター */}
-          <span className="text-xs text-muted-foreground">マップ</span>
+          {/* Map filter */}
+          <span className="text-xs text-muted-foreground">{t('common.map')}</span>
           <select
             value={mapFilter}
             onChange={e => setMapFilter(e.target.value)}
             className="bg-muted border border-border rounded-lg px-3 py-1.5 text-sm text-white focus:border-[#FF4655] outline-none"
           >
-            <option value="">すべて</option>
+            <option value="">{t('common.allMaps')}</option>
             {MAPS.map(m => <option key={m} value={m}>{m}</option>)}
           </select>
 
@@ -100,23 +102,23 @@ export default function DashboardPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <WinRateCard
-          label="総合勝率"
+          label={t('dashboard.overallWinRate')}
           value={Number(s.overall_win_rate)}
           matches={Number((s.recent_matches as unknown[]).length)}
           type="overall"
         />
         <WinRateCard
-          label="攻め勝率"
+          label={t('dashboard.attackWinRate')}
           value={Number(s.attack_win_rate)}
           type="attack"
         />
         <WinRateCard
-          label="守り勝率"
+          label={t('dashboard.defenseWinRate')}
           value={Number(s.defense_win_rate)}
           type="defense"
         />
         <WinRateCard
-          label="直近5試合"
+          label={t('dashboard.recent5')}
           value={computeRecentWR(s.recent_matches as Record<string, unknown>[], 5)}
           matches={5}
           type="recent"
@@ -126,7 +128,7 @@ export default function DashboardPage() {
       {/* Win Rate Trend */}
       <div className="bg-card rounded-xl p-5 border border-border">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-          勝率推移（直近20試合）
+          {t('dashboard.winRateTrend')}
         </h2>
         <WinRateTrendChart data={trend as Record<string, unknown>[]} />
       </div>
@@ -135,14 +137,14 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-card rounded-xl p-5 border border-border">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-            購入状況別勝率
+            {t('dashboard.economyWinRate')}
           </h2>
           <EconomyWinRates data={economy as Record<string, unknown>[]} />
         </div>
 
         <div className="bg-card rounded-xl p-5 border border-border">
           <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-            ファーストブラッド影響
+            {t('dashboard.firstBloodImpact')}
           </h2>
           <FirstBloodImpact data={first_blood_impact as Record<string, unknown>[]} />
         </div>
@@ -151,7 +153,7 @@ export default function DashboardPage() {
       {/* Site Win Rates */}
       <div className="bg-card rounded-xl p-5 border border-border">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-          サイト・ポストプラント勝率
+          {t('dashboard.siteWinRate')}
         </h2>
         <SiteWinRates data={site_win_rates as Record<string, unknown>} />
       </div>
@@ -175,14 +177,14 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <div className="bg-card rounded-xl p-5 border border-border">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-              ラウンド番号別勝率
+              {t('dashboard.roundNumberWinRate')}
             </h2>
             <RoundWinRates data={round_win_rates as Record<string, unknown>[]} />
           </div>
 
           <div className="bg-card rounded-xl p-5 border border-border">
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-              プレイタイム勝率
+              {t('dashboard.timingWinRate')}
             </h2>
             <TimingWinRates data={(timing_win_rates ?? []) as Record<string, unknown>[]} />
           </div>
@@ -192,7 +194,7 @@ export default function DashboardPage() {
       {/* Recent Matches */}
       <div className="bg-card rounded-xl p-5 border border-border">
         <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-          直近マッチ
+          {t('dashboard.recentMatches')}
         </h2>
         <RecentMatches matches={s.recent_matches as Record<string, unknown>[]} />
       </div>
@@ -207,23 +209,25 @@ function computeRecentWR(matches: Record<string, unknown>[], n: number): number 
 }
 
 function LoadingState() {
+  const { t } = useLanguage()
   return (
     <div className="flex items-center justify-center h-96">
       <div className="text-center space-y-3">
         <div className="w-10 h-10 rounded-full border-2 border-[#FF4655] border-t-transparent animate-spin mx-auto" />
-        <p className="text-muted-foreground text-sm">データを読み込み中...</p>
+        <p className="text-muted-foreground text-sm">{t('common.loading')}</p>
       </div>
     </div>
   )
 }
 
 function ErrorState({ message, dbSetup }: { message: string; dbSetup?: boolean }) {
+  const { t } = useLanguage()
   return (
     <div className="flex items-center justify-center min-h-[60vh]">
       <div className="bg-card border border-border rounded-2xl p-10 text-center max-w-md w-full space-y-4">
         <AlertTriangle className="w-12 h-12 text-[#FF4655] mx-auto" />
         <p className="text-white font-bold text-lg">
-          {dbSetup ? 'DB未接続' : '読み込みエラー'}
+          {dbSetup ? 'DB未接続' : t('dashboard.loadError')}
         </p>
         <p className="text-muted-foreground text-sm">{message}</p>
         {dbSetup && (

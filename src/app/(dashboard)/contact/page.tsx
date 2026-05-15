@@ -3,19 +3,14 @@
 import { useState } from 'react'
 import { Send, CheckCircle2, MessageSquare, Bug, Lightbulb, HelpCircle, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useLanguage } from '@/contexts/LanguageContext'
 
-const CATEGORIES = [
-  { value: 'bug',     label: 'バグ報告',     icon: Bug,            color: '#FF4655' },
-  { value: 'feature', label: '機能リクエスト', icon: Lightbulb,      color: '#FFD700' },
-  { value: 'support', label: 'サポート',      icon: HelpCircle,     color: '#6C63FF' },
-  { value: 'other',   label: 'その他',        icon: MessageSquare,  color: '#9B9BA4' },
-] as const
-
-type Category = typeof CATEGORIES[number]['value']
+type Category = 'bug' | 'feature' | 'support' | 'other'
 
 const inputCls = 'w-full bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm text-white placeholder-muted-foreground focus:border-[#FF4655] outline-none transition-colors'
 
 export default function ContactPage() {
+  const { t } = useLanguage()
   const [name, setName]         = useState('')
   const [email, setEmail]       = useState('')
   const [category, setCategory] = useState<Category>('support')
@@ -23,6 +18,13 @@ export default function ContactPage() {
   const [sent, setSent]         = useState(false)
   const [sending, setSending]   = useState(false)
   const [error, setError]       = useState<string | null>(null)
+
+  const CATEGORIES = [
+    { value: 'bug'     as Category, label: t('contact.bugReport'),       icon: Bug,           color: '#FF4655' },
+    { value: 'feature' as Category, label: t('contact.featureRequest'),  icon: Lightbulb,     color: '#FFD700' },
+    { value: 'support' as Category, label: t('contact.support'),         icon: HelpCircle,    color: '#6C63FF' },
+    { value: 'other'   as Category, label: t('contact.other'),           icon: MessageSquare, color: '#9B9BA4' },
+  ]
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -54,15 +56,15 @@ export default function ContactPage() {
         <div className="w-16 h-16 rounded-full bg-[#00D4A0]/15 flex items-center justify-center">
           <CheckCircle2 className="w-8 h-8 text-[#00D4A0]" />
         </div>
-        <h2 className="text-xl font-bold text-white">メールを送信しました</h2>
+        <h2 className="text-xl font-bold text-white">{t('contact.successTitle')}</h2>
         <p className="text-sm text-muted-foreground text-center max-w-sm">
-          お問い合わせありがとうございます。内容を確認次第ご返信いたします。
+          {t('contact.successDesc')}
         </p>
         <button
           onClick={() => setSent(false)}
           className="mt-2 text-sm text-muted-foreground hover:text-white border border-border hover:border-white/30 rounded-xl px-5 py-2 transition-colors"
         >
-          戻る
+          {t('contact.backBtn')}
         </button>
       </div>
     )
@@ -71,17 +73,17 @@ export default function ContactPage() {
   return (
     <div className="max-w-xl mx-auto space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">お問い合わせ</h1>
+        <h1 className="text-2xl font-bold text-white">{t('contact.title')}</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          バグ報告・機能リクエスト・ご質問はこちらからどうぞ
+          {t('contact.subtitle')}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* カテゴリ */}
+        {/* Category */}
         <div className="space-y-2">
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            カテゴリ
+            {t('contact.category')}
           </label>
           <div className="grid grid-cols-2 gap-2">
             {CATEGORIES.map(({ value, label, icon: Icon, color }) => (
@@ -107,25 +109,25 @@ export default function ContactPage() {
           </div>
         </div>
 
-        {/* 名前 */}
+        {/* Name */}
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            名前
+            {t('contact.name')}
           </label>
           <input
             type="text"
             required
-            placeholder="チーム名 / 担当者名"
+            placeholder={t('contact.namePlaceholder')}
             value={name}
             onChange={e => setName(e.target.value)}
             className={inputCls}
           />
         </div>
 
-        {/* メールアドレス */}
+        {/* Email */}
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            返信先メールアドレス
+            {t('contact.email')}
           </label>
           <input
             type="email"
@@ -137,10 +139,10 @@ export default function ContactPage() {
           />
         </div>
 
-        {/* メッセージ */}
+        {/* Message */}
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-            内容
+            {t('contact.message')}
           </label>
           <textarea
             required
@@ -170,8 +172,8 @@ export default function ContactPage() {
           className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-[#FF4655] hover:bg-[#FF4655]/80 text-white text-sm font-bold rounded-xl transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {sending
-            ? <><Loader2 className="w-4 h-4 animate-spin" />送信中...</>
-            : <><Send className="w-4 h-4" />送信する</>}
+            ? <><Loader2 className="w-4 h-4 animate-spin" />{t('contact.sending')}</>
+            : <><Send className="w-4 h-4" />{t('contact.send')}</>}
         </button>
       </form>
     </div>

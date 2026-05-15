@@ -7,6 +7,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts'
 import { cn } from '@/lib/utils'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 const ROLE_CONFIG: Record<string, { color: string; label: string }> = {
   duelist:     { color: '#FF4655', label: 'デュエリスト' },
@@ -31,6 +32,7 @@ const TREND_METRICS: { id: TrendMetric; label: string }[] = [
 export default function PlayerDetailPage() {
   const { id } = useParams<{ id: string }>()
   const router = useRouter()
+  const { t } = useLanguage()
   const [data, setData] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('overall')
@@ -46,10 +48,10 @@ export default function PlayerDetailPage() {
   }, [id])
 
   if (loading) return (
-    <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">読み込み中...</div>
+    <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">{t('common.loading')}</div>
   )
   if (!data) return (
-    <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">選手が見つかりません</div>
+    <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">{t('players.noPlayers')}</div>
   )
 
   const career = data.career as Record<string, unknown> | null
@@ -59,7 +61,7 @@ export default function PlayerDetailPage() {
   const agentStats = (data.agent_stats ?? []) as Record<string, unknown>[]
 
   if (!career) return (
-    <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">データがありません</div>
+    <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">{t('common.noData')}</div>
   )
 
   const roleCfg = ROLE_CONFIG[String(career.role ?? '')] ?? { color: '#9B9BA4', label: String(career.role ?? '') }
@@ -85,9 +87,9 @@ export default function PlayerDetailPage() {
   })
 
   const TABS: { id: Tab; label: string }[] = [
-    { id: 'overall', label: '全体' },
-    { id: 'map',     label: 'マップ別' },
-    { id: 'agent',   label: 'エージェント別' },
+    { id: 'overall', label: t('common.all') },
+    { id: 'map',     label: t('common.map') },
+    { id: 'agent',   label: t('common.agent') },
   ]
 
   return (
@@ -114,7 +116,7 @@ export default function PlayerDetailPage() {
         </div>
         <div className="ml-auto text-right">
           <div className="text-2xl font-black text-white">{String(career.matches_played ?? 0)}</div>
-          <div className="text-xs text-muted-foreground">試合</div>
+          <div className="text-xs text-muted-foreground">{t('players.matches')}</div>
         </div>
       </div>
 
@@ -241,7 +243,7 @@ export default function PlayerDetailPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border">
-                      {['日付', 'マップ', '相手', '結果', 'エージェント', 'K', 'D', 'A', 'ACS', 'KD'].map(h => (
+                      {[t('common.date'), t('common.map'), t('common.opponent'), t('common.result'), t('common.agent'), 'K', 'D', 'A', 'ACS', 'KD'].map(h => (
                         <th key={h} className="px-4 py-2.5 text-left text-[10px] text-muted-foreground uppercase tracking-wider font-medium whitespace-nowrap">
                           {h}
                         </th>
@@ -267,7 +269,7 @@ export default function PlayerDetailPage() {
                               res === 'loss' ? 'bg-[#FF4655]/15 text-[#FF4655]' :
                               'bg-muted/30 text-muted-foreground'
                             )}>
-                              {res === 'win' ? '勝' : res === 'loss' ? '敗' : '分'}
+                              {res === 'win' ? t('common.win') : res === 'loss' ? t('common.loss') : '分'}
                             </span>
                           </td>
                           <td className="px-4 py-2.5 text-muted-foreground">{String(r.agent ?? '--')}</td>
@@ -473,13 +475,15 @@ function BreakdownTable({
   selected?: string
   onSelect?: (name: string) => void
 }) {
+  const { t } = useLanguage()
+
   if (rows.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground text-sm">データがありません</div>
+      <div className="text-center py-12 text-muted-foreground text-sm">{t('common.noData')}</div>
     )
   }
 
-  const headers = [nameLabel, '試合数', '勝率', 'Avg ACS', 'Avg K', 'Avg D', 'Avg A', 'KPR']
+  const headers = [nameLabel, t('players.matches'), t('common.result'), 'Avg ACS', 'Avg K', 'Avg D', 'Avg A', 'KPR']
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">

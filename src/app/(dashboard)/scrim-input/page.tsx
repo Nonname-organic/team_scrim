@@ -6,6 +6,7 @@ import { MAPS, AGENTS } from '@/types'
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
 import { detectSite } from '@/lib/geometry'
 import { useAuth } from '@/contexts/AuthContext'
+import { useLanguage } from '@/contexts/LanguageContext'
 
 // OCR: 英語エージェント名 → 日本語カタカナ正規化マップ
 const AGENT_EN_JA: Record<string, string> = {
@@ -94,6 +95,7 @@ const ECO_LABELS: Record<string, string> = {
 // ============================================================
 export default function ScrimInputPage() {
   const { teamId } = useAuth()
+  const { t } = useLanguage()
   const [players, setPlayers] = useState<Player[]>([])
 
   // Match info
@@ -249,7 +251,7 @@ export default function ScrimInputPage() {
   // ── Save ──
   async function handleSave() {
     if (!map || teamScore === '' || oppScore === '') {
-      setError('マップ・スコアは必須です')
+      setError(t('common.error'))
       return
     }
     setSaving(true)
@@ -339,7 +341,7 @@ export default function ScrimInputPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">
-          スクリム <span className="text-[#FF4655]">入力</span>
+          {t('matchInput.title')} <span className="text-[#FF4655]">{t('matchInput.titleAccent')}</span>
         </h1>
         <div className="flex gap-2">
           {/* OCR button */}
@@ -352,7 +354,7 @@ export default function ScrimInputPage() {
               ? <Loader2 className="w-4 h-4 animate-spin text-[#FF4655]" />
               : <Upload className="w-4 h-4" />
             }
-            スコアボードから自動入力
+            {t('matchInput.autoFill')}
           </button>
           <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleOcr} />
         </div>
@@ -367,55 +369,55 @@ export default function ScrimInputPage() {
 
       {/* ── Match Info ── */}
       <div className="bg-card border border-border rounded-xl p-5 space-y-4">
-        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">試合情報</div>
+        <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('matchInput.matchInfo')}</div>
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           <div className="md:col-span-1">
-            <Label>スクリム日</Label>
+            <Label>{t('matchInput.matchDate')}</Label>
             <input type="date" className={cls} value={matchDate}
               onChange={e => setMatchDate(e.target.value)} />
           </div>
           <div className="md:col-span-2">
-            <Label>相手チーム名</Label>
+            <Label>{t('matchInput.opponent')}</Label>
             <input className={cls} placeholder="Team Name" value={opponentName}
               onChange={e => setOpponentName(e.target.value)} />
           </div>
           <div>
-            <Label>マップ</Label>
+            <Label>{t('common.map')}</Label>
             <select className={cls} value={map} onChange={e => setMap(e.target.value)}>
-              <option value="">マップを選択</option>
+              <option value="">{t('common.map')}</option>
               {MAPS.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
           <div>
-            <Label>自チームスコア *</Label>
+            <Label>{t('matchInput.teamScore')}</Label>
             <input type="number" min={0} max={25} className={cls} value={teamScore}
               onChange={e => setTeamScore(e.target.value === '' ? '' : Number(e.target.value))} />
           </div>
           <div>
-            <Label>相手スコア *</Label>
+            <Label>{t('matchInput.opponentScore')}</Label>
             <input type="number" min={0} max={25} className={cls} value={oppScore}
               onChange={e => setOppScore(e.target.value === '' ? '' : Number(e.target.value))} />
           </div>
           <div>
-            <Label>前半サイド</Label>
+            <Label>{t('matchInput.firstHalfSide')}</Label>
             <select className={cls} value={firstHalfSide}
               onChange={e => setFirstHalfSide(e.target.value as 'attack' | 'defense' | '')}>
-              <option value="">選択</option>
+              <option value="">{t('common.all')}</option>
               <option value="attack">ATK</option>
               <option value="defense">DEF</option>
             </select>
           </div>
           <div>
-            <Label>種別</Label>
+            <Label>{t('matchInput.matchType')}</Label>
             <select className={cls} value={matchType} onChange={e => setMatchType(e.target.value)}>
               <option value="official">Competitive</option>
               <option value="practice">Practice</option>
             </select>
           </div>
           <div className="md:col-span-2">
-            <Label>ラウンド数</Label>
+            <Label>{t('matchInput.totalRounds')}</Label>
             <div className={cn(cls, 'bg-muted/10 text-muted-foreground cursor-default')}>
-              {totalRounds > 0 ? `${totalRounds} R` : '自動計算'}
+              {totalRounds > 0 ? `${totalRounds} R` : t('matchInput.autoCalc')}
             </div>
           </div>
         </div>
@@ -424,7 +426,7 @@ export default function ScrimInputPage() {
       {/* ── Player Stats Table ── */}
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">選手スタッツ</div>
+          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('matchInput.playerStats')}</div>
           {ocrLoading && (
             <div className="flex items-center gap-1.5 text-xs text-[#FF4655]">
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -437,8 +439,8 @@ export default function ScrimInputPage() {
             <thead>
               <tr className="border-b border-border bg-muted/10 align-middle">
                 <th className="text-left   align-middle px-4 py-2.5 text-xs text-muted-foreground font-medium w-8">#</th>
-                <th className="text-left   align-middle px-3 py-2.5 text-xs text-muted-foreground font-medium w-36">選手</th>
-                <th className="text-left   align-middle px-3 py-2.5 text-xs text-muted-foreground font-medium w-40">エージェント</th>
+                <th className="text-left   align-middle px-3 py-2.5 text-xs text-muted-foreground font-medium w-36">{t('players.ign')}</th>
+                <th className="text-left   align-middle px-3 py-2.5 text-xs text-muted-foreground font-medium w-40">{t('common.agent')}</th>
                 {['K','D','A','FB','FD','ACS'].map(h => (
                   <th key={h} className="text-center align-middle px-2 py-2.5 text-xs text-muted-foreground font-medium w-16">{h}</th>
                 ))}
@@ -523,12 +525,12 @@ export default function ScrimInputPage() {
         >
           <div className="flex items-center gap-3">
             <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              ラウンド詳細
+              {t('matchInput.roundDetail')}
             </span>
-            <span className="text-xs text-muted-foreground bg-muted/30 px-2 py-0.5 rounded">任意</span>
+            <span className="text-xs text-muted-foreground bg-muted/30 px-2 py-0.5 rounded">{t('matchInput.optional')}</span>
             {rounds.filter(r => r.result !== '').length > 0 && (
               <span className="text-xs text-[#00D4A0]">
-                {rounds.filter(r => r.result !== '').length}R 入力済み
+                {rounds.filter(r => r.result !== '').length}R {t('matchInput.roundsEntered')}
               </span>
             )}
           </div>
@@ -539,14 +541,14 @@ export default function ScrimInputPage() {
           <div className="border-t border-border p-4 space-y-3">
             {rounds.length === 0 ? (
               <p className="text-xs text-muted-foreground py-4 text-center">
-                スコアを入力するとラウンド行が自動生成されます
+                {t('matchInput.generateRounds')}
               </p>
             ) : (
               <div className="overflow-x-auto rounded-lg border border-border">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-muted/20 border-b border-border">
-                      {['#','サイド','購入状況','結果','プラント','サイト','リテイク','FB','プレイタイム','注目ラウンド'].map(h => (
+                      {['#', t('matchInput.side'), t('matchInput.economy'), t('common.result'), t('matchInput.plant'), t('matchInput.site'), t('matchInput.retake'), t('matchInput.fb'), t('matchInput.timing'), t('matchInput.notable')].map(h => (
                         <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -719,7 +721,7 @@ export default function ScrimInputPage() {
         <button onClick={handleReset}
           className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-white transition-colors">
           <RotateCcw className="w-4 h-4" />
-          クリア
+          {t('matchInput.reset')}
         </button>
         <button
           onClick={handleSave}
@@ -732,10 +734,10 @@ export default function ScrimInputPage() {
           )}
         >
           {saved
-            ? <><Check className="w-4 h-4" />保存しました！</>
+            ? <><Check className="w-4 h-4" />{t('matchInput.saved')}</>
             : saving
-            ? <><Loader2 className="w-4 h-4 animate-spin" />保存中...</>
-            : <><Save className="w-4 h-4" />スクリムを保存</>
+            ? <><Loader2 className="w-4 h-4 animate-spin" />{t('common.saving')}</>
+            : <><Save className="w-4 h-4" />{t('matchInput.saveAll')}</>
           }
         </button>
       </div>
