@@ -15,11 +15,6 @@ import { useLanguage } from '@/contexts/LanguageContext'
 
 // ── constants ────────────────────────────────────────────────────────────────
 
-const ECO_LABELS: Record<string, string> = {
-  pistol: 'ピストル', second: 'セカンド', third: 'サード',
-  eco: 'エコ', anti_eco: 'アンチエコ', semi_eco: 'セミエコ',
-  semi_buy: 'セミバイ', full_buy: 'フルバイ', oper: 'オペ',
-}
 const ECO_COLOR: Record<string, string> = {
   pistol: '#FFD700', second: '#3498DB', third: '#1ABC9C',
   eco: '#FF4655', anti_eco: '#FF8C42', semi_eco: '#FF8C42',
@@ -327,7 +322,7 @@ export default function RoundAnalysisPage() {
                           {r.economy_type && (
                             <span className="text-[9px] px-1 rounded"
                               style={{ color: ECO_COLOR[r.economy_type] ?? '#9B9BA4', background: `${ECO_COLOR[r.economy_type] ?? '#9B9BA4'}18` }}>
-                              {ECO_LABELS[r.economy_type] ?? r.economy_type}
+                              {t(`eco.${r.economy_type}`) !== `eco.${r.economy_type}` ? t(`eco.${r.economy_type}`) : r.economy_type}
                             </span>
                           )}
                           {r.planted && (
@@ -630,6 +625,7 @@ function VideoPlayer({
   roundTime: number | null
   getCurrentTimeRef: React.MutableRefObject<() => number>
 }) {
+  const { t } = useLanguage()
   const ytPlayerRef  = useRef<YTPlayer | null>(null)
   const ytContainerRef = useRef<HTMLDivElement>(null)
   const videoRef     = useRef<HTMLVideoElement>(null)
@@ -733,7 +729,7 @@ function VideoPlayer({
           </span>
           {activeRound.economy_type && (
             <span style={{ color: ECO_COLOR[activeRound.economy_type] ?? '#9B9BA4' }}>
-              {ECO_LABELS[activeRound.economy_type]}
+              {t(`eco.${activeRound.economy_type}`)}
             </span>
           )}
         </div>
@@ -781,6 +777,7 @@ function RoundDetailPanel({
   onClearTimestamp: () => void
   onTimingChange: (t: 'early' | 'mid' | 'late' | null) => void
 }) {
+  const { t } = useLanguage()
   const isWin = r.result === 'win'
   const [timeInput, setTimeInput] = useState(timestamp !== null ? formatTime(timestamp) : '')
   const [inputError, setInputError] = useState(false)
@@ -822,7 +819,7 @@ function RoundDetailPanel({
         {r.economy_type && (
           <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border"
             style={{ color: ECO_COLOR[r.economy_type] ?? '#9B9BA4', borderColor: `${ECO_COLOR[r.economy_type] ?? '#9B9BA4'}50`, background: `${ECO_COLOR[r.economy_type] ?? '#9B9BA4'}15` }}>
-            {ECO_LABELS[r.economy_type]}
+            {t(`eco.${r.economy_type}`)}
           </span>
         )}
         {r.planted && (
@@ -1016,7 +1013,7 @@ function MatchStatsPanel({ rounds, map }: { rounds: Round[]; map: string }) {
             return (
               <div key={e.type}>
                 <div className="flex justify-between text-[10px] mb-0.5">
-                  <span className="text-muted-foreground">{ECO_LABELS[e.type] ?? e.type}</span>
+                  <span className="text-muted-foreground">{t(`eco.${e.type}`) !== `eco.${e.type}` ? t(`eco.${e.type}`) : e.type}</span>
                   <span className={wr >= 50 ? 'text-[#00D4A0] font-bold' : 'text-[#FF4655] font-bold'}>
                     {wr}% <span className="text-muted-foreground/60 font-normal">{e.wins}/{e.total}</span>
                   </span>

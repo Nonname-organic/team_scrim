@@ -85,10 +85,6 @@ const EMPTY_ROW = (): PlayerRow => ({
 })
 
 const ECO_OPTIONS = ['pistol', 'second', 'third', 'eco', 'anti_eco', 'semi_eco', 'semi_buy', 'full_buy', 'oper']
-const ECO_LABELS: Record<string, string> = {
-  pistol: 'ピストル', eco: 'エコ', anti_eco: 'アンチエコ', semi_eco: 'セミエコ',
-  semi_buy: 'セミバイ', full_buy: 'フルバイ', oper: 'オペ', second: 'セカンド', third: 'サード',
-}
 
 // ============================================================
 // Page
@@ -475,7 +471,7 @@ export default function ScrimInputPage() {
                       value={row.agent}
                       onChange={e => updateRow(i, 'agent', e.target.value)}
                     >
-                      <option value="">エージェント選択</option>
+                      <option value="">{t('matchInput.agentSelect')}</option>
                       {sortedAgents.map(a => <option key={a} value={a}>{a}</option>)}
                     </select>
                   </td>
@@ -574,7 +570,7 @@ export default function ScrimInputPage() {
                             onChange={e => updateRound(i, 'economy', e.target.value)}
                           >
                             <option value=""></option>
-                            {ECO_OPTIONS.map(o => <option key={o} value={o}>{ECO_LABELS[o]}</option>)}
+                            {ECO_OPTIONS.map(o => <option key={o} value={o}>{t(`eco.${o}`)}</option>)}
                           </select>
                         </td>
                         <td className="px-2 py-1">

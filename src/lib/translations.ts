@@ -148,6 +148,7 @@ export const ja = {
     optional:      '任意',
     roundsEntered: 'R 入力済み',
     autoFill:      'スコアボードから自動入力',
+    agentSelect:   'エージェント選択',
   },
   analysis: {
     title:            '試合',
@@ -459,6 +460,7 @@ export const en: TranslationDict = {
     optional:      'Optional',
     roundsEntered: 'rounds entered',
     autoFill:      'Auto-fill from Scoreboard',
+    agentSelect:   'Select Agent',
   },
   analysis: {
     title:            'Match',
