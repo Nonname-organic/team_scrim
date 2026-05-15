@@ -131,12 +131,11 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
         ].join(' ')}
         style={{ aspectRatio: '1 / 1' }}
       >
-        {/* 内側div: 画像 + ピン円を一緒に回転（CSS rotation と座標が一致するため位置ズレなし） */}
+        {/* 内側div: 画像のみ回転 */}
         <div
           className="absolute inset-0"
           style={rotation ? { transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' } : undefined}
         >
-          {/* Map image */}
           {imageUrl && !imgError ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -154,58 +153,57 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
               )}
             </div>
           )}
-
-          {/* ピン円のみ（回転divと同期するため内側に置く） */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="2" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
-            {placedRounds.map(r => {
-              const cx = `${(r.plant_x ?? 0) * 100}%`
-              const cy = `${(r.plant_y ?? 0) * 100}%`
-              const isEditing = r.id === editRoundId
-              const color = r.result === 'win' ? '#00D4A0' : '#FF4655'
-              const radius = isEditing ? 5 : 3
-              return (
-                <g key={r.id} filter={isEditing ? 'url(#glow)' : undefined}>
-                  {isEditing && (
-                    <circle cx={cx} cy={cy} r={8} fill="none" stroke={color} strokeWidth={1} strokeDasharray="3 2" opacity={0.8} />
-                  )}
-                  <circle cx={cx} cy={cy} r={radius} fill={color} fillOpacity={0.9} stroke="rgba(0,0,0,0.4)" strokeWidth={0.8} />
-                </g>
-              )
-            })}
-          </svg>
         </div>{/* /内側div */}
 
-        {/* カーソル十字線のみ回転div外（スクリーン軸に沿った + 表示のため） */}
-        {editRoundId && mousePos && (() => {
-          const { sx, sy } = toScreenPos(mousePos.x, mousePos.y, rotation)
-          return (
-            <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-              <line
-                x1={`${sx * 100}%`} y1="0"
-                x2={`${sx * 100}%`} y2="100%"
-                stroke="#FF4655" strokeWidth="0.6" strokeOpacity="0.5" strokeDasharray="4 4"
-              />
-              <line
-                x1="0" y1={`${sy * 100}%`}
-                x2="100%" y2={`${sy * 100}%`}
-                stroke="#FF4655" strokeWidth="0.6" strokeOpacity="0.5" strokeDasharray="4 4"
-              />
-              <circle
-                cx={`${sx * 100}%`} cy={`${sy * 100}%`}
-                r={3} fill="#FF4655" fillOpacity={0.9} stroke="white" strokeWidth={0.8}
-              />
-            </svg>
-          )
-        })()}
+        {/* ピン円 + カーソル十字線: 回転divの外 — toScreenPos でスクリーン座標に変換 */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="2" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+
+          {placedRounds.map(r => {
+            const { sx, sy } = toScreenPos(r.plant_x ?? 0, r.plant_y ?? 0, rotation)
+            const isEditing = r.id === editRoundId
+            const color = r.result === 'win' ? '#00D4A0' : '#FF4655'
+            const radius = isEditing ? 5 : 3
+            return (
+              <g key={r.id} filter={isEditing ? 'url(#glow)' : undefined}>
+                {isEditing && (
+                  <circle cx={`${sx * 100}%`} cy={`${sy * 100}%`} r={8} fill="none" stroke={color} strokeWidth={1} strokeDasharray="3 2" opacity={0.8} />
+                )}
+                <circle cx={`${sx * 100}%`} cy={`${sy * 100}%`} r={radius} fill={color} fillOpacity={0.9} stroke="rgba(0,0,0,0.4)" strokeWidth={0.8} />
+              </g>
+            )
+          })}
+
+          {editRoundId && mousePos && (() => {
+            const { sx, sy } = toScreenPos(mousePos.x, mousePos.y, rotation)
+            return (
+              <g>
+                <line
+                  x1={`${sx * 100}%`} y1="0"
+                  x2={`${sx * 100}%`} y2="100%"
+                  stroke="#FF4655" strokeWidth="0.6" strokeOpacity="0.5" strokeDasharray="4 4"
+                />
+                <line
+                  x1="0" y1={`${sy * 100}%`}
+                  x2="100%" y2={`${sy * 100}%`}
+                  stroke="#FF4655" strokeWidth="0.6" strokeOpacity="0.5" strokeDasharray="4 4"
+                />
+                <circle
+                  cx={`${sx * 100}%`} cy={`${sy * 100}%`}
+                  r={3} fill="#FF4655" fillOpacity={0.9} stroke="white" strokeWidth={0.8}
+                />
+              </g>
+            )
+          })()}
+        </svg>
 
         {/* ラウンド番号ラベル: HTML div で回転しない */}
         {placedRounds.map(r => {
