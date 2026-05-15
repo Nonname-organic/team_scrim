@@ -131,7 +131,7 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
         ].join(' ')}
         style={{ aspectRatio: '1 / 1' }}
       >
-        {/* 内側div: img + ピン円をまとめて回転 */}
+        {/* 内側div: 画像のみ回転（ピンは回転させない） */}
         <div
           className="absolute inset-0"
           style={rotation ? { transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' } : undefined}
@@ -154,58 +154,60 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
               )}
             </div>
           )}
+        </div>{/* /内側div */}
 
-          {/* SVG: ピン円 + カーソル十字線（回転に追従） */}
-          <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="2" result="blur" />
-                <feMerge>
-                  <feMergeNode in="blur" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
+        {/* SVG: ピン円 + カーソル十字線（回転div外 — toScreenPos で座標変換済みなので回転しない） */}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <filter id="glow">
+              <feGaussianBlur stdDeviation="2" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
 
-            {/* ピン円のみ（番号なし） */}
-            {placedRounds.map(r => {
-              const cx = `${(r.plant_x ?? 0) * 100}%`
-              const cy = `${(r.plant_y ?? 0) * 100}%`
-              const isEditing = r.id === editRoundId
-              const color = r.result === 'win' ? '#00D4A0' : '#FF4655'
-              const radius = isEditing ? 5 : 3
+          {placedRounds.map(r => {
+            const { sx, sy } = toScreenPos(r.plant_x ?? 0, r.plant_y ?? 0, rotation)
+            const cx = `${sx * 100}%`
+            const cy = `${sy * 100}%`
+            const isEditing = r.id === editRoundId
+            const color = r.result === 'win' ? '#00D4A0' : '#FF4655'
+            const radius = isEditing ? 5 : 3
 
-              return (
-                <g key={r.id} filter={isEditing ? 'url(#glow)' : undefined}>
-                  {isEditing && (
-                    <circle cx={cx} cy={cy} r={8} fill="none" stroke={color} strokeWidth={1} strokeDasharray="3 2" opacity={0.8} />
-                  )}
-                  <circle cx={cx} cy={cy} r={radius} fill={color} fillOpacity={0.9} stroke="rgba(0,0,0,0.4)" strokeWidth={0.8} />
-                </g>
-              )
-            })}
+            return (
+              <g key={r.id} filter={isEditing ? 'url(#glow)' : undefined}>
+                {isEditing && (
+                  <circle cx={cx} cy={cy} r={8} fill="none" stroke={color} strokeWidth={1} strokeDasharray="3 2" opacity={0.8} />
+                )}
+                <circle cx={cx} cy={cy} r={radius} fill={color} fillOpacity={0.9} stroke="rgba(0,0,0,0.4)" strokeWidth={0.8} />
+              </g>
+            )
+          })}
 
-            {/* カーソル十字線 */}
-            {editRoundId && mousePos && (
+          {editRoundId && mousePos && (() => {
+            const { sx, sy } = toScreenPos(mousePos.x, mousePos.y, rotation)
+            return (
               <g>
                 <line
-                  x1={`${mousePos.x * 100}%`} y1="0"
-                  x2={`${mousePos.x * 100}%`} y2="100%"
+                  x1={`${sx * 100}%`} y1="0"
+                  x2={`${sx * 100}%`} y2="100%"
                   stroke="#FF4655" strokeWidth="0.6" strokeOpacity="0.5" strokeDasharray="4 4"
                 />
                 <line
-                  x1="0" y1={`${mousePos.y * 100}%`}
-                  x2="100%" y2={`${mousePos.y * 100}%`}
+                  x1="0" y1={`${sy * 100}%`}
+                  x2="100%" y2={`${sy * 100}%`}
                   stroke="#FF4655" strokeWidth="0.6" strokeOpacity="0.5" strokeDasharray="4 4"
                 />
                 <circle
-                  cx={`${mousePos.x * 100}%`} cy={`${mousePos.y * 100}%`}
+                  cx={`${sx * 100}%`} cy={`${sy * 100}%`}
                   r={3} fill="#FF4655" fillOpacity={0.9} stroke="white" strokeWidth={0.8}
                 />
               </g>
-            )}
-          </svg>
-        </div>{/* /内側div */}
+            )
+          })()}
+        </svg>
 
         {/* ラウンド番号ラベル: HTML div で回転しない */}
         {placedRounds.map(r => {

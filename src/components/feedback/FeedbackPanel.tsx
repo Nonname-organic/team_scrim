@@ -769,7 +769,7 @@ function CoachForm({
 
 export function MatchFeedbackPanel({ matchId }: { matchId: string }) {
   const { canUseAI, aiUsageCount, aiUsageLimit, showUpgrade } = usePlan()
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
   const [feedbacks, setFeedbacks]         = useState<FeedbackData[]>([])
   const [loading, setLoading]             = useState(true)
   const [aiLoading, setAiLoading]         = useState(false)
@@ -817,7 +817,7 @@ export function MatchFeedbackPanel({ matchId }: { matchId: string }) {
       const res = await fetch('/api/feedback/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ match_id: matchId }),
+        body: JSON.stringify({ match_id: matchId, locale }),
       })
       if (!res.ok) {
         let msg = t('common.loading') === 'Loading...' ? `AI analysis failed (${res.status})` : `AI分析に失敗しました (${res.status})`

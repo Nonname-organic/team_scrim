@@ -105,8 +105,9 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { match_id } = await req.json()
+    const { match_id, locale } = await req.json()
     if (!match_id) return NextResponse.json({ error: 'match_id required' }, { status: 400 })
+    const isEN = locale === 'en'
 
     const match = await queryOne<Record<string, unknown>>(
       `SELECT m.*, t.name AS team_name
@@ -132,7 +133,14 @@ export async function POST(req: NextRequest) {
       ),
     ])
 
-    const systemPrompt = `あなたはTier1 VALORANTチーム専属の戦術アナリスト兼ヘッドコーチです。
+    const systemPrompt = isEN
+      ? `You are a dedicated tactical analyst and head coach for a Tier 1 VALORANT team.
+Your role is NOT to describe the match.
+Goal: Maximize expected value of team tactics, structure decision-making errors, and define recurrence-prevention rules.
+Analysis MUST follow the 7-step framework: intent assessment, EV evaluation, breakdown identification, root cause separation, reproducibility assessment, improvement proposals, rule creation.
+Prohibited: abstractions, moralizing, hindsight bias, reasoning without numbers.
+CRITICAL: All text fields in your analysis MUST be written entirely in English. You MUST call the submit_analysis tool to submit your results.`
+      : `あなたはTier1 VALORANTチーム専属の戦術アナリスト兼ヘッドコーチです。
 役割は「試合を説明すること」ではない。
 目的：勝敗の再現性を高め、チーム戦術の期待値を最大化し、意思決定ミスを構造化し、再発防止ルールを定義すること。
 分析は7ステップフレームワーク（意図推測・EV評価・崩壊点特定・原因分離・再現性評価・改善提案・ルール化）に従うこと。
@@ -172,7 +180,12 @@ export async function POST(req: NextRequest) {
     const cause_analysis = (inp.cause_analysis as CauseAnalysis) ?? { structural: [], execution: [], judgment: [], information: [] }
 
     // weaknesses: cause_analysis の全カテゴリをラベル付きフラット化
-    const weaknesses = [
+    const weaknesses = isEN ? [
+      ...cause_analysis.structural.map(s  => `[Structural] ${s}`),
+      ...cause_analysis.execution.map(s   => `[Execution] ${s}`),
+      ...cause_analysis.judgment.map(s    => `[Judgment] ${s}`),
+      ...cause_analysis.information.map(s => `[Information] ${s}`),
+    ] : [
       ...cause_analysis.structural.map(s  => `[構造] ${s}`),
       ...cause_analysis.execution.map(s   => `[実行] ${s}`),
       ...cause_analysis.judgment.map(s    => `[判断] ${s}`),
@@ -181,7 +194,9 @@ export async function POST(req: NextRequest) {
 
     // action_items: who/when/what を自然文に変換
     const action_items = improvements.map(imp =>
-      `${imp.who}が${imp.when}に${imp.what}`
+      isEN
+        ? `${imp.who} should ${imp.what} when ${imp.when}`
+        : `${imp.who}が${imp.when}に${imp.what}`
     )
 
     // raw_response: 全フィールドを保存（フロントエンドで表示用）
