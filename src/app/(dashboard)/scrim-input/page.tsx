@@ -176,9 +176,11 @@ export default function ScrimInputPage() {
       return ((i - 24) % 2 === 0) ? otStart : otOpp
     }
     setRounds(prev => {
-      // スコア入力中に配列が縮小してデータが消えないよう、既存の長さより小さくしない
       const calculated = (total >= 2 && total <= 50) ? total : 24
-      const count = Math.max(prev.length, calculated)
+      // 両スコアが入力済み → 正確な合計を使用（縮小・拡大どちらも許可）
+      // 片方だけ入力中 → 入力途中で縮小してデータが消えないよう縮小禁止
+      const bothSet = teamScore !== '' && oppScore !== ''
+      const count = bothSet ? calculated : Math.max(prev.length, calculated)
       return Array.from({ length: count }, (_, i) => {
         const existing = prev[i]
         const side = getSide(i)
