@@ -84,17 +84,23 @@ const ANALYSIS_TOOL: Anthropic.Tool = {
         type: 'array', items: { type: 'string' },
         description: '複数ラウンドで繰り返されているパターン・癖（行動として）',
       },
-      score_macro:    { type: 'number', description: 'マクロ戦術スコア 0-100' },
-      score_micro:    { type: 'number', description: 'ミクロ・個人スコア 0-100' },
-      score_teamplay: { type: 'number', description: 'チームプレイスコア 0-100' },
-      score_overall:  { type: 'number', description: '総合スコア 0-100' },
+      score: {
+        type: 'object',
+        description: 'スコア（各0-100）',
+        properties: {
+          macro:    { type: 'number', description: 'マクロ戦術スコア 0-100' },
+          micro:    { type: 'number', description: 'ミクロ・個人スコア 0-100' },
+          teamplay: { type: 'number', description: 'チームプレイスコア 0-100' },
+          overall:  { type: 'number', description: '総合スコア 0-100' },
+        },
+        required: ['macro', 'micro', 'teamplay', 'overall'],
+      },
     },
     required: [
       'round_evaluation', 'win_factor',
       'intent_assessment', 'ev_evaluation', 'breakdown_points',
       'cause_analysis', 'reproducibility', 'improvements',
-      'rules', 'pattern_flags',
-      'score_macro', 'score_micro', 'score_teamplay', 'score_overall',
+      'rules', 'pattern_flags', 'score',
     ],
   },
 }
@@ -150,8 +156,8 @@ CRITICAL: All text fields in your analysis MUST be written entirely in English. 
 
     const client = new Anthropic()
     const message = await client.messages.create({
-      model:      'claude-haiku-4-5-20251001',
-      max_tokens: 2048,
+      model:      'claude-sonnet-4-6',
+      max_tokens: 4096,
       system:     systemPrompt,
       tools:      [ANALYSIS_TOOL],
       tool_choice: { type: 'tool', name: 'submit_analysis' },
@@ -200,6 +206,7 @@ CRITICAL: All text fields in your analysis MUST be written entirely in English. 
     )
 
     // raw_response: 全フィールドを保存（フロントエンドで表示用）
+    const scoreObj = (inp.score ?? {}) as Record<string, unknown>
     const rawPayload = JSON.stringify({
       round_evaluation,
       win_factor,
@@ -212,10 +219,10 @@ CRITICAL: All text fields in your analysis MUST be written entirely in English. 
       rules:              inp.rules,
       pattern_flags:      inp.pattern_flags,
       score: {
-        macro:    inp.score_macro,
-        micro:    inp.score_micro,
-        teamplay: inp.score_teamplay,
-        overall:  inp.score_overall,
+        macro:    Number(scoreObj.macro    ?? 0) || 0,
+        micro:    Number(scoreObj.micro    ?? 0) || 0,
+        teamplay: Number(scoreObj.teamplay ?? 0) || 0,
+        overall:  Number(scoreObj.overall  ?? 0) || 0,
       },
     })
 
@@ -237,7 +244,7 @@ CRITICAL: All text fields in your analysis MUST be written entirely in English. 
         JSON.stringify(action_items),
         null,
         rawPayload,
-        'claude-haiku-4-5-20251001',
+        'claude-sonnet-4-6',
       ]
     )
 
