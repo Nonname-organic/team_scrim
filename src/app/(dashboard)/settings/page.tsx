@@ -1,9 +1,10 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { Pencil, Trash2, Plus, Check, X, KeyRound, Mail, Eye, EyeOff } from 'lucide-react'
+import { Pencil, Trash2, Plus, Check, X, KeyRound, Mail, Eye, EyeOff, AlertTriangle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@/lib/supabase/client'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { useRouter } from 'next/navigation'
 
 const ROLES = ['duelist', 'sub_duelist', 'initiator', 'controller', 'sentinel', 'flex', 'igl'] as const
 type Role = typeof ROLES[number]
@@ -22,8 +23,9 @@ interface Player { id: string; ign: string; real_name?: string; role: Role; acti
 interface Team   { id: string; name: string; tag: string; region: string }
 
 export default function SettingsPage() {
-  const { teamId } = useAuth()
-  const { t } = useLanguage()
+  const { teamId, logout } = useAuth()
+  const { t, locale } = useLanguage()
+  const router = useRouter()
   const [team, setTeam]       = useState<Team | null>(null)
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,6 +45,41 @@ export default function SettingsPage() {
   const [editId, setEditId]         = useState<string | null>(null)
   const [editForm, setEditForm]     = useState({ ign: '', real_name: '', role: 'duelist' as Role })
   const [editSaving, setEditSaving] = useState(false)
+
+  // account deletion
+  const [showDeleteSection, setShowDeleteSection] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deletePw, setDeletePw]       = useState('')
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [deleting, setDeleting]       = useState(false)
+
+  const CONFIRM_WORD = locale === 'en' ? 'delete' : '退会'
+
+  async function handleDeleteAccount(e: React.FormEvent) {
+    e.preventDefault()
+    if (deleteConfirmText !== CONFIRM_WORD) return
+    if (!deletePw) return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      const res = await fetch('/api/auth/delete', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: deletePw }),
+      })
+      if (!res.ok) {
+        const j = await res.json()
+        setDeleteError(j.error ?? t('settings.deleteAccountError'))
+        return
+      }
+      await logout()
+      router.replace('/login')
+    } catch {
+      setDeleteError(t('settings.deleteAccountError'))
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   // password change
   const [pwCurrent, setPwCurrent]   = useState('')
@@ -319,6 +356,83 @@ export default function SettingsPage() {
               </button>
             </div>
           </div>
+        )}
+      </section>
+
+      {/* ── Delete Account ── */}
+      <section className="bg-card border border-[#FF4655]/30 rounded-xl p-6 space-y-4">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-[#FF4655]" />
+          <h2 className="text-sm font-semibold text-[#FF4655] uppercase tracking-wider">{t('settings.deleteAccountTitle')}</h2>
+        </div>
+
+        {!showDeleteSection ? (
+          <div className="flex items-start justify-between gap-4">
+            <p className="text-xs text-muted-foreground leading-relaxed max-w-md">
+              {t('settings.deleteAccountDesc')}
+            </p>
+            <button
+              onClick={() => setShowDeleteSection(true)}
+              className="flex-shrink-0 px-4 py-2 border border-[#FF4655]/40 text-[#FF4655] text-xs font-semibold rounded-lg hover:bg-[#FF4655]/10 transition-colors"
+            >
+              {t('settings.deleteAccount')}
+            </button>
+          </div>
+        ) : (
+          <form onSubmit={handleDeleteAccount} className="space-y-4">
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              {t('settings.deleteAccountDesc')}
+            </p>
+
+            {deleteError && (
+              <p className="text-xs text-[#FF4655] bg-[#FF4655]/10 border border-[#FF4655]/20 rounded-lg px-3 py-2">
+                {deleteError}
+              </p>
+            )}
+
+            <Field label={t('settings.deleteAccountPwLabel')}>
+              <input
+                type="password"
+                value={deletePw}
+                onChange={e => setDeletePw(e.target.value)}
+                required
+                className={inputCls}
+                autoComplete="current-password"
+              />
+            </Field>
+
+            <Field label={t('settings.deleteConfirmHint').replace(
+              locale === 'en' ? '"delete"' : '「退会」',
+              `"${CONFIRM_WORD}"`
+            )}>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={e => setDeleteConfirmText(e.target.value)}
+                placeholder={CONFIRM_WORD}
+                className={inputCls}
+                autoComplete="off"
+              />
+            </Field>
+
+            <div className="flex gap-2">
+              <button
+                type="submit"
+                disabled={deleting || deleteConfirmText !== CONFIRM_WORD || !deletePw}
+                className="flex items-center gap-2 px-4 py-2 bg-[#FF4655] hover:bg-[#e03d4a] text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {deleting ? t('settings.deleteAccountDeleting') : t('settings.deleteAccount')}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowDeleteSection(false); setDeleteConfirmText(''); setDeletePw(''); setDeleteError(null) }}
+                className="px-4 py-2 bg-muted text-white text-sm rounded-lg hover:bg-muted/70 transition-colors"
+              >
+                {t('settings.cancel')}
+              </button>
+            </div>
+          </form>
         )}
       </section>
 
