@@ -26,10 +26,20 @@ export default function LoginPage() {
     if (error) {
       setError('メールアドレスまたはパスワードが正しくありません')
       setLoading(false)
-    } else {
-      router.push('/')
-      router.refresh()
+      return
     }
+
+    // チーム登録が完了しているか確認
+    const meRes = await fetch('/api/auth/me')
+    if (!meRes.ok) {
+      await supabase.auth.signOut()
+      setError('このアカウントにはチームが登録されていません')
+      setLoading(false)
+      return
+    }
+
+    router.push('/')
+    router.refresh()
   }
 
   return (
