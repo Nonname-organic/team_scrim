@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import {
   ChevronDown, ChevronUp, Search, X, ArrowLeft, Settings2,
-  Play, Shield, Crosshair, Zap, Flag, Bookmark,
+  Play, Shield, Crosshair, Zap, Flag, Bookmark, Trash2, Link2, Check, Pencil, Loader2,
 } from 'lucide-react'
 import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSelector'
 import { useAuth } from '@/contexts/AuthContext'
@@ -170,6 +170,36 @@ export default function RoundAnalysisPage() {
     if (!analysisMatch) return
     localStorage.removeItem(`vod-ts-${analysisMatch.id}-${roundId}`)
     setRoundTimestamps(prev => { const n = { ...prev }; delete n[roundId]; return n })
+  }
+
+  // ── Match management ─────────────────────────────────────────────────────────
+  const [deletingId, setDeletingId]           = useState<string | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
+  const [editVodId, setEditVodId]             = useState<string | null>(null)
+  const [vodInput, setVodInput]               = useState('')
+  const [vodSaving, setVodSaving]             = useState(false)
+
+  async function deleteMatch(matchId: string) {
+    setDeletingId(matchId)
+    try {
+      const res = await fetch(`/api/matches/${matchId}`, { method: 'DELETE' })
+      if (res.ok) setMatches(prev => prev.filter(m => m.id !== matchId))
+    } finally {
+      setDeletingId(null)
+      setConfirmDeleteId(null)
+    }
+  }
+
+  async function saveVodUrl(matchId: string) {
+    setVodSaving(true)
+    const res = await fetch(`/api/matches/${matchId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ video_url: vodInput || null }),
+    })
+    if (res.ok) setMatches(prev => prev.map(m => m.id === matchId ? { ...m, video_url: vodInput || null } : m))
+    setEditVodId(null)
+    setVodSaving(false)
   }
 
   function handleSort(key: SortKey) {
@@ -552,45 +582,107 @@ export default function RoundAnalysisPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          <div className="grid grid-cols-[1fr_120px_110px_80px_80px_40px] text-[10px] text-muted-foreground uppercase tracking-wider px-4 py-1.5">
-            <div>対戦</div><div>マップ</div><div className="text-center">スコア</div>
-            <div className="text-center">ATK%</div><div className="text-right">日付</div><div />
+          <div className="grid grid-cols-[1fr_100px_100px_60px_70px_80px] text-[10px] text-muted-foreground uppercase tracking-wider px-4 py-1.5">
+            <div>{t('common.opponent')}</div><div>{t('common.map')}</div>
+            <div className="text-center">{t('common.score')}</div>
+            <div className="text-center">ATK%</div>
+            <div className="text-right">{t('common.date')}</div>
+            <div />
           </div>
           {filteredMatches.map(m => {
             const isWin = m.result === 'win'
             const atkPct = m.attack_rounds_played > 0 ? Math.round((m.attack_rounds_won / m.attack_rounds_played) * 100) : null
+            const isConfirmDelete = confirmDeleteId === m.id
+            const isVodEdit = editVodId === m.id
             return (
-              <button
-                key={m.id}
-                onClick={() => enterAnalysis(m)}
-                className="w-full grid grid-cols-[1fr_120px_110px_80px_80px_40px] items-center bg-card border border-border rounded-xl px-4 py-3 text-left hover:border-[#FF4655]/40 hover:bg-muted/10 transition-all group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={cn('w-2 h-2 rounded-full flex-shrink-0', isWin ? 'bg-[#00D4A0]' : 'bg-[#FF4655]')} />
-                  <div>
-                    <div className="text-sm font-semibold text-white group-hover:text-[#FF4655] transition-colors">
-                      vs {m.opponent_name}
+              <div key={m.id} className="space-y-0">
+                <div className={cn(
+                  'w-full grid grid-cols-[1fr_100px_100px_60px_70px_80px] items-center bg-card border rounded-xl px-4 py-3 transition-all group',
+                  isConfirmDelete ? 'border-[#FF4655]/60 bg-[#FF4655]/5' : 'border-border hover:border-[#FF4655]/40 hover:bg-muted/10'
+                )}>
+                  {/* Main clickable area */}
+                  <button className="flex items-center gap-3 text-left" onClick={() => enterAnalysis(m)}>
+                    <div className={cn('w-2 h-2 rounded-full flex-shrink-0', isWin ? 'bg-[#00D4A0]' : 'bg-[#FF4655]')} />
+                    <div>
+                      <div className="text-sm font-semibold text-white group-hover:text-[#FF4655] transition-colors">
+                        vs {m.opponent_name}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                        <span>{TYPE_LABELS[m.match_type] ?? m.match_type}</span>
+                        {m.video_url && <Play className="w-2.5 h-2.5 text-[#FF4655]" fill="currentColor" />}
+                      </div>
                     </div>
-                    <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
-                      <span>{TYPE_LABELS[m.match_type] ?? m.match_type}</span>
-                      {m.video_url && <Play className="w-2.5 h-2.5 text-[#FF4655]" fill="currentColor" />}
+                  </button>
+                  <button className="text-sm text-muted-foreground text-left" onClick={() => enterAnalysis(m)}>{m.map}</button>
+                  <button className="text-center" onClick={() => enterAnalysis(m)}>
+                    <span className={cn('font-bold text-sm', isWin ? 'text-[#00D4A0]' : 'text-[#FF4655]')}>{m.team_score}</span>
+                    <span className="text-muted-foreground mx-1">:</span>
+                    <span className="text-white text-sm">{m.opponent_score}</span>
+                  </button>
+                  <button className={cn('text-center text-xs font-semibold', atkPct !== null ? (atkPct >= 50 ? 'text-[#00D4A0]' : 'text-[#FF4655]') : 'text-muted-foreground')} onClick={() => enterAnalysis(m)}>
+                    {atkPct !== null ? `${atkPct}%` : '--'}
+                  </button>
+                  <button className="text-right text-xs text-muted-foreground" onClick={() => enterAnalysis(m)}>
+                    {new Date(m.match_date).toLocaleDateString('ja-JP')}
+                  </button>
+                  {/* Actions */}
+                  {isConfirmDelete ? (
+                    <div className="flex items-center gap-1 justify-end">
+                      <button
+                        onClick={() => deleteMatch(m.id)}
+                        disabled={deletingId === m.id}
+                        className="text-[10px] text-white bg-[#FF4655] px-2 py-1 rounded font-bold hover:bg-[#FF4655]/80 disabled:opacity-50"
+                      >
+                        {deletingId === m.id ? '...' : t('common.delete')}
+                      </button>
+                      <button onClick={() => setConfirmDeleteId(null)} className="text-[10px] text-muted-foreground hover:text-white px-1 py-1">
+                        <X className="w-3 h-3" />
+                      </button>
                     </div>
+                  ) : (
+                    <div className="flex items-center gap-1 justify-end">
+                      <button
+                        onClick={() => { setEditVodId(isVodEdit ? null : m.id); setVodInput(m.video_url ?? '') }}
+                        title="VOD"
+                        className={cn('p-1.5 rounded transition-colors', m.video_url ? 'text-[#FF4655] hover:bg-[#FF4655]/10' : 'text-muted-foreground hover:text-white hover:bg-white/5')}
+                      >
+                        <Link2 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => setConfirmDeleteId(m.id)}
+                        className="p-1.5 rounded text-muted-foreground hover:text-[#FF4655] hover:bg-[#FF4655]/10 transition-colors"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {/* Inline VOD editor */}
+                {isVodEdit && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-card border border-t-0 border-border rounded-b-xl">
+                    <Link2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                    <input
+                      autoFocus
+                      type="url"
+                      value={vodInput}
+                      onChange={e => setVodInput(e.target.value)}
+                      placeholder={t('matches.vodUrl')}
+                      className="flex-1 bg-muted/50 border border-border rounded px-2 py-1 text-xs text-white placeholder-muted-foreground focus:border-[#FF4655] outline-none"
+                    />
+                    <button
+                      onClick={() => saveVodUrl(m.id)}
+                      disabled={vodSaving}
+                      className="flex items-center gap-1 text-xs bg-[#FF4655] hover:bg-[#FF4655]/80 text-white px-3 py-1 rounded disabled:opacity-50"
+                    >
+                      {vodSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                      {t('common.save')}
+                    </button>
+                    <button onClick={() => setEditVodId(null)} className="text-muted-foreground hover:text-white">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-                </div>
-                <div className="text-sm text-muted-foreground">{m.map}</div>
-                <div className="text-center">
-                  <span className={cn('font-bold text-sm', isWin ? 'text-[#00D4A0]' : 'text-[#FF4655]')}>{m.team_score}</span>
-                  <span className="text-muted-foreground mx-1">:</span>
-                  <span className="text-white text-sm">{m.opponent_score}</span>
-                </div>
-                <div className={cn('text-center text-xs font-semibold', atkPct !== null ? (atkPct >= 50 ? 'text-[#00D4A0]' : 'text-[#FF4655]') : 'text-muted-foreground')}>
-                  {atkPct !== null ? `${atkPct}%` : '--'}
-                </div>
-                <div className="text-right text-xs text-muted-foreground">
-                  {new Date(m.match_date).toLocaleDateString('ja-JP')}
-                </div>
-                <Play className="w-4 h-4 text-muted-foreground group-hover:text-[#FF4655] transition-colors justify-self-center" />
-              </button>
+                )}
+              </div>
             )
           })}
         </div>

@@ -156,28 +156,39 @@ export default function ScrimInputPage() {
       })
   }, [])
 
-  // Auto-generate rounds when score changes
-  // R1-12: always firstHalfSide (first half is exactly 12 rounds in VALORANT)
-  // R13+:  opposite side (second half / overtime)
+  // Auto-generate rounds:
+  // - 前半サイド選択時点で12ラウンド表示（スコア未入力でも可）
+  // - スコア入力後は合計ラウンド数で生成、既存データを保持
   useEffect(() => {
+    if (!firstHalfSide) return
     const total = Number(teamScore || 0) + Number(oppScore || 0)
-    if (total < 2 || total > 50) return
-    const side1 = firstHalfSide || 'attack'
+    const count = (total >= 2 && total <= 50) ? total : 12
+    const side1 = firstHalfSide
     const side2 = side1 === 'attack' ? 'defense' : 'attack'
-    setRounds(Array.from({ length: total }, (_, i) => ({
-      round_number: i + 1,
-      side: (i < 12 ? side1 : side2) as 'attack' | 'defense',
-      economy: '',
-      result: '',
-      plant: false,
-      site: '',
-      retake: false,
-      fb_team: '',
-      contact_timing: '',
-      plant_x: null,
-      plant_y: null,
-      notable: false,
-    })))
+    setRounds(prev => {
+      return Array.from({ length: count }, (_, i) => {
+        const existing = prev[i]
+        const side = (i < 12 ? side1 : side2) as 'attack' | 'defense'
+        if (existing && existing.round_number === i + 1) {
+          return { ...existing, side }
+        }
+        return {
+          round_number: i + 1,
+          side,
+          economy: '',
+          result: '' as '',
+          plant: false,
+          site: '',
+          retake: false,
+          fb_team: '' as '',
+          contact_timing: '' as '',
+          plant_x: null,
+          plant_y: null,
+          notable: false,
+        }
+      })
+    })
+    setShowRounds(true)
   }, [teamScore, oppScore, firstHalfSide])
 
   // Computed KPR/DPR/APR

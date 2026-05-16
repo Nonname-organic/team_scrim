@@ -118,7 +118,7 @@ export const ja = {
     headerNotable:     '注目',
   },
   matchInput: {
-    title:         'スクリム',
+    title:         '試合',
     titleAccent:   '入力',
     subtitle:      '試合入力',
     matchInfo:     '試合情報',
@@ -430,7 +430,7 @@ export const en: TranslationDict = {
     headerNotable:     'Notable',
   },
   matchInput: {
-    title:         'Scrim',
+    title:         'Match',
     titleAccent:   'Input',
     subtitle:      'Match Input',
     matchInfo:     'Match Info',

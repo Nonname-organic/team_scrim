@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import {
-  LayoutDashboard, Users, Swords,
+  LayoutDashboard, Users,
   ClipboardEdit, BarChart2, Settings, LogOut, Mail, BookOpen,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -18,7 +18,6 @@ const NAV_ITEMS = [
   { href: '/',               key: 'nav.dashboard',     icon: LayoutDashboard },
   { href: '/scrim-input',    key: 'nav.matchInput',    icon: ClipboardEdit },
   { href: '/players',        key: 'nav.playerStats',   icon: Users },
-  { href: '/matches',        key: 'nav.matchHistory',  icon: Swords },
   { href: '/round-analysis', key: 'nav.matchAnalysis', icon: BarChart2 },
   { href: '/settings',       key: 'nav.settings',      icon: Settings },
   { href: '/guide',          key: 'nav.guide',         icon: BookOpen },
