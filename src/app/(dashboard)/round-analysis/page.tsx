@@ -9,6 +9,7 @@ import {
 import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSelector'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePlan } from '@/contexts/PlanContext'
+import { useRouter } from 'next/navigation'
 import { LockedFeature } from '@/components/pricing/LockedFeature'
 import { MatchFeedbackPanel } from '@/components/feedback/FeedbackPanel'
 import { useLanguage } from '@/contexts/LanguageContext'
@@ -93,6 +94,7 @@ export default function RoundAnalysisPage() {
   const { teamId } = useAuth()
   const { limits, showUpgrade } = usePlan()
   const { t } = useLanguage()
+  const router = useRouter()
   const [matches, setMatches] = useState<Match[]>([])
   const [loadingMatches, setLoadingMatches] = useState(true)
   const [filterText, setFilterText] = useState('')
@@ -670,6 +672,13 @@ export default function RoundAnalysisPage() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-1 justify-end">
+                      <button
+                        onClick={() => router.push(`/matches/${m.id}`)}
+                        title={t('common.edit')}
+                        className="p-1.5 rounded text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
                       <button
                         onClick={() => { setEditVodId(isVodEdit ? null : m.id); setVodInput(m.video_url ?? '') }}
                         title="VOD"
