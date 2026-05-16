@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Upload, Save, RotateCcw, Loader2, Check, AlertCircle, ChevronDown, ChevronUp, Flag } from 'lucide-react'
+import { Upload, Save, RotateCcw, Loader2, Check, AlertCircle, ChevronDown, ChevronUp, Flag, Bookmark } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MAPS, AGENTS } from '@/types'
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
@@ -71,6 +71,7 @@ interface RoundRow {
   plant_x: number | null
   plant_y: number | null
   notable: boolean
+  memo: string
 }
 
 const TIMING_OPTIONS = [
@@ -110,6 +111,7 @@ export default function ScrimInputPage() {
   const [showRounds, setShowRounds] = useState(false)
   const [rounds, setRounds] = useState<RoundRow[]>([])
   const [videoUrl, setVideoUrl] = useState('')
+  const [memoOpenIdx, setMemoOpenIdx] = useState<Set<number>>(new Set())
 
   // UI state
   const [ocrLoading, setOcrLoading] = useState(false)
@@ -165,10 +167,16 @@ export default function ScrimInputPage() {
     const count = (total >= 2 && total <= 50) ? total : 24
     const side1 = firstHalfSide
     const side2 = side1 === 'attack' ? 'defense' : 'attack'
+    // R1-12: side1 / R13-24: side2 / R25+: 交互（VALORANT OT）
+    const getSide = (i: number): 'attack' | 'defense' => {
+      if (i < 12)  return side1
+      if (i < 24)  return side2
+      return (i % 2 === 0) ? side1 : side2
+    }
     setRounds(prev => {
       return Array.from({ length: count }, (_, i) => {
         const existing = prev[i]
-        const side = (i < 12 ? side1 : side2) as 'attack' | 'defense'
+        const side = getSide(i)
         if (existing && existing.round_number === i + 1) {
           return { ...existing, side }
         }
@@ -185,6 +193,7 @@ export default function ScrimInputPage() {
           plant_x: null,
           plant_y: null,
           notable: false,
+          memo: '',
         }
       })
     })
@@ -555,7 +564,7 @@ export default function ScrimInputPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-muted/20 border-b border-border">
-                      {['#', t('matchInput.side'), t('matchInput.economy'), t('common.result'), t('matchInput.plant'), t('matchInput.site'), t('matchInput.retake'), t('matchInput.fb'), t('matchInput.timing'), t('matchInput.notable')].map(h => (
+                      {['#', t('matchInput.side'), t('matchInput.economy'), t('common.result'), t('matchInput.plant'), t('matchInput.site'), t('matchInput.retake'), t('matchInput.fb'), t('matchInput.timing'), t('matchInput.notable'), 'メモ'].map(h => (
                         <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium whitespace-nowrap">{h}</th>
                       ))}
                     </tr>
@@ -694,11 +703,51 @@ export default function ScrimInputPage() {
                             <Flag className="w-3.5 h-3.5" fill={r.notable ? 'currentColor' : 'none'} />
                           </button>
                         </td>
+                        {/* メモボタン */}
+                        <td className="px-2 py-1">
+                          <button
+                            type="button"
+                            title="コーチメモ"
+                            onClick={() => setMemoOpenIdx(prev => {
+                              const next = new Set(prev)
+                              next.has(i) ? next.delete(i) : next.add(i)
+                              return next
+                            })}
+                            className={cn(
+                              'p-1 rounded transition-colors',
+                              r.memo
+                                ? 'text-[#3498DB] bg-[#3498DB]/10'
+                                : memoOpenIdx.has(i)
+                                  ? 'text-white bg-white/10'
+                                  : 'text-muted-foreground hover:text-[#3498DB]'
+                            )}
+                          >
+                            <Bookmark className="w-3.5 h-3.5" fill={r.memo ? 'currentColor' : 'none'} />
+                          </button>
+                        </td>
                       </tr>
+                      {/* メモ展開行 */}
+                      {memoOpenIdx.has(i) && (
+                        <tr className="border-b border-border">
+                          <td colSpan={12} className="px-3 py-2 bg-[#3498DB]/5">
+                            <div className="flex items-start gap-2">
+                              <Bookmark className="w-3.5 h-3.5 text-[#3498DB] mt-1.5 flex-shrink-0" fill={r.memo ? 'currentColor' : 'none'} />
+                              <textarea
+                                rows={2}
+                                autoFocus
+                                value={r.memo}
+                                onChange={e => updateRound(i, 'memo', e.target.value)}
+                                placeholder={`R${r.round_number} のコーチメモ（気づき・改善点）`}
+                                className="flex-1 bg-muted/30 border border-[#3498DB]/30 rounded px-2.5 py-1.5 text-xs text-white placeholder-muted-foreground/50 focus:border-[#3498DB] outline-none resize-none"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                       {/* 展開マップ行 — ATKでプラントチェック時のみ */}
                       {r.plant && r.side === 'attack' && (
                         <tr className="border-b border-border">
-                          <td colSpan={10} className="px-3 py-3 bg-muted/10">
+                          <td colSpan={12} className="px-3 py-3 bg-muted/10">
                             <InlineMapPin
                               mapName={map}
                               x={r.plant_x}
