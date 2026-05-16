@@ -40,6 +40,7 @@ interface Round {
   first_blood_team: boolean | null; retake: boolean; notable: boolean
   plant_x: number | null; plant_y: number | null
   contact_timing: 'early' | 'mid' | 'late' | null
+  memo: string | null
 }
 
 // YouTube IFrame API
@@ -115,6 +116,8 @@ export default function RoundAnalysisPage() {
 
   // Per-round VOD timestamps (localStorage)
   const [roundTimestamps, setRoundTimestamps] = useState<Record<string, number>>({})
+  // Focus memo on next render
+  const [focusMemoId, setFocusMemoId] = useState<string | null>(null)
   const getVideoTimeRef = useRef<() => number>(() => 0)
 
   useEffect(() => {
@@ -137,8 +140,7 @@ export default function RoundAnalysisPage() {
       const savedNotes: Record<string, string> = {}
       const savedTs: Record<string, number> = {}
       rds.forEach(r => {
-        const note = localStorage.getItem(`round-note-${r.id}`)
-        if (note) savedNotes[r.id] = note
+        if (r.memo) savedNotes[r.id] = r.memo
         const ts = localStorage.getItem(`vod-ts-${m.id}-${r.id}`)
         if (ts) savedTs[r.id] = Number(ts)
       })
@@ -155,9 +157,13 @@ export default function RoundAnalysisPage() {
     setActiveRound(null)
   }
 
-  function saveNote(roundId: string, text: string) {
-    localStorage.setItem(`round-note-${roundId}`, text)
+  async function saveNote(roundId: string, text: string) {
     setNotes(prev => ({ ...prev, [roundId]: text }))
+    await fetch(`/api/rounds/${roundId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ memo: text || null }),
+    })
   }
 
   function saveRoundTimestamp(roundId: string, seconds: number) {
@@ -317,56 +323,77 @@ export default function RoundAnalysisPage() {
                   const isActive = activeRound?.id === r.id
                   const isWin = r.result === 'win'
                   return (
-                    <button
+                    <div
                       key={r.id}
-                      onClick={() => setActiveRound(isActive ? null : r)}
                       className={cn(
-                        'w-full flex items-center gap-2.5 px-3 py-2 border-b border-border/40 last:border-0 transition-colors text-left',
-                        isActive
-                          ? 'bg-[#FF4655]/10 border-l-2 border-l-[#FF4655]'
-                          : 'hover:bg-muted/20'
+                        'w-full flex items-center border-b border-border/40 last:border-0 transition-colors group',
+                        isActive ? 'bg-[#FF4655]/10 border-l-2 border-l-[#FF4655]' : 'hover:bg-muted/20'
                       )}
                     >
-                      {/* 注目フラグ + ラウンド番号 */}
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <Flag
-                          className={cn('w-3 h-3 transition-opacity', r.notable ? 'text-[#FF4655] opacity-100' : 'opacity-0')}
-                          fill={r.notable ? 'currentColor' : 'none'}
-                        />
-                        <div className={cn(
-                          'w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold border',
-                          isWin
-                            ? 'bg-[#00D4A0]/15 text-[#00D4A0] border-[#00D4A0]/30'
-                            : 'bg-[#FF4655]/15 text-[#FF4655] border-[#FF4655]/30'
-                        )}>
-                          {r.round_number}
+                      {/* Main clickable: ラウンド選択 */}
+                      <button
+                        className="flex-1 flex items-center gap-2.5 px-3 py-2 text-left min-w-0"
+                        onClick={() => setActiveRound(isActive ? null : r)}
+                      >
+                        {/* 注目フラグ + ラウンド番号 */}
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <Flag
+                            className={cn('w-3 h-3 transition-opacity', r.notable ? 'text-[#FF4655] opacity-100' : 'opacity-0')}
+                            fill={r.notable ? 'currentColor' : 'none'}
+                          />
+                          <div className={cn(
+                            'w-7 h-7 rounded-lg flex items-center justify-center text-xs font-bold border',
+                            isWin
+                              ? 'bg-[#00D4A0]/15 text-[#00D4A0] border-[#00D4A0]/30'
+                              : 'bg-[#FF4655]/15 text-[#FF4655] border-[#FF4655]/30'
+                          )}>
+                            {r.round_number}
+                          </div>
                         </div>
-                      </div>
-
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1 flex-wrap">
-                          <span className={cn('text-[10px] font-bold', r.side === 'attack' ? 'text-[#FF8C42]' : 'text-[#00D4A0]')}>
-                            {r.side === 'attack' ? 'ATK' : 'DEF'}
-                          </span>
-                          {r.economy_type && (
-                            <span className="text-[9px] px-1 rounded"
-                              style={{ color: ECO_COLOR[r.economy_type] ?? '#9B9BA4', background: `${ECO_COLOR[r.economy_type] ?? '#9B9BA4'}18` }}>
-                              {t(`eco.${r.economy_type}`) !== `eco.${r.economy_type}` ? t(`eco.${r.economy_type}`) : r.economy_type}
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span className={cn('text-[10px] font-bold', r.side === 'attack' ? 'text-[#FF8C42]' : 'text-[#00D4A0]')}>
+                              {r.side === 'attack' ? 'ATK' : 'DEF'}
                             </span>
-                          )}
-                          {r.planted && (
-                            <span className="text-[9px] text-[#6C63FF]">💣{r.plant_site}</span>
-                          )}
+                            {r.economy_type && (
+                              <span className="text-[9px] px-1 rounded"
+                                style={{ color: ECO_COLOR[r.economy_type] ?? '#9B9BA4', background: `${ECO_COLOR[r.economy_type] ?? '#9B9BA4'}18` }}>
+                                {t(`eco.${r.economy_type}`) !== `eco.${r.economy_type}` ? t(`eco.${r.economy_type}`) : r.economy_type}
+                              </span>
+                            )}
+                            {r.planted && (
+                              <span className="text-[9px] text-[#6C63FF]">💣{r.plant_site}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 mt-0.5">
+                            {r.retake && <span className="text-[8px] text-[#6C63FF] bg-[#6C63FF]/10 px-1 rounded">リテイク</span>}
+                            {r.first_blood_team === true  && <span className="text-[8px] text-[#FFD700] bg-[#FFD700]/10 px-1 rounded">FB取</span>}
+                            {r.first_blood_team === false && <span className="text-[8px] text-[#FF4655] bg-[#FF4655]/10 px-1 rounded">FB負</span>}
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1 mt-0.5">
-                          {r.retake && <span className="text-[8px] text-[#6C63FF] bg-[#6C63FF]/10 px-1 rounded">リテイク</span>}
-                          {r.first_blood_team === true  && <span className="text-[8px] text-[#FFD700] bg-[#FFD700]/10 px-1 rounded">FB取</span>}
-                          {r.first_blood_team === false && <span className="text-[8px] text-[#FF4655] bg-[#FF4655]/10 px-1 rounded">FB負</span>}
-                          {notes[r.id] && <Bookmark className="w-2.5 h-2.5 text-[#3498DB]" fill="currentColor" />}
-                        </div>
-                      </div>
-                    </button>
+                      </button>
+
+                      {/* メモボタン */}
+                      <button
+                        title="コーチメモ"
+                        onClick={() => {
+                          setActiveRound(r)
+                          setFocusMemoId(r.id)
+                        }}
+                        className={cn(
+                          'flex-shrink-0 px-2 py-2 transition-colors',
+                          notes[r.id]
+                            ? 'text-[#3498DB]'
+                            : 'text-muted-foreground/30 group-hover:text-muted-foreground hover:text-[#3498DB]'
+                        )}
+                      >
+                        <Bookmark
+                          className="w-3 h-3"
+                          fill={notes[r.id] ? 'currentColor' : 'none'}
+                        />
+                      </button>
+                    </div>
                   )
                 })}
                       {/* 制限バナー */}
@@ -474,7 +501,9 @@ export default function RoundAnalysisPage() {
                   round={activeRound}
                   note={notes[activeRound.id] ?? ''}
                   timestamp={roundTimestamps[activeRound.id] ?? null}
-                  onNoteChange={(text) => saveNote(activeRound.id, text)}
+                  focusMemo={focusMemoId === activeRound.id}
+                  onMemoFocused={() => setFocusMemoId(null)}
+                  onNoteSave={(text) => saveNote(activeRound.id, text)}
                   onSetTimestamp={() => saveRoundTimestamp(activeRound.id, getVideoTimeRef.current())}
                   onSetTimestampValue={(s) => saveRoundTimestamp(activeRound.id, s)}
                   onClearTimestamp={() => clearRoundTimestamp(activeRound.id)}
@@ -854,7 +883,9 @@ function RoundDetailPanel({
   round: r,
   note,
   timestamp,
-  onNoteChange,
+  focusMemo,
+  onMemoFocused,
+  onNoteSave,
   onSetTimestamp,
   onSetTimestampValue,
   onClearTimestamp,
@@ -863,7 +894,9 @@ function RoundDetailPanel({
   round: Round
   note: string
   timestamp: number | null
-  onNoteChange: (text: string) => void
+  focusMemo?: boolean
+  onMemoFocused?: () => void
+  onNoteSave: (text: string) => void
   onSetTimestamp: () => void
   onSetTimestampValue: (seconds: number) => void
   onClearTimestamp: () => void
@@ -871,8 +904,31 @@ function RoundDetailPanel({
 }) {
   const { t } = useLanguage()
   const isWin = r.result === 'win'
+  const [localNote, setLocalNote] = useState(note)
+  const [saved, setSaved] = useState(false)
+  const memoRef = useRef<HTMLTextAreaElement>(null)
   const [timeInput, setTimeInput] = useState(timestamp !== null ? formatTime(timestamp) : '')
   const [inputError, setInputError] = useState(false)
+
+  // localNote を round が変わるたびに同期
+  useEffect(() => { setLocalNote(note); setSaved(false) }, [r.id, note])
+
+  // focusMemo フラグ: メモボタン押下時にスクロール＆フォーカス
+  useEffect(() => {
+    if (focusMemo && memoRef.current) {
+      memoRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+      memoRef.current.focus()
+      onMemoFocused?.()
+    }
+  }, [focusMemo])
+
+  function handleBlurSave() {
+    if (localNote !== note) {
+      onNoteSave(localNote)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    }
+  }
 
   const handleSaveInput = () => {
     const parsed = parseTimeInput(timeInput)
@@ -1016,22 +1072,37 @@ function RoundDetailPanel({
       </div>
 
       {/* Note */}
-      <div className="space-y-1">
-        <div className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-          <Zap className="w-3 h-3" /> このラウンドのメモ
+      <div className="space-y-1.5 bg-[#3498DB]/5 border border-[#3498DB]/20 rounded-xl p-3">
+        <div className="flex items-center justify-between">
+          <div className="text-[10px] text-[#3498DB] uppercase tracking-wider font-bold flex items-center gap-1">
+            <Bookmark className="w-3 h-3" fill={localNote ? 'currentColor' : 'none'} />
+            コーチメモ
+          </div>
+          {saved && (
+            <span className="text-[9px] text-[#00D4A0] font-medium">保存しました</span>
+          )}
+          {!saved && localNote !== note && localNote !== '' && (
+            <span className="text-[9px] text-muted-foreground/60">未保存</span>
+          )}
         </div>
         <textarea
+          ref={memoRef}
           rows={4}
-          value={note}
-          onChange={e => onNoteChange(e.target.value)}
-          placeholder="このラウンドの気づき・改善点を入力..."
-          className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-xs text-white placeholder-muted-foreground/60 focus:border-[#FF4655] outline-none resize-none"
+          value={localNote}
+          onChange={e => { setLocalNote(e.target.value); setSaved(false) }}
+          onBlur={handleBlurSave}
+          placeholder="このラウンドの気づき・改善点を入力... (フォーカスを外すと自動保存)"
+          className="w-full bg-muted/30 border border-[#3498DB]/20 rounded-lg px-3 py-2 text-xs text-white placeholder-muted-foreground/40 focus:border-[#3498DB] outline-none resize-none"
         />
-        {note && (
-          <div className="text-[9px] text-muted-foreground/60 text-right">
-            ローカル保存済み
-          </div>
-        )}
+        <div className="flex justify-end">
+          <button
+            onClick={() => { onNoteSave(localNote); setSaved(true); setTimeout(() => setSaved(false), 2000) }}
+            disabled={localNote === note}
+            className="text-[10px] px-3 py-1 bg-[#3498DB]/20 hover:bg-[#3498DB]/30 text-[#3498DB] border border-[#3498DB]/30 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed font-medium"
+          >
+            保存
+          </button>
+        </div>
       </div>
     </div>
   )

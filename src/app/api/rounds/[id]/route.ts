@@ -8,15 +8,16 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await req.json()
-    const { plant_x, plant_y, plant_site, contact_timing } = body
+    const { plant_x, plant_y, plant_site, contact_timing, memo } = body
 
     const setClauses: string[] = []
     const vals: unknown[] = []
 
-    if ('plant_x' in body)       { vals.push(plant_x ?? null);    setClauses.push(`plant_x = $${vals.length}`) }
-    if ('plant_y' in body)       { vals.push(plant_y ?? null);    setClauses.push(`plant_y = $${vals.length}`) }
-    if ('plant_site' in body)    { vals.push(plant_site ?? null); setClauses.push(`plant_site = COALESCE($${vals.length}, plant_site)`) }
-    if ('contact_timing' in body){ vals.push(contact_timing ?? null); setClauses.push(`contact_timing = $${vals.length}`) }
+    if ('plant_x' in body)        { vals.push(plant_x ?? null);       setClauses.push(`plant_x = $${vals.length}`) }
+    if ('plant_y' in body)        { vals.push(plant_y ?? null);       setClauses.push(`plant_y = $${vals.length}`) }
+    if ('plant_site' in body)     { vals.push(plant_site ?? null);    setClauses.push(`plant_site = COALESCE($${vals.length}, plant_site)`) }
+    if ('contact_timing' in body) { vals.push(contact_timing ?? null); setClauses.push(`contact_timing = $${vals.length}`) }
+    if ('memo' in body)           { vals.push(memo ?? null);          setClauses.push(`memo = $${vals.length}`) }
 
     if (setClauses.length === 0) return NextResponse.json({ ok: true })
 
