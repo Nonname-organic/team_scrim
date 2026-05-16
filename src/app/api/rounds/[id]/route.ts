@@ -8,7 +8,7 @@ export async function PATCH(
   try {
     const { id } = await params
     const body = await req.json()
-    const { plant_x, plant_y, plant_site, contact_timing, memo } = body
+    const { plant_x, plant_y, plant_site, contact_timing, memo, vod_start_sec } = body
 
     const setClauses: string[] = []
     const vals: unknown[] = []
@@ -18,6 +18,7 @@ export async function PATCH(
     if ('plant_site' in body)     { vals.push(plant_site ?? null);    setClauses.push(`plant_site = COALESCE($${vals.length}, plant_site)`) }
     if ('contact_timing' in body) { vals.push(contact_timing ?? null); setClauses.push(`contact_timing = $${vals.length}`) }
     if ('memo' in body)           { vals.push(memo ?? null);          setClauses.push(`memo = $${vals.length}`) }
+    if ('vod_start_sec' in body)  { vals.push(vod_start_sec ?? null); setClauses.push(`vod_start_sec = $${vals.length}`) }
 
     if (setClauses.length === 0) return NextResponse.json({ ok: true })
 

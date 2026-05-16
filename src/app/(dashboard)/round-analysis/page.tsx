@@ -42,6 +42,7 @@ interface Round {
   plant_x: number | null; plant_y: number | null
   contact_timing: 'early' | 'mid' | 'late' | null
   memo: string | null
+  vod_start_sec: number | null
 }
 
 // YouTube IFrame API
@@ -143,8 +144,12 @@ export default function RoundAnalysisPage() {
       const savedTs: Record<string, number> = {}
       rds.forEach(r => {
         if (r.memo) savedNotes[r.id] = r.memo
-        const ts = localStorage.getItem(`vod-ts-${m.id}-${r.id}`)
-        if (ts) savedTs[r.id] = Number(ts)
+        if (r.vod_start_sec !== null && r.vod_start_sec !== undefined) {
+          savedTs[r.id] = r.vod_start_sec
+        } else {
+          const ts = localStorage.getItem(`vod-ts-${m.id}-${r.id}`)
+          if (ts) savedTs[r.id] = Number(ts)
+        }
       })
       setNotes(savedNotes)
       setRoundTimestamps(savedTs)
@@ -168,16 +173,24 @@ export default function RoundAnalysisPage() {
     })
   }
 
-  function saveRoundTimestamp(roundId: string, seconds: number) {
+  async function saveRoundTimestamp(roundId: string, seconds: number) {
     if (!analysisMatch) return
-    localStorage.setItem(`vod-ts-${analysisMatch.id}-${roundId}`, String(seconds))
     setRoundTimestamps(prev => ({ ...prev, [roundId]: seconds }))
+    await fetch(`/api/rounds/${roundId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vod_start_sec: Math.floor(seconds) }),
+    })
   }
 
-  function clearRoundTimestamp(roundId: string) {
+  async function clearRoundTimestamp(roundId: string) {
     if (!analysisMatch) return
-    localStorage.removeItem(`vod-ts-${analysisMatch.id}-${roundId}`)
     setRoundTimestamps(prev => { const n = { ...prev }; delete n[roundId]; return n })
+    await fetch(`/api/rounds/${roundId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ vod_start_sec: null }),
+    })
   }
 
   // ── Match management ─────────────────────────────────────────────────────────
@@ -378,7 +391,7 @@ export default function RoundAnalysisPage() {
 
                       {/* メモボタン */}
                       <button
-                        title="コーチメモ"
+                        title="メモ"
                         onClick={() => {
                           setActiveRound(r)
                           setFocusMemoId(r.id)
@@ -922,6 +935,12 @@ function RoundDetailPanel({
   // localNote を round が変わるたびに同期
   useEffect(() => { setLocalNote(note); setSaved(false) }, [r.id, note])
 
+  // テキストエリア自動リサイズ
+  useEffect(() => {
+    const el = memoRef.current
+    if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px' }
+  }, [localNote])
+
   // focusMemo フラグ: メモボタン押下時にスクロール＆フォーカス
   useEffect(() => {
     if (focusMemo && memoRef.current) {
@@ -1085,7 +1104,7 @@ function RoundDetailPanel({
         <div className="flex items-center justify-between">
           <div className="text-[10px] text-[#3498DB] uppercase tracking-wider font-bold flex items-center gap-1">
             <Bookmark className="w-3 h-3" fill={localNote ? 'currentColor' : 'none'} />
-            コーチメモ
+            メモ
           </div>
           {saved && (
             <span className="text-[9px] text-[#00D4A0] font-medium">保存しました</span>
@@ -1096,12 +1115,12 @@ function RoundDetailPanel({
         </div>
         <textarea
           ref={memoRef}
-          rows={4}
           value={localNote}
           onChange={e => { setLocalNote(e.target.value); setSaved(false) }}
           onBlur={handleBlurSave}
-          placeholder="このラウンドの気づき・改善点を入力... (フォーカスを外すと自動保存)"
-          className="w-full bg-muted/30 border border-[#3498DB]/20 rounded-lg px-3 py-2 text-xs text-white placeholder-muted-foreground/40 focus:border-[#3498DB] outline-none resize-none"
+          placeholder="気づき・改善点を入力... (フォーカスを外すと自動保存)"
+          className="w-full bg-muted/30 border border-[#3498DB]/20 rounded-lg px-3 py-2 text-xs text-white placeholder-muted-foreground/40 focus:border-[#3498DB] outline-none resize-none overflow-hidden"
+          style={{ minHeight: '80px' }}
         />
         <div className="flex justify-end">
           <button

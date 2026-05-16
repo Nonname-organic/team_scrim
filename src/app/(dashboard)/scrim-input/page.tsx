@@ -707,7 +707,7 @@ export default function ScrimInputPage() {
                         <td className="px-2 py-1">
                           <button
                             type="button"
-                            title="コーチメモ"
+                            title="メモ"
                             onClick={() => setMemoOpenIdx(prev => {
                               const next = new Set(prev)
                               next.has(i) ? next.delete(i) : next.add(i)
@@ -737,7 +737,7 @@ export default function ScrimInputPage() {
                                 autoFocus
                                 value={r.memo}
                                 onChange={e => updateRound(i, 'memo', e.target.value)}
-                                placeholder={`R${r.round_number} のコーチメモ（気づき・改善点）`}
+                                placeholder={`R${r.round_number} のメモ（気づき・改善点）`}
                                 className="flex-1 bg-muted/30 border border-[#3498DB]/30 rounded px-2.5 py-1.5 text-xs text-white placeholder-muted-foreground/50 focus:border-[#3498DB] outline-none resize-none"
                               />
                             </div>

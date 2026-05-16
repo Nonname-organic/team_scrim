@@ -90,14 +90,13 @@ function parseTactical(raw: string | null | undefined): TacticalAnalysis | null 
   const normalize = (json: Record<string, unknown>): TacticalAnalysis | null => {
     if (!json.round_evaluation) return null
 
-    // score フラット形式を正規化（旧 tool_use 保存形式）
-    if (!json.score && (json.score_macro !== undefined || json.score_overall !== undefined)) {
-      json.score = {
-        macro:    json.score_macro    ?? 0,
-        micro:    json.score_micro    ?? 0,
-        teamplay: json.score_teamplay ?? 0,
-        overall:  json.score_overall  ?? 0,
-      }
+    // score 正規化: フラット形式・空 {} ・undefined を全て安全に変換
+    const rawScore = (json.score ?? {}) as Record<string, unknown>
+    json.score = {
+      macro:    Number(rawScore.macro    ?? json.score_macro    ?? 0) || 0,
+      micro:    Number(rawScore.micro    ?? json.score_micro    ?? 0) || 0,
+      teamplay: Number(rawScore.teamplay ?? json.score_teamplay ?? 0) || 0,
+      overall:  Number(rawScore.overall  ?? json.score_overall  ?? 0) || 0,
     }
 
     // 旧 improvements 形式を正規化
@@ -109,8 +108,6 @@ function parseTactical(raw: string | null | undefined): TacticalAnalysis | null 
     }
     if (!json.improvements) json.improvements = []
 
-    // 必須フィールドのデフォルト（DBデータが欠損していても render でクラッシュしないよう保護）
-    if (!json.score) json.score = { macro: 0, micro: 0, teamplay: 0, overall: 0 }
     if (!json.rules)          json.rules          = []
     if (!json.pattern_flags)  json.pattern_flags  = []
 
@@ -185,17 +182,18 @@ function getSTYLEOPTS(t: (k: string) => string) {
 // ── Score Bar ─────────────────────────────────────────────────────────────────
 
 function ScoreBar({ label, value }: { label: string; value: number }) {
-  const color = value >= 70 ? '#00D4A0' : value >= 45 ? '#FF8C42' : '#FF4655'
+  const v = Number(value) || 0
+  const color = v >= 70 ? '#00D4A0' : v >= 45 ? '#FF8C42' : '#FF4655'
   return (
     <div className="space-y-1">
       <div className="flex justify-between items-center">
         <span className="text-[10px] text-muted-foreground">{label}</span>
-        <span className="text-[11px] font-bold" style={{ color }}>{value}</span>
+        <span className="text-[11px] font-bold" style={{ color }}>{v}</span>
       </div>
       <div className="h-1.5 bg-muted rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all"
-          style={{ width: `${value}%`, background: color }}
+          style={{ width: `${v}%`, background: color }}
         />
       </div>
     </div>
@@ -678,12 +676,10 @@ function CoachForm({
   matchId, onSaved, onCancel,
 }: { matchId: string; onSaved: () => void; onCancel: () => void }) {
   const { t } = useLanguage()
-  const STYLE_OPTS = getSTYLEOPTS(t)
   const [summary, setSummary]       = useState('')
   const [strengths, setStrengths]   = useState('')
   const [weaknesses, setWeaknesses] = useState('')
   const [actions, setActions]       = useState('')
-  const [styleTag, setStyleTag]     = useState('')
   const [saving, setSaving]         = useState(false)
 
   const textCls = 'w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-xs text-white placeholder-muted-foreground focus:border-[#FF4655] outline-none resize-none'
@@ -700,7 +696,7 @@ function CoachForm({
           strengths:    strengths.split('\n').map(s => s.trim()).filter(Boolean),
           weaknesses:   weaknesses.split('\n').map(s => s.trim()).filter(Boolean),
           action_items: actions.split('\n').map(s => s.trim()).filter(Boolean),
-          style_tag: styleTag || null,
+          style_tag: null,
         }),
       })
       onSaved()
@@ -709,11 +705,11 @@ function CoachForm({
   }
 
   return (
-    <div className="p-4 bg-muted/10 border border-border rounded-xl space-y-4">
+    <div className="p-5 sm:p-6 space-y-4">
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-white">{t('feedback.addCoachNote')}</span>
-        <button onClick={onCancel} className="text-muted-foreground hover:text-white transition-colors">
-          <X className="w-3.5 h-3.5" />
+        <span className="text-sm font-semibold text-white">{t('feedback.addCoachNote')}</span>
+        <button onClick={onCancel} className="text-muted-foreground hover:text-white transition-colors p-1 -mr-1">
+          <X className="w-4 h-4" />
         </button>
       </div>
 
@@ -723,7 +719,7 @@ function CoachForm({
           placeholder={t('feedback.summaryPlaceholder')} className={textCls} />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
           { label: t('feedback.goodPoints'),  color: '#00D4A0', value: strengths, set: setStrengths, placeholder: t('feedback.strengthsPlaceholder') },
           { label: t('feedback.issues'),       color: '#FF4655', value: weaknesses, set: setWeaknesses, placeholder: t('feedback.weaknessesPlaceholder') },
@@ -737,27 +733,12 @@ function CoachForm({
         ))}
       </div>
 
-      <div className="space-y-1.5">
-        <label className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">{t('feedback.styleDiagnosis')}</label>
-        <div className="flex flex-wrap gap-2">
-          {STYLE_OPTS.map(o => (
-            <button key={o.value} onClick={() => setStyleTag(styleTag === o.value ? '' : o.value)}
-              className="text-xs px-3 py-1 rounded-full border font-medium transition-colors"
-              style={styleTag === o.value
-                ? { color: o.color, borderColor: o.color, backgroundColor: `${o.color}20` }
-                : { color: '#9B9BA4', borderColor: '#2A2A3A' }}>
-              {o.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-2">
-        <button onClick={onCancel} className="text-xs text-muted-foreground hover:text-white border border-border rounded-lg px-3 py-1.5 transition-colors">
+      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
+        <button onClick={onCancel} className="text-xs text-muted-foreground hover:text-white border border-border rounded-lg px-4 py-2.5 sm:py-1.5 transition-colors">
           {t('common.cancel')}
         </button>
         <button onClick={save} disabled={saving}
-          className="text-xs bg-[#FF4655] hover:bg-[#FF4655]/80 text-white rounded-lg px-4 py-1.5 transition-colors disabled:opacity-50">
+          className="text-xs bg-[#FF4655] hover:bg-[#FF4655]/80 text-white rounded-lg px-4 py-2.5 sm:py-1.5 transition-colors disabled:opacity-50">
           {saving ? t('common.saving') : t('common.save')}
         </button>
       </div>
@@ -839,87 +820,98 @@ export function MatchFeedbackPanel({ matchId }: { matchId: string }) {
   const coachFeedbacks = feedbacks.filter(f => f.type === 'coach')
 
   return (
-    <div className="bg-card border border-border rounded-xl overflow-hidden">
-      {/* Header */}
-      <div className="px-5 py-3 border-b border-border flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-white">{t('feedback.panelTitle')}</span>
-          {feedbacks.length > 0 && (
-            <span className="text-[10px] text-muted-foreground bg-muted rounded-full px-2 py-0.5">{feedbacks.length}件</span>
-          )}
+    <>
+      {/* Coach memo modal — bottom sheet on mobile, centered dialog on desktop */}
+      {showCoachForm && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end sm:justify-center items-stretch sm:items-center p-0 sm:p-6">
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setShowCoachForm(false)}
+          />
+          <div className="relative w-full sm:max-w-2xl max-h-[92vh] overflow-y-auto rounded-t-2xl sm:rounded-xl bg-[#18181F] border-t sm:border border-border/60 shadow-2xl">
+            <CoachForm matchId={matchId} onSaved={fetchFeedbacks} onCancel={() => setShowCoachForm(false)} />
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setShowCoachForm(v => !v)}
-            className={cn(
-              'flex items-center gap-1.5 text-xs border rounded-lg px-3 py-1.5 transition-colors',
-              showCoachForm ? 'bg-white/10 text-white border-white/30' : 'text-muted-foreground hover:text-white border-border hover:border-white/30'
+      )}
+
+      <div className="bg-card border border-border rounded-xl overflow-hidden">
+        {/* Header */}
+        <div className="px-5 py-3 border-b border-border flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-white">{t('feedback.panelTitle')}</span>
+            {feedbacks.length > 0 && (
+              <span className="text-[10px] text-muted-foreground bg-muted rounded-full px-2 py-0.5">{feedbacks.length}件</span>
             )}
-          >
-            <Plus className="w-3 h-3" /> {t('feedback.coachNoteLabel')}
-          </button>
-          <button
-            onClick={runAI}
-            disabled={aiLoading}
-            title={!canUseAI ? `AI使用上限 (${aiUsageCount}/${aiUsageLimit}回) に達しました` : undefined}
-            className={cn(
-              'flex items-center gap-1.5 text-xs border rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50',
-              canUseAI
-                ? 'bg-[#6C63FF]/20 hover:bg-[#6C63FF]/30 text-[#6C63FF] border-[#6C63FF]/30'
-                : 'bg-[#FF4655]/10 hover:bg-[#FF4655]/20 text-[#FF4655] border-[#FF4655]/20'
-            )}
-          >
-            {aiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : canUseAI ? <Bot className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
-            {t('feedback.aiLabel')}{!canUseAI && ` (${aiUsageCount}/${aiUsageLimit})`}
-          </button>
-        </div>
-      </div>
-
-      {/* Body */}
-      <div className="p-4 space-y-3">
-        {loading && <div className="text-center py-6 text-muted-foreground text-xs">{t('feedback.loading')}</div>}
-
-        {!loading && aiError && (
-          <div className="text-xs text-[#FF4655] bg-[#FF4655]/10 border border-[#FF4655]/20 rounded-lg px-3 py-2">{aiError}</div>
-        )}
-
-        {showCoachForm && (
-          <CoachForm matchId={matchId} onSaved={fetchFeedbacks} onCancel={() => setShowCoachForm(false)} />
-        )}
-
-        {!loading && feedbacks.length === 0 && !showCoachForm && (
-          <div className="flex flex-col items-center gap-3 py-8">
-            <p className="text-xs text-muted-foreground">{t('feedback.noFeedback')}</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowCoachForm(v => !v)}
+              className={cn(
+                'flex items-center gap-1.5 text-xs border rounded-lg px-3 py-1.5 transition-colors',
+                showCoachForm ? 'bg-white/10 text-white border-white/30' : 'text-muted-foreground hover:text-white border-border hover:border-white/30'
+              )}
+            >
+              <Plus className="w-3 h-3" /> {t('feedback.coachNoteLabel')}
+            </button>
             <button
               onClick={runAI}
               disabled={aiLoading}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-[#6C63FF] hover:bg-[#6C63FF]/80 text-white transition-colors disabled:opacity-50 shadow-lg shadow-[#6C63FF]/20"
+              title={!canUseAI ? `AI使用上限 (${aiUsageCount}/${aiUsageLimit}回) に達しました` : undefined}
+              className={cn(
+                'flex items-center gap-1.5 text-xs border rounded-lg px-3 py-1.5 transition-colors disabled:opacity-50',
+                canUseAI
+                  ? 'bg-[#6C63FF]/20 hover:bg-[#6C63FF]/30 text-[#6C63FF] border-[#6C63FF]/30'
+                  : 'bg-[#FF4655]/10 hover:bg-[#FF4655]/20 text-[#FF4655] border-[#FF4655]/20'
+              )}
             >
-              {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
-              {t('feedback.runAiTactical')}
+              {aiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : canUseAI ? <Bot className="w-3 h-3" /> : <Lock className="w-3 h-3" />}
+              {t('feedback.aiLabel')}{!canUseAI && ` (${aiUsageCount}/${aiUsageLimit})`}
             </button>
-            <p className="text-[10px] text-muted-foreground">{t('feedback.aiAnalysisDesc')}</p>
           </div>
-        )}
+        </div>
 
-        {aiFeedbacks.length > 0 && (
-          <div className="space-y-2">
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{t('feedback.aiLabel')}</div>
-            {aiFeedbacks.map(f =>
-              f.tactical
-                ? <TacticalCard key={f.id} feedback={f} tactical={f.tactical} />
-                : <LegacyCard   key={f.id} feedback={f} />
-            )}
-          </div>
-        )}
+        {/* Body */}
+        <div className="p-4 space-y-3">
+          {loading && <div className="text-center py-6 text-muted-foreground text-xs">{t('feedback.loading')}</div>}
 
-        {coachFeedbacks.length > 0 && (
-          <div className="space-y-2">
-            <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{t('feedback.coachNoteLabel')}</div>
-            {coachFeedbacks.map(f => <LegacyCard key={f.id} feedback={f} onDelete={deleteFeedback} />)}
-          </div>
-        )}
+          {!loading && aiError && (
+            <div className="text-xs text-[#FF4655] bg-[#FF4655]/10 border border-[#FF4655]/20 rounded-lg px-3 py-2">{aiError}</div>
+          )}
+
+          {!loading && feedbacks.length === 0 && !showCoachForm && (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <p className="text-xs text-muted-foreground">{t('feedback.noFeedback')}</p>
+              <button
+                onClick={runAI}
+                disabled={aiLoading}
+                className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold bg-[#6C63FF] hover:bg-[#6C63FF]/80 text-white transition-colors disabled:opacity-50 shadow-lg shadow-[#6C63FF]/20"
+              >
+                {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bot className="w-4 h-4" />}
+                {t('feedback.runAiTactical')}
+              </button>
+              <p className="text-[10px] text-muted-foreground">{t('feedback.aiAnalysisDesc')}</p>
+            </div>
+          )}
+
+          {aiFeedbacks.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{t('feedback.aiLabel')}</div>
+              {aiFeedbacks.map(f =>
+                f.tactical
+                  ? <TacticalCard key={f.id} feedback={f} tactical={f.tactical} />
+                  : <LegacyCard   key={f.id} feedback={f} />
+              )}
+            </div>
+          )}
+
+          {coachFeedbacks.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">{t('feedback.coachNoteLabel')}</div>
+              {coachFeedbacks.map(f => <LegacyCard key={f.id} feedback={f} onDelete={deleteFeedback} />)}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }

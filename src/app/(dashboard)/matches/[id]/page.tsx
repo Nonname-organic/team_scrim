@@ -1,7 +1,7 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Fragment } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Shield, Crosshair, Pencil, Save, X, Plus, Trash2, MapPin, Flag } from 'lucide-react'
+import { ArrowLeft, Shield, Crosshair, Pencil, Save, X, Plus, Trash2, MapPin, Flag, Bookmark } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AGENTS } from '@/types'
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
@@ -49,6 +49,7 @@ type REdit = {
   first_blood_team: string
   contact_timing: string
   notable: boolean
+  memo: string
 }
 
 const inputCls = 'bg-muted border border-border rounded px-1.5 py-0.5 text-xs text-white focus:border-[#FF4655] outline-none w-full'
@@ -69,6 +70,7 @@ export default function MatchDetailPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [roundSaveError, setRoundSaveError] = useState<string | null>(null)
   const [plantEditIdx, setPlantEditIdx] = useState<number | null>(null)
+  const [memoOpenIdx, setMemoOpenIdx]   = useState<Set<number>>(new Set())
 
   useEffect(() => {
     fetch(`/api/matches/${id}`)
@@ -122,6 +124,7 @@ export default function MatchDetailPage() {
 
   function enterRoundEdit() {
     setRoundSaveError(null)
+    setMemoOpenIdx(new Set())
     setEditRounds(rounds.map(r => {
       const side = String(r.side ?? '')
       const planted = Boolean(r.planted)
@@ -138,6 +141,7 @@ export default function MatchDetailPage() {
         first_blood_team: r.first_blood_team == null ? '' : String(r.first_blood_team),
         contact_timing: r.contact_timing == null ? '' : String(r.contact_timing),
         notable: Boolean(r.notable),
+        memo: r.memo != null ? String(r.memo) : '',
       }
     }))
     setEditRoundMode(true)
@@ -159,6 +163,7 @@ export default function MatchDetailPage() {
         first_blood_team: '',
         contact_timing: '',
         notable: false,
+        memo: '',
       }]
     })
   }
@@ -253,6 +258,7 @@ export default function MatchDetailPage() {
             fb_team: r.first_blood_team,
             contact_timing: r.contact_timing || null,
             notable: r.notable,
+            memo: r.memo || null,
           })),
         }),
       }).then(r => r.json())
@@ -496,7 +502,7 @@ export default function MatchDetailPage() {
               <div className="flex items-center gap-2">
                 {roundSaveError && <span className="text-xs text-[#FF4655]">{roundSaveError}</span>}
                 <button
-                  onClick={() => setEditRoundMode(false)}
+                  onClick={() => { setEditRoundMode(false); setMemoOpenIdx(new Set()) }}
                   disabled={saving}
                   className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-white border border-border rounded-lg px-3 py-1.5 transition-colors"
                 >
@@ -525,22 +531,40 @@ export default function MatchDetailPage() {
                     {rounds.map((r) => {
                       const isWin = r.result === 'win'
                       const side = String(r.side ?? '')
+                      const hasMemo = !!r.memo
                       return (
                         <div
                           key={String(r.round_number)}
-                          title={`R${r.round_number} ${side} ${r.economy_type ?? ''} ${r.planted ? '🌱' : ''}`}
+                          title={`R${r.round_number} ${side} ${r.economy_type ?? ''}${r.planted ? ' 💣' : ''}${hasMemo ? ' 📝' : ''}`}
                           className={cn(
-                            'w-8 h-8 rounded flex items-center justify-center text-xs font-bold cursor-default',
+                            'relative w-8 h-8 rounded flex items-center justify-center text-xs font-bold cursor-default',
                             isWin
                               ? 'bg-[#00D4A0]/20 text-[#00D4A0] border border-[#00D4A0]/30'
                               : 'bg-[#FF4655]/20 text-[#FF4655] border border-[#FF4655]/30'
                           )}
                         >
                           {String(r.round_number)}
+                          {hasMemo && (
+                            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-[#3498DB]" />
+                          )}
                         </div>
                       )
                     })}
                   </div>
+                  {/* メモ一覧 */}
+                  {rounds.some(r => r.memo) && (
+                    <div className="mt-3 space-y-1.5">
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                        <Bookmark className="w-3 h-3" /> メモ
+                      </div>
+                      {rounds.filter(r => r.memo).map(r => (
+                        <div key={String(r.round_number)} className="flex items-start gap-2 text-xs bg-[#3498DB]/5 border border-[#3498DB]/15 rounded-lg px-3 py-1.5">
+                          <span className="text-[#3498DB] font-mono font-bold shrink-0">R{String(r.round_number)}</span>
+                          <span className="text-white/70 leading-relaxed">{String(r.memo)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div className="flex gap-4 mt-3 text-[10px] text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <span className="w-3 h-3 rounded bg-[#00D4A0]/20 border border-[#00D4A0]/30 inline-block" />{t('matches.roundWin')}
@@ -633,7 +657,7 @@ export default function MatchDetailPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border bg-muted/20">
-                      {['#', t('matches.headerSide'), t('matches.headerEconomy'), t('matches.headerResult'), t('matches.headerPlant'), t('matches.headerSite'), t('matches.headerRetake'), 'FB', t('matches.headerTiming'), t('matches.headerNotable'), ''].map(h => (
+                      {['#', t('matches.headerSide'), t('matches.headerEconomy'), t('matches.headerResult'), t('matches.headerPlant'), t('matches.headerSite'), t('matches.headerRetake'), 'FB', t('matches.headerTiming'), t('matches.headerNotable'), 'メモ', ''].map(h => (
                         <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium">
                           {h}
                         </th>
@@ -642,7 +666,8 @@ export default function MatchDetailPage() {
                   </thead>
                   <tbody>
                     {editRounds.map((r, i) => (
-                      <tr key={i} className={cn(
+                      <Fragment key={i}>
+                      <tr className={cn(
                         'border-b border-border/40 last:border-0',
                         r.result === 'win' ? 'bg-[#00D4A0]/5' : r.result === 'loss' ? 'bg-[#FF4655]/5' : ''
                       )}>
@@ -820,6 +845,28 @@ export default function MatchDetailPage() {
                             <Flag className="w-3.5 h-3.5" fill={r.notable ? 'currentColor' : 'none'} />
                           </button>
                         </td>
+                        {/* メモ toggle */}
+                        <td className="px-2 py-1.5">
+                          <button
+                            type="button"
+                            title="メモ"
+                            onClick={() => setMemoOpenIdx(prev => {
+                              const next = new Set(prev)
+                              next.has(i) ? next.delete(i) : next.add(i)
+                              return next
+                            })}
+                            className={cn(
+                              'p-1 rounded transition-colors',
+                              r.memo
+                                ? 'text-[#3498DB] bg-[#3498DB]/10'
+                                : memoOpenIdx.has(i)
+                                  ? 'text-white bg-white/10'
+                                  : 'text-muted-foreground hover:text-[#3498DB]'
+                            )}
+                          >
+                            <Bookmark className="w-3.5 h-3.5" fill={r.memo ? 'currentColor' : 'none'} />
+                          </button>
+                        </td>
                         {/* 削除 */}
                         <td className="px-2 py-1.5">
                           <button
@@ -831,6 +878,25 @@ export default function MatchDetailPage() {
                           </button>
                         </td>
                       </tr>
+                      {/* メモ展開行 */}
+                      {memoOpenIdx.has(i) && (
+                        <tr className="border-b border-border">
+                          <td colSpan={13} className="px-3 py-2 bg-[#3498DB]/5">
+                            <div className="flex items-start gap-2">
+                              <Bookmark className="w-3.5 h-3.5 text-[#3498DB] mt-1.5 flex-shrink-0" fill={r.memo ? 'currentColor' : 'none'} />
+                              <textarea
+                                rows={2}
+                                autoFocus
+                                value={r.memo}
+                                onChange={e => updateRound(i, 'memo' as keyof REdit, e.target.value)}
+                                placeholder={`R${r.round_number} のメモ（気づき・改善点）`}
+                                className="flex-1 bg-muted/30 border border-[#3498DB]/30 rounded px-2.5 py-1.5 text-xs text-white placeholder-muted-foreground/50 focus:border-[#3498DB] outline-none resize-none"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
