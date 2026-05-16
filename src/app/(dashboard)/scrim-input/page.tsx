@@ -162,7 +162,7 @@ export default function ScrimInputPage() {
   useEffect(() => {
     if (!firstHalfSide) return
     const total = Number(teamScore || 0) + Number(oppScore || 0)
-    const count = (total >= 2 && total <= 50) ? total : 12
+    const count = (total >= 2 && total <= 50) ? total : 24
     const side1 = firstHalfSide
     const side2 = side1 === 'attack' ? 'defense' : 'attack'
     setRounds(prev => {
