@@ -389,23 +389,6 @@ export default function RoundAnalysisPage() {
                         </div>
                       </button>
 
-                      {/* ラウンド開始タイムスタンプ設定 */}
-                      <button
-                        title={roundTimestamps[r.id] !== undefined ? `${formatTime(roundTimestamps[r.id])} (クリックで更新)` : 'ラウンド開始時間を設定'}
-                        onClick={() => saveRoundTimestamp(r.id, getVideoTimeRef.current())}
-                        className={cn(
-                          'flex-shrink-0 px-1.5 py-2 transition-colors',
-                          roundTimestamps[r.id] !== undefined
-                            ? 'text-[#FF4655]'
-                            : 'text-muted-foreground/30 group-hover:text-muted-foreground hover:text-[#FF4655]'
-                        )}
-                      >
-                        <Play
-                          className="w-3 h-3"
-                          fill={roundTimestamps[r.id] !== undefined ? 'currentColor' : 'none'}
-                        />
-                      </button>
-
                       {/* メモボタン */}
                       <button
                         title="メモ"

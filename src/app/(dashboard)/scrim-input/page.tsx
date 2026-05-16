@@ -99,7 +99,10 @@ export default function ScrimInputPage() {
   const [matchDate, setMatchDate] = useState(new Date().toISOString().slice(0, 10))
   const [map, setMap] = useState('')
   const [teamScore, setTeamScore] = useState<number | ''>('')
-  const [oppScore, setOppScore] = useState<number | ''>('')
+  const [oppScore, setOppScore]   = useState<number | ''>('')
+  // 入力中の表示用文字列（onChange で更新）。onBlur / Enter で上の committed state にコミット
+  const [teamScoreInput, setTeamScoreInput] = useState('')
+  const [oppScoreInput,  setOppScoreInput]  = useState('')
   const [firstHalfSide, setFirstHalfSide] = useState<'attack' | 'defense' | ''>('')
   const [matchType, setMatchType] = useState('official')
   const [opponentName, setOpponentName] = useState('')
@@ -232,8 +235,8 @@ export default function ScrimInputPage() {
 
       // Populate match info
       if (json.map && json.map !== 'unknown') setMap(json.map)
-      if (json.team_score != null) setTeamScore(json.team_score)
-      if (json.opponent_score != null) setOppScore(json.opponent_score)
+      if (json.team_score != null) { setTeamScore(json.team_score); setTeamScoreInput(String(json.team_score)) }
+      if (json.opponent_score != null) { setOppScore(json.opponent_score); setOppScoreInput(String(json.opponent_score)) }
 
       // OCRデータを登録済み選手に名前照合してスタッツだけ上書き
       const ocr: Record<string, unknown>[] = json.players ?? []
@@ -273,10 +276,14 @@ export default function ScrimInputPage() {
 
   // ── Save ──
   async function handleSave() {
-    if (!map || teamScore === '' || oppScore === '') {
+    // blur していない場合に備え、入力文字列から最終スコアを取得
+    const finalTeam = teamScoreInput !== '' ? Number(teamScoreInput) : teamScore
+    const finalOpp  = oppScoreInput  !== '' ? Number(oppScoreInput)  : oppScore
+    if (!map || finalTeam === '' || finalOpp === '') {
       setError(t('common.error'))
       return
     }
+    const finalTotalRounds = Number(finalTeam) + Number(finalOpp)
     setSaving(true)
     setError(null)
 
@@ -294,7 +301,7 @@ export default function ScrimInputPage() {
         hs_pct: Number(r.hs_pct) || 0,
         first_bloods: Number(r.fb) || 0,
         first_deaths: Number(r.fd) || 0,
-        rounds_played: totalRounds,
+        rounds_played: finalTotalRounds,
       }))
 
     try {
@@ -306,8 +313,8 @@ export default function ScrimInputPage() {
           opponent_name: opponentName || '未登録',
           match_date: matchDate + 'T00:00:00',
           map, match_type: matchType,
-          team_score: Number(teamScore),
-          opponent_score: Number(oppScore),
+          team_score: Number(finalTeam),
+          opponent_score: Number(finalOpp),
           players: playersPayload,
         }),
       })
@@ -344,7 +351,9 @@ export default function ScrimInputPage() {
 
   // ── Reset ── スタッツのみクリア、選手IDは維持
   function handleReset() {
-    setOpponentName(''); setMap(''); setTeamScore(''); setOppScore('')
+    setOpponentName(''); setMap('')
+    setTeamScoreInput(''); setTeamScore('')
+    setOppScoreInput('');  setOppScore('')
     setFirstHalfSide(''); setMatchType('scrim')
     setMatchDate(new Date().toISOString().slice(0, 10))
     // 選手IDはそのまま、スタッツだけ空に
@@ -413,13 +422,23 @@ export default function ScrimInputPage() {
           </div>
           <div>
             <Label>{t('matchInput.teamScore')}</Label>
-            <input type="number" min={0} max={25} className={cls} value={teamScore}
-              onChange={e => setTeamScore(e.target.value === '' ? '' : Number(e.target.value))} />
+            <input
+              type="number" min={0} max={25} className={cls}
+              value={teamScoreInput}
+              onChange={e => setTeamScoreInput(e.target.value)}
+              onBlur={() => setTeamScore(teamScoreInput === '' ? '' : Number(teamScoreInput))}
+              onKeyDown={e => { if (e.key === 'Enter') setTeamScore(teamScoreInput === '' ? '' : Number(teamScoreInput)) }}
+            />
           </div>
           <div>
             <Label>{t('matchInput.opponentScore')}</Label>
-            <input type="number" min={0} max={25} className={cls} value={oppScore}
-              onChange={e => setOppScore(e.target.value === '' ? '' : Number(e.target.value))} />
+            <input
+              type="number" min={0} max={25} className={cls}
+              value={oppScoreInput}
+              onChange={e => setOppScoreInput(e.target.value)}
+              onBlur={() => setOppScore(oppScoreInput === '' ? '' : Number(oppScoreInput))}
+              onKeyDown={e => { if (e.key === 'Enter') setOppScore(oppScoreInput === '' ? '' : Number(oppScoreInput)) }}
+            />
           </div>
           <div>
             <Label>{t('matchInput.firstHalfSide')}</Label>
