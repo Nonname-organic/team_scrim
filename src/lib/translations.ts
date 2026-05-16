@@ -146,7 +146,7 @@ export const ja = {
     addRow:        '行を追加',
     saved:         '保存しました！',
     optional:      '任意',
-    roundsEntered: 'R 入力済み',
+    roundsEntered: '入力済み',
     autoFill:      'スコアボードから自動入力',
     agentSelect:   'エージェント選択',
   },
