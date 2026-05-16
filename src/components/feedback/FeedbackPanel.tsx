@@ -210,8 +210,19 @@ function TacticalCard({
   tactical: TacticalAnalysis
 }) {
   const { locale, t } = useLanguage()
+  // intent_assessment があれば旧7ステップ形式、なければ新コンパクト形式
   const isNewFormat = !!tactical.intent_assessment
-  const [expanded, setExpanded] = useState(isNewFormat)
+  const hasSimpleImprovements = Array.isArray(tactical.improvements) &&
+    tactical.improvements.length > 0 &&
+    typeof (tactical.improvements as unknown[])[0] === 'string'
+  const simpleImprovements = hasSimpleImprovements
+    ? (tactical.improvements as unknown as string[])
+    : []
+  const structuredImprovements: StructuredImprovement[] = !hasSimpleImprovements && Array.isArray(tactical.improvements)
+    ? (tactical.improvements as StructuredImprovement[])
+    : []
+  const hasExpandableContent = isNewFormat || simpleImprovements.length > 0 || tactical.rules.length > 0 || tactical.pattern_flags.length > 0
+  const [expanded, setExpanded] = useState(isNewFormat || simpleImprovements.length > 0)
   const EV_CFG = getEVCFG(t)
   const REPRO_CFG = getREPROCFG(t)
   const CAUSE_CFG = getCAUSECFG(t)
@@ -221,10 +232,7 @@ function TacticalCard({
 
   const scoreColor = (v: number) => v >= 70 ? '#00D4A0' : v >= 45 ? '#FF8C42' : '#FF4655'
 
-  // improvements can be new (array of who/when/what/why) or legacy ({team, individual})
-  const structuredImprovements: StructuredImprovement[] = Array.isArray(tactical.improvements)
-    ? (tactical.improvements as StructuredImprovement[])
-    : []
+  // legacy {team, individual} improvements (very old format)
   const legacyImprovements = !Array.isArray(tactical.improvements)
     ? (tactical.improvements as { team: string[]; individual: string[] })
     : null
@@ -354,14 +362,16 @@ function TacticalCard({
           </div>
         )}
 
-        {/* Expand toggle */}
-        <button
-          onClick={() => setExpanded(v => !v)}
-          className="w-full flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground hover:text-white transition-colors py-1"
-        >
-          {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-          {expanded ? t('feedback.collapseBtn') : isNewFormat ? t('feedback.expandNewFormat') : t('feedback.expandLegacy')}
-        </button>
+        {/* Expand toggle — only shown when there's content to expand */}
+        {hasExpandableContent && (
+          <button
+            onClick={() => setExpanded(v => !v)}
+            className="w-full flex items-center justify-center gap-1.5 text-[11px] text-muted-foreground hover:text-white transition-colors py-1"
+          >
+            {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            {expanded ? t('feedback.collapseBtn') : isNewFormat ? t('feedback.expandNewFormat') : t('feedback.expandLegacy')}
+          </button>
+        )}
 
         {expanded && (
           <div className="space-y-4 border-t border-border/40 pt-4">
@@ -455,28 +465,41 @@ function TacticalCard({
               </div>
             )}
 
-            {/* Step 6: 改善提案 (new who/when/what/why format) */}
-            {isNewFormat && (
+            {/* 改善提案: シンプル string[] 形式（新コンパクト形式） */}
+            {simpleImprovements.length > 0 && (
               <div className="space-y-2">
                 <div className="text-[10px] font-bold text-[#6C63FF] uppercase tracking-wider flex items-center gap-1">
                   <Users className="w-3 h-3" /> {t('feedback.stepImprovement')}
                 </div>
-                {structuredImprovements.length > 0 ? (
-                  <ul className="space-y-2">
-                    {structuredImprovements.map((imp, i) => (
-                      <li key={i} className="bg-[#6C63FF]/5 border border-[#6C63FF]/15 rounded-lg px-3 py-2.5 space-y-1.5">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-[9px] font-black text-[#6C63FF] bg-[#6C63FF]/20 px-1.5 py-px rounded">{imp.who}</span>
-                          <span className="text-[9px] text-muted-foreground">{imp.when}</span>
-                        </div>
-                        <p className="text-[11px] text-white font-medium">{imp.what}</p>
-                        <p className="text-[10px] text-muted-foreground leading-relaxed">{imp.why}</p>
-                      </li>
-                    ))}
-                  </ul>
-                ) : legacyImprovements ? null : (
-                  <p className="text-[11px] text-muted-foreground pl-1">—</p>
-                )}
+                <ul className="space-y-1.5">
+                  {simpleImprovements.map((imp, i) => (
+                    <li key={i} className="bg-[#6C63FF]/5 border border-[#6C63FF]/15 rounded-lg px-3 py-2 flex items-start gap-2">
+                      <span className="text-[9px] font-black text-[#6C63FF] bg-[#6C63FF]/20 px-1.5 py-0.5 rounded shrink-0 mt-0.5">{i + 1}</span>
+                      <p className="text-[11px] text-white/90 leading-relaxed">{imp}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {/* 改善提案: 構造化 who/when/what/why 形式（旧7ステップ形式） */}
+            {isNewFormat && structuredImprovements.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-[10px] font-bold text-[#6C63FF] uppercase tracking-wider flex items-center gap-1">
+                  <Users className="w-3 h-3" /> {t('feedback.stepImprovement')}
+                </div>
+                <ul className="space-y-2">
+                  {structuredImprovements.map((imp, i) => (
+                    <li key={i} className="bg-[#6C63FF]/5 border border-[#6C63FF]/15 rounded-lg px-3 py-2.5 space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-[9px] font-black text-[#6C63FF] bg-[#6C63FF]/20 px-1.5 py-px rounded">{imp.who}</span>
+                        <span className="text-[9px] text-muted-foreground">{imp.when}</span>
+                      </div>
+                      <p className="text-[11px] text-white font-medium">{imp.what}</p>
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">{imp.why}</p>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
 

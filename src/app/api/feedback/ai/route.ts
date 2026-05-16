@@ -5,103 +5,45 @@ import { buildTacticalFeedbackPrompt } from '@/lib/ai-prompts'
 
 export const maxDuration = 60
 
-// ── Tool schema — 7-step tactical framework ───────────────────────────────────
+// ── Tool schema — compact (fits in ~600 tokens → ~6s on Haiku) ───────────────
+// 11フィールドの7ステップ版は3300トークン/30秒かかり Vercel Hobby(10s上限)でタイムアウト。
+// 最重要6フィールドに絞ることで ~600トークン/6秒 に収める。
 const ANALYSIS_TOOL: Anthropic.Tool = {
   name: 'submit_analysis',
-  description: '試合の7ステップ戦術分析結果を構造化データとして提出する',
+  description: '試合の戦術分析結果（各テキストは1〜2文で簡潔に）',
   input_schema: {
     type: 'object' as const,
     properties: {
-      // ステップ0: 試合評価サマリ
-      round_evaluation: { type: 'string', description: '試合の戦術的評価（2〜3文、数値引用必須）' },
-      win_factor:       { type: 'string', description: '勝敗を分けた本質的要因（1文、行動として）' },
-      // ステップ1: 意図の推測
-      intent_assessment: { type: 'string', description: 'チームが何を狙ったかの推測（結果からではなく構造から、1〜2文）' },
-      // ステップ2: 期待値評価
-      ev_evaluation: {
-        type: 'object',
-        properties: {
-          verdict:   { type: 'string', enum: ['rational', 'irrational', 'situational'], description: 'rational=合理的 / irrational=非合理 / situational=状況依存' },
-          reasoning: { type: 'string', description: '期待値評価の根拠（数値引用必須）' },
-        },
-        required: ['verdict', 'reasoning'],
-      },
-      // ステップ3: 崩壊点特定
-      breakdown_points: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            round:       { type: 'string', description: 'ラウンド番号（例: R12）' },
-            moment:      { type: 'string', description: '崩壊したタイミング（状況として）' },
-            description: { type: 'string', description: '何が起きたか（行動として）' },
-          },
-          required: ['round', 'moment', 'description'],
-        },
-        description: '最大3件',
-      },
-      // ステップ4: 原因分離
-      cause_analysis: {
-        type: 'object',
-        properties: {
-          structural:  { type: 'array', items: { type: 'string' }, description: '構造問題：戦術・配置・マクロ' },
-          execution:   { type: 'array', items: { type: 'string' }, description: '実行問題：撃ち合い・スキル' },
-          judgment:    { type: 'array', items: { type: 'string' }, description: '判断問題：ローテ・コール' },
-          information: { type: 'array', items: { type: 'string' }, description: '情報問題：取得不足・誤認識' },
-        },
-        required: ['structural', 'execution', 'judgment', 'information'],
-      },
-      // ステップ5: 再現性評価
-      reproducibility: {
-        type: 'object',
-        properties: {
-          verdict:  { type: 'string', enum: ['repeatable', 'coincidence', 'mixed'], description: 'repeatable=再現可能 / coincidence=偶然 / mixed=混在' },
-          evidence: { type: 'string', description: '判定の根拠（数値引用必須）' },
-        },
-        required: ['verdict', 'evidence'],
-      },
-      // ステップ6: 改善提案（who/when/what/why）
-      improvements: {
-        type: 'array',
-        items: {
-          type: 'object',
-          properties: {
-            who:  { type: 'string', description: '誰が（選手名またはチーム全体）' },
-            when: { type: 'string', description: 'いつ（状況・フェーズを具体的に）' },
-            what: { type: 'string', description: '何をする（動詞で始める具体的行動）' },
-            why:  { type: 'string', description: 'なぜ（期待値・因果関係を明示）' },
-          },
-          required: ['who', 'when', 'what', 'why'],
-        },
-        description: '最大4件',
-      },
-      // ステップ7: ルール化
-      rules: {
-        type: 'array', items: { type: 'string' },
-        description: 'if-then形式のチームルール（例: if Bサイトでピーク距離が遠い場合 then 必ずフラッシュ先投げする）',
-      },
-      pattern_flags: {
-        type: 'array', items: { type: 'string' },
-        description: '複数ラウンドで繰り返されているパターン・癖（行動として）',
-      },
       score: {
         type: 'object',
-        description: 'スコア（各0-100）',
+        description: '戦術スコア（各0-100の整数）',
         properties: {
-          macro:    { type: 'number', description: 'マクロ戦術スコア 0-100' },
-          micro:    { type: 'number', description: 'ミクロ・個人スコア 0-100' },
-          teamplay: { type: 'number', description: 'チームプレイスコア 0-100' },
-          overall:  { type: 'number', description: '総合スコア 0-100' },
+          macro:    { type: 'number', description: 'マクロ戦術 0-100' },
+          micro:    { type: 'number', description: 'ミクロ・個人 0-100' },
+          teamplay: { type: 'number', description: 'チームプレイ 0-100' },
+          overall:  { type: 'number', description: '総合 0-100' },
         },
         required: ['macro', 'micro', 'teamplay', 'overall'],
       },
+      win_factor:       { type: 'string', description: '勝敗を分けた本質的要因（1文・行動として・数値引用）' },
+      round_evaluation: { type: 'string', description: '試合の戦術的評価（2文・数値引用必須）' },
+      improvements: {
+        type: 'array',
+        items: { type: 'string', description: '具体的な改善アクション（1文・動詞で始める）' },
+        description: '最大3件',
+      },
+      rules: {
+        type: 'array',
+        items: { type: 'string', description: 'if-then形式のチームルール（1文）' },
+        description: '最大2件',
+      },
+      pattern_flags: {
+        type: 'array',
+        items: { type: 'string', description: '繰り返すパターン・癖（行動として・短く）' },
+        description: '最大2件',
+      },
     },
-    required: [
-      'round_evaluation', 'win_factor',
-      'intent_assessment', 'ev_evaluation', 'breakdown_points',
-      'cause_analysis', 'reproducibility', 'improvements',
-      'rules', 'pattern_flags', 'score',
-    ],
+    required: ['score', 'win_factor', 'round_evaluation', 'improvements', 'rules', 'pattern_flags'],
   },
 }
 
@@ -140,24 +82,18 @@ export async function POST(req: NextRequest) {
     ])
 
     const systemPrompt = isEN
-      ? `You are a dedicated tactical analyst and head coach for a Tier 1 VALORANT team.
-Your role is NOT to describe the match.
-Goal: Maximize expected value of team tactics, structure decision-making errors, and define recurrence-prevention rules.
-Analysis MUST follow the 7-step framework: intent assessment, EV evaluation, breakdown identification, root cause separation, reproducibility assessment, improvement proposals, rule creation.
-Prohibited: abstractions, moralizing, hindsight bias, reasoning without numbers.
-CRITICAL: All text fields in your analysis MUST be written entirely in English. You MUST call the submit_analysis tool to submit your results.`
-      : `あなたはTier1 VALORANTチーム専属の戦術アナリスト兼ヘッドコーチです。
-役割は「試合を説明すること」ではない。
-目的：勝敗の再現性を高め、チーム戦術の期待値を最大化し、意思決定ミスを構造化し、再発防止ルールを定義すること。
-分析は7ステップフレームワーク（意図推測・EV評価・崩壊点特定・原因分離・再現性評価・改善提案・ルール化）に従うこと。
-禁止：抽象論・精神論・結果論・数値なし根拠。必ず submit_analysis ツールを呼び出して結果を提出すること。`
+      ? `You are a VALORANT head coach and tactical analyst. Call submit_analysis with your results.
+CRITICAL: Every text field must be 1-2 sentences maximum. Be concise and data-driven. No abstractions.
+All text fields MUST be written entirely in English.`
+      : `あなたはVALORANTヘッドコーチ兼戦術アナリスト。必ず submit_analysis ツールを呼び出すこと。
+重要：各テキストフィールドは最大1〜2文。簡潔・数値引用必須。抽象論・精神論禁止。`
 
     const userMessage = buildTacticalFeedbackPrompt(match, rounds, playerStats)
 
     const client = new Anthropic()
     const message = await client.messages.create({
       model:      'claude-haiku-4-5-20251001',
-      max_tokens: 4096,
+      max_tokens: 1200,
       system:     systemPrompt,
       tools:      [ANALYSIS_TOOL],
       tool_choice: { type: 'tool', name: 'submit_analysis' },
@@ -179,45 +115,20 @@ CRITICAL: All text fields in your analysis MUST be written entirely in English. 
     // ── Map tool input → DB columns ───────────────────────────────────────────
     const round_evaluation = String(inp.round_evaluation ?? '')
     const win_factor       = String(inp.win_factor ?? '')
+    const improvements     = (inp.improvements   as string[]) ?? []
+    const rules            = (inp.rules          as string[]) ?? []
+    const pattern_flags    = (inp.pattern_flags  as string[]) ?? []
 
-    type Improvement = { who: string; when: string; what: string; why: string }
-    type CauseAnalysis = { structural: string[]; execution: string[]; judgment: string[]; information: string[] }
-    const improvements   = (inp.improvements as Improvement[]) ?? []
-    const cause_analysis = (inp.cause_analysis as CauseAnalysis) ?? { structural: [], execution: [], judgment: [], information: [] }
+    const weaknesses   = pattern_flags   // 繰り返すパターン = 弱点
+    const action_items = improvements    // 改善アクション
 
-    // weaknesses: cause_analysis の全カテゴリをラベル付きフラット化
-    const weaknesses = isEN ? [
-      ...cause_analysis.structural.map(s  => `[Structural] ${s}`),
-      ...cause_analysis.execution.map(s   => `[Execution] ${s}`),
-      ...cause_analysis.judgment.map(s    => `[Judgment] ${s}`),
-      ...cause_analysis.information.map(s => `[Information] ${s}`),
-    ] : [
-      ...cause_analysis.structural.map(s  => `[構造] ${s}`),
-      ...cause_analysis.execution.map(s   => `[実行] ${s}`),
-      ...cause_analysis.judgment.map(s    => `[判断] ${s}`),
-      ...cause_analysis.information.map(s => `[情報] ${s}`),
-    ]
-
-    // action_items: who/when/what を自然文に変換
-    const action_items = improvements.map(imp =>
-      isEN
-        ? `${imp.who} should ${imp.what} when ${imp.when}`
-        : `${imp.who}が${imp.when}に${imp.what}`
-    )
-
-    // raw_response: 全フィールドを保存（フロントエンドで表示用）
     const scoreObj = (inp.score ?? {}) as Record<string, unknown>
     const rawPayload = JSON.stringify({
       round_evaluation,
       win_factor,
-      intent_assessment:  inp.intent_assessment,
-      ev_evaluation:      inp.ev_evaluation,
-      breakdown_points:   inp.breakdown_points,
-      cause_analysis:     inp.cause_analysis,
-      reproducibility:    inp.reproducibility,
       improvements,
-      rules:              inp.rules,
-      pattern_flags:      inp.pattern_flags,
+      rules,
+      pattern_flags,
       score: {
         macro:    Number(scoreObj.macro    ?? 0) || 0,
         micro:    Number(scoreObj.micro    ?? 0) || 0,
