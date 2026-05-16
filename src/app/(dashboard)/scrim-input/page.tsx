@@ -112,6 +112,7 @@ export default function ScrimInputPage() {
   const [rounds, setRounds] = useState<RoundRow[]>([])
   const [videoUrl, setVideoUrl] = useState('')
   const [memoOpenIdx, setMemoOpenIdx] = useState<Set<number>>(new Set())
+  const [otSide, setOtSide] = useState<'attack' | 'defense' | ''>('')
 
   // UI state
   const [ocrLoading, setOcrLoading] = useState(false)
@@ -167,11 +168,13 @@ export default function ScrimInputPage() {
     const count = (total >= 2 && total <= 50) ? total : 24
     const side1 = firstHalfSide
     const side2 = side1 === 'attack' ? 'defense' : 'attack'
-    // R1-12: side1 / R13-24: side2 / R25+: 交互（VALORANT OT）
+    // R1-12: side1 / R13-24: side2 / R25+: otSide 選択から交互
+    const otStart = (otSide || side1) as 'attack' | 'defense'
+    const otOpp   = otStart === 'attack' ? 'defense' : 'attack'
     const getSide = (i: number): 'attack' | 'defense' => {
-      if (i < 12)  return side1
-      if (i < 24)  return side2
-      return (i % 2 === 0) ? side1 : side2
+      if (i < 12) return side1
+      if (i < 24) return side2
+      return ((i - 24) % 2 === 0) ? otStart : otOpp
     }
     setRounds(prev => {
       return Array.from({ length: count }, (_, i) => {
@@ -198,7 +201,7 @@ export default function ScrimInputPage() {
       })
     })
     setShowRounds(true)
-  }, [teamScore, oppScore, firstHalfSide])
+  }, [teamScore, oppScore, firstHalfSide, otSide])
 
   // Computed KPR/DPR/APR
   const totalRounds = Number(teamScore || 0) + Number(oppScore || 0)
@@ -572,6 +575,41 @@ export default function ScrimInputPage() {
                   <tbody>
                     {rounds.map((r, i) => (
                       <React.Fragment key={i}>
+                      {/* OT セパレーター */}
+                      {i === 24 && (
+                        <tr className="border-b border-[#FFD700]/30 bg-[#FFD700]/5">
+                          <td colSpan={11} className="px-3 py-2">
+                            <div className="flex items-center gap-3">
+                              <span className="text-[10px] font-black text-[#FFD700] uppercase tracking-wider">OT R25〜</span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {otSide ? '' : '開始サイドを選択:'}
+                              </span>
+                              {(['attack', 'defense'] as const).map(s => (
+                                <button
+                                  key={s}
+                                  type="button"
+                                  onClick={() => setOtSide(prev => prev === s ? '' : s)}
+                                  className={cn(
+                                    'px-3 py-0.5 rounded text-[10px] font-bold border transition-colors',
+                                    otSide === s
+                                      ? s === 'attack'
+                                        ? 'bg-[#FF8C42]/20 border-[#FF8C42]/50 text-[#FF8C42]'
+                                        : 'bg-[#00D4A0]/20 border-[#00D4A0]/50 text-[#00D4A0]'
+                                      : 'bg-transparent border-border text-muted-foreground hover:border-muted-foreground'
+                                  )}
+                                >
+                                  {s === 'attack' ? 'ATK' : 'DEF'}
+                                </button>
+                              ))}
+                              {otSide && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  から交互
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
                       <tr className={cn(
                         'border-b border-border last:border-0',
                         r.result === 'win' ? 'bg-[#00D4A0]/5' : r.result === 'loss' ? 'bg-[#FF4655]/5' : ''
