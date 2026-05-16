@@ -165,7 +165,6 @@ export default function ScrimInputPage() {
   useEffect(() => {
     if (!firstHalfSide) return
     const total = Number(teamScore || 0) + Number(oppScore || 0)
-    const count = (total >= 2 && total <= 50) ? total : 24
     const side1 = firstHalfSide
     const side2 = side1 === 'attack' ? 'defense' : 'attack'
     // R1-12: side1 / R13-24: side2 / R25+: otSide 選択から交互
@@ -177,6 +176,9 @@ export default function ScrimInputPage() {
       return ((i - 24) % 2 === 0) ? otStart : otOpp
     }
     setRounds(prev => {
+      // スコア入力中に配列が縮小してデータが消えないよう、既存の長さより小さくしない
+      const calculated = (total >= 2 && total <= 50) ? total : 24
+      const count = Math.max(prev.length, calculated)
       return Array.from({ length: count }, (_, i) => {
         const existing = prev[i]
         const side = getSide(i)
