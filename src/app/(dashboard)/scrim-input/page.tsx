@@ -1,6 +1,6 @@
 'use client'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Upload, Save, RotateCcw, Loader2, Check, AlertCircle, ChevronDown, ChevronUp, Flag, Bookmark } from 'lucide-react'
+import { Upload, Save, RotateCcw, Loader2, Check, AlertCircle, ChevronDown, ChevronUp, Flag, Bookmark, MapPin } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MAPS, AGENTS } from '@/types'
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
@@ -115,6 +115,7 @@ export default function ScrimInputPage() {
   const [rounds, setRounds] = useState<RoundRow[]>([])
   const [videoUrl, setVideoUrl] = useState('')
   const [memoOpenIdx, setMemoOpenIdx] = useState<Set<number>>(new Set())
+  const [mapOpenIdx,  setMapOpenIdx]  = useState<Set<number>>(new Set())
   const [otSide, setOtSide] = useState<'attack' | 'defense' | ''>('')
 
   // UI state
@@ -674,13 +675,36 @@ export default function ScrimInputPage() {
                         </td>
                         <td className="px-3 py-1.5">
                           {/* ATK: plant enabled / DEF: plant disabled */}
-                          <input type="checkbox" className="accent-[#FF4655]"
-                            checked={r.plant}
-                            disabled={r.side !== 'attack'}
-                            onChange={e => {
-                              updateRound(i, 'plant', e.target.checked)
-                              if (!e.target.checked) { updateRound(i, 'site', '') }
-                            }} />
+                          <div className="flex items-center gap-1.5">
+                            <input type="checkbox" className="accent-[#FF4655]"
+                              checked={r.plant}
+                              disabled={r.side !== 'attack'}
+                              onChange={e => {
+                                updateRound(i, 'plant', e.target.checked)
+                                if (!e.target.checked) {
+                                  updateRound(i, 'site', '')
+                                  setMapOpenIdx(prev => { const n = new Set(prev); n.delete(i); return n })
+                                } else {
+                                  setMapOpenIdx(prev => new Set([...prev, i]))
+                                }
+                              }} />
+                            {r.plant && r.side === 'attack' && (
+                              <button
+                                type="button"
+                                title={mapOpenIdx.has(i) ? 'マップを閉じる' : 'プラント位置を設定'}
+                                onClick={() => setMapOpenIdx(prev => {
+                                  const n = new Set(prev)
+                                  n.has(i) ? n.delete(i) : n.add(i)
+                                  return n
+                                })}
+                                className={cn('p-0.5 rounded transition-colors',
+                                  r.plant_x !== null ? 'text-[#00D4A0]' : mapOpenIdx.has(i) ? 'text-[#6C63FF]' : 'text-muted-foreground hover:text-white'
+                                )}
+                              >
+                                <MapPin className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                         <td className="px-2 py-1">
                           <div className="flex gap-1">
@@ -805,10 +829,22 @@ export default function ScrimInputPage() {
                           </td>
                         </tr>
                       )}
-                      {/* 展開マップ行 — ATKでプラントチェック時のみ */}
-                      {r.plant && r.side === 'attack' && (
+                      {/* 展開マップ行 — ATK+プラントチェック+mapOpenIdx */}
+                      {r.plant && r.side === 'attack' && mapOpenIdx.has(i) && (
                         <tr className="border-b border-border">
                           <td colSpan={12} className="px-3 py-3 bg-muted/10">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <MapPin className="w-3 h-3" /> R{r.round_number} プラント位置
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => setMapOpenIdx(prev => { const n = new Set(prev); n.delete(i); return n })}
+                                className="text-muted-foreground hover:text-white transition-colors"
+                              >
+                                <ChevronUp className="w-4 h-4" />
+                              </button>
+                            </div>
                             <InlineMapPin
                               mapName={map}
                               x={r.plant_x}

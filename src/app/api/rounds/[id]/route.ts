@@ -15,7 +15,7 @@ export async function PATCH(
 
     if ('plant_x' in body)        { vals.push(plant_x ?? null);       setClauses.push(`plant_x = $${vals.length}`) }
     if ('plant_y' in body)        { vals.push(plant_y ?? null);       setClauses.push(`plant_y = $${vals.length}`) }
-    if ('plant_site' in body)     { vals.push(plant_site ?? null);    setClauses.push(`plant_site = COALESCE($${vals.length}, plant_site)`) }
+    if ('plant_site' in body)     { vals.push(plant_site ?? null);    setClauses.push(`plant_site = $${vals.length}`) }
     if ('contact_timing' in body) { vals.push(contact_timing ?? null); setClauses.push(`contact_timing = $${vals.length}`) }
     if ('memo' in body)           { vals.push(memo ?? null);          setClauses.push(`memo = $${vals.length}`) }
     if ('vod_start_sec' in body)  { vals.push(vod_start_sec ?? null); setClauses.push(`vod_start_sec = $${vals.length}`) }

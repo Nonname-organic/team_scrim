@@ -44,6 +44,7 @@ export function RoundWinRates({ data: rawData }: { data: Record<string, unknown>
             border: '1px solid hsl(var(--border))',
             borderRadius: 8,
             fontSize: 12,
+            color: '#fff',
           }}
         />
         <ReferenceLine y={0.5} stroke="hsl(var(--border))" strokeDasharray="4 4" />

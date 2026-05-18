@@ -4,9 +4,11 @@ import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
 import { cn } from '@/lib/utils'
 import {
   ChevronDown, ChevronUp, Search, X, ArrowLeft, Settings2,
-  Play, Shield, Crosshair, Zap, Flag, Bookmark, Trash2, Link2, Check, Pencil, Loader2,
+  Play, Shield, Crosshair, Zap, Flag, Bookmark, Trash2, Link2, Check, Pencil, Loader2, MapPin,
 } from 'lucide-react'
 import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSelector'
+import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
+import { detectSite } from '@/lib/geometry'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePlan } from '@/contexts/PlanContext'
 import { useRouter } from 'next/navigation'
@@ -531,6 +533,16 @@ export default function RoundAnalysisPage() {
                     setRounds(prev => prev.map(r => r.id === activeRound.id ? { ...r, contact_timing: timing } : r))
                     setActiveRound(prev => prev ? { ...prev, contact_timing: timing } : prev)
                   }}
+                  mapName={analysisMatch.map}
+                  onPlantUpdate={async (px, py, site) => {
+                    await fetch(`/api/rounds/${activeRound.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ plant_x: px, plant_y: py, plant_site: site }),
+                    })
+                    setRounds(prev => prev.map(r => r.id === activeRound.id ? { ...r, plant_x: px, plant_y: py, plant_site: site } : r))
+                    setActiveRound(prev => prev ? { ...prev, plant_x: px, plant_y: py, plant_site: site } : prev)
+                  }}
                 />
               ) : (
                 <MatchStatsPanel rounds={rounds} map={analysisMatch.map} />
@@ -912,6 +924,8 @@ function RoundDetailPanel({
   onSetTimestampValue,
   onClearTimestamp,
   onTimingChange,
+  mapName,
+  onPlantUpdate,
 }: {
   round: Round
   note: string
@@ -923,11 +937,14 @@ function RoundDetailPanel({
   onSetTimestampValue: (seconds: number) => void
   onClearTimestamp: () => void
   onTimingChange: (t: 'early' | 'mid' | 'late' | null) => void
+  mapName?: string
+  onPlantUpdate?: (plant_x: number, plant_y: number, plant_site: string | null) => void
 }) {
   const { t } = useLanguage()
   const isWin = r.result === 'win'
   const [localNote, setLocalNote] = useState(note)
   const [saved, setSaved] = useState(false)
+  const [showPlantMap, setShowPlantMap] = useState(false)
   const memoRef = useRef<HTMLTextAreaElement>(null)
   const [timeInput, setTimeInput] = useState(timestamp !== null ? formatTime(timestamp) : '')
   const [inputError, setInputError] = useState(false)
@@ -1023,6 +1040,43 @@ function RoundDetailPanel({
           </span>
         )}
       </div>
+
+      {/* プラント位置編集 */}
+      {r.planted && r.side === 'attack' && onPlantUpdate && mapName && (
+        <div className="space-y-2 bg-muted/20 border border-border/60 rounded-xl p-3">
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+              <MapPin className="w-3 h-3" /> プラント位置
+            </div>
+            <div className="flex items-center gap-2">
+              {r.plant_x !== null ? (
+                <span className="text-[10px] text-[#00D4A0]">✓ {r.plant_site ? `${r.plant_site}サイト` : '設定済み'}</span>
+              ) : (
+                <span className="text-[10px] text-muted-foreground/50">未設定</span>
+              )}
+              <button
+                onClick={() => setShowPlantMap(v => !v)}
+                className={cn(
+                  'text-[10px] px-2 py-0.5 rounded border transition-colors',
+                  showPlantMap
+                    ? 'bg-[#6C63FF]/20 border-[#6C63FF]/40 text-[#6C63FF]'
+                    : 'border-border text-muted-foreground hover:text-white hover:border-white/30'
+                )}
+              >
+                {showPlantMap ? '閉じる' : '位置を編集'}
+              </button>
+            </div>
+          </div>
+          {showPlantMap && (
+            <RoundPlantPicker
+              mapName={mapName}
+              x={r.plant_x}
+              y={r.plant_y}
+              onPick={onPlantUpdate}
+            />
+          )}
+        </div>
+      )}
 
       {/* VOD タイムスタンプ */}
       <div className="space-y-2 bg-muted/20 border border-border/60 rounded-xl p-3">
@@ -1234,6 +1288,89 @@ function MatchStatsPanel({ rounds, map }: { rounds: Round[]; map: string }) {
           />
         </div>
       )}
+    </div>
+  )
+}
+
+// ── Inline plant position picker for RoundDetailPanel ─────────────────────────
+
+function RoundPlantPicker({
+  mapName, x, y, onPick,
+}: {
+  mapName: string
+  x: number | null
+  y: number | null
+  onPick: (x: number, y: number, site: string | null) => void
+}) {
+  const outerRef = useRef<HTMLDivElement>(null)
+  const [imgError, setImgError] = useState(false)
+  const [hover, setHover] = useState<{ x: number; y: number } | null>(null)
+
+  const mapKey  = normalizeMapKey(mapName)
+  const imgUrl  = MAP_IMAGES[mapKey] ? `/api/map-image?key=${mapKey}` : null
+  const polygons = MAP_POLYGONS[mapKey] ?? {}
+  const rotation = MAP_ROTATION[mapKey] ?? 0
+
+  function screenToMap(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = outerRef.current?.getBoundingClientRect()
+    if (!rect) return null
+    const sx = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+    const sy = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
+    if (!rotation) return { x: sx, y: sy }
+    const θ = rotation * Math.PI / 180
+    const cx = sx - 0.5, cy = sy - 0.5
+    return {
+      x: Math.min(1, Math.max(0, cx * Math.cos(θ) + cy * Math.sin(θ) + 0.5)),
+      y: Math.min(1, Math.max(0, -cx * Math.sin(θ) + cy * Math.cos(θ) + 0.5)),
+    }
+  }
+
+  return (
+    <div
+      ref={outerRef}
+      onClick={e => {
+        const pos = screenToMap(e)
+        if (!pos) return
+        onPick(pos.x, pos.y, detectSite(pos.x, pos.y, polygons))
+      }}
+      onMouseMove={e => { const p = screenToMap(e); setHover(p) }}
+      onMouseLeave={() => setHover(null)}
+      className="relative rounded-xl overflow-hidden border border-[#6C63FF]/50 cursor-crosshair bg-muted"
+      style={{ width: '100%', aspectRatio: '1 / 1' }}
+    >
+      <div
+        className="absolute inset-0"
+        style={rotation ? { transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' } : undefined}
+      >
+        {imgUrl && !imgError ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={imgUrl} alt={mapName}
+            className="w-full h-full object-cover select-none"
+            draggable={false}
+            onError={() => setImgError(true)} />
+        ) : (
+          <div className="w-full h-full bg-muted flex items-center justify-center">
+            <span className="text-xs text-muted-foreground">{mapName}</span>
+          </div>
+        )}
+        <svg className="absolute inset-0 w-full h-full pointer-events-none">
+          {hover && (
+            <g>
+              <line x1={`${hover.x * 100}%`} y1="0" x2={`${hover.x * 100}%`} y2="100%"
+                stroke="#6C63FF" strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 3" />
+              <line x1="0" y1={`${hover.y * 100}%`} x2="100%" y2={`${hover.y * 100}%`}
+                stroke="#6C63FF" strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 3" />
+            </g>
+          )}
+          {x !== null && y !== null && (
+            <circle cx={`${x * 100}%`} cy={`${y * 100}%`} r={6}
+              fill="#6C63FF" fillOpacity={0.95} stroke="white" strokeWidth={1.5} />
+          )}
+        </svg>
+      </div>
+      <div className="absolute bottom-1.5 left-1.5 right-1.5 bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1 text-center pointer-events-none">
+        <span className="text-[10px] text-white">クリックして位置を設定</span>
+      </div>
     </div>
   )
 }
