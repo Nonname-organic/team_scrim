@@ -50,7 +50,7 @@ export const MAP_ROTATION: Record<string, number> = {
   breeze:  0,
   haven:   90,
   icebox:  -90,
-  lotus:   -180,
+  lotus:   180,
   pearl:   0,
   split:   90,
   sunset:  0,
