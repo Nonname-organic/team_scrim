@@ -1304,18 +1304,24 @@ function RoundPlantPicker({
 }) {
   const outerRef = useRef<HTMLDivElement>(null)
   const [imgError, setImgError] = useState(false)
-  const [hover, setHover] = useState<{ x: number; y: number } | null>(null)
+  const [hoverScreen, setHoverScreen] = useState<{ x: number; y: number } | null>(null)
 
-  const mapKey  = normalizeMapKey(mapName)
-  const imgUrl  = MAP_IMAGES[mapKey] ? `/api/map-image?key=${mapKey}` : null
+  const mapKey   = normalizeMapKey(mapName)
+  const imgUrl   = MAP_IMAGES[mapKey] ? `/api/map-image?key=${mapKey}` : null
   const polygons = MAP_POLYGONS[mapKey] ?? {}
   const rotation = MAP_ROTATION[mapKey] ?? 0
 
-  function screenToMap(e: React.MouseEvent<HTMLDivElement>) {
+  function getScreenCoords(e: React.MouseEvent<HTMLDivElement>) {
     const rect = outerRef.current?.getBoundingClientRect()
     if (!rect) return null
-    const sx = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
-    const sy = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
+    return {
+      x: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
+      y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
+    }
+  }
+
+  // 画面座標 → マップ座標
+  function screenToMap(sx: number, sy: number) {
     if (!rotation) return { x: sx, y: sy }
     const θ = rotation * Math.PI / 180
     const cx = sx - 0.5, cy = sy - 0.5
@@ -1325,19 +1331,34 @@ function RoundPlantPicker({
     }
   }
 
+  // マップ座標 → 画面座標（ピン表示用）
+  function toScreenPos(mx: number, my: number) {
+    if (!rotation) return { x: mx, y: my }
+    const θ = rotation * Math.PI / 180
+    const cx = mx - 0.5, cy = my - 0.5
+    return {
+      x: cx * Math.cos(θ) - cy * Math.sin(θ) + 0.5,
+      y: cx * Math.sin(θ) + cy * Math.cos(θ) + 0.5,
+    }
+  }
+
+  const pinScreen = x !== null && y !== null ? toScreenPos(x, y) : null
+
   return (
     <div
       ref={outerRef}
       onClick={e => {
-        const pos = screenToMap(e)
-        if (!pos) return
-        onPick(pos.x, pos.y, detectSite(pos.x, pos.y, polygons))
+        const sc = getScreenCoords(e)
+        if (!sc) return
+        const mp = screenToMap(sc.x, sc.y)
+        onPick(mp.x, mp.y, detectSite(mp.x, mp.y, polygons))
       }}
-      onMouseMove={e => { const p = screenToMap(e); setHover(p) }}
-      onMouseLeave={() => setHover(null)}
+      onMouseMove={e => setHoverScreen(getScreenCoords(e))}
+      onMouseLeave={() => setHoverScreen(null)}
       className="relative rounded-xl overflow-hidden border border-[#6C63FF]/50 cursor-crosshair bg-muted"
       style={{ width: '100%', aspectRatio: '1 / 1' }}
     >
+      {/* 回転 div: 画像のみ */}
       <div
         className="absolute inset-0"
         style={rotation ? { transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' } : undefined}
@@ -1353,21 +1374,24 @@ function RoundPlantPicker({
             <span className="text-xs text-muted-foreground">{mapName}</span>
           </div>
         )}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none">
-          {hover && (
-            <g>
-              <line x1={`${hover.x * 100}%`} y1="0" x2={`${hover.x * 100}%`} y2="100%"
-                stroke="#6C63FF" strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 3" />
-              <line x1="0" y1={`${hover.y * 100}%`} x2="100%" y2={`${hover.y * 100}%`}
-                stroke="#6C63FF" strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 3" />
-            </g>
-          )}
-          {x !== null && y !== null && (
-            <circle cx={`${x * 100}%`} cy={`${y * 100}%`} r={6}
-              fill="#6C63FF" fillOpacity={0.95} stroke="white" strokeWidth={1.5} />
-          )}
-        </svg>
       </div>
+
+      {/* SVG は回転 div の外 — ピンと十字線が回転しない */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none">
+        {hoverScreen && (
+          <g>
+            <line x1={`${hoverScreen.x * 100}%`} y1="0" x2={`${hoverScreen.x * 100}%`} y2="100%"
+              stroke="#6C63FF" strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 3" />
+            <line x1="0" y1={`${hoverScreen.y * 100}%`} x2="100%" y2={`${hoverScreen.y * 100}%`}
+              stroke="#6C63FF" strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 3" />
+          </g>
+        )}
+        {pinScreen && (
+          <circle cx={`${pinScreen.x * 100}%`} cy={`${pinScreen.y * 100}%`} r={6}
+            fill="#6C63FF" fillOpacity={0.95} stroke="white" strokeWidth={1.5} />
+        )}
+      </svg>
+
       <div className="absolute bottom-1.5 left-1.5 right-1.5 bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1 text-center pointer-events-none">
         <span className="text-[10px] text-white">クリックして位置を設定</span>
       </div>
