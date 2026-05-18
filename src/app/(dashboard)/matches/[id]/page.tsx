@@ -914,8 +914,10 @@ export default function MatchDetailPage() {
                     mapName={mapName}
                     imgUrl={imgUrl}
                     roundNumber={pr.round_number}
+                    currentX={pr.plant_x}
+                    currentY={pr.plant_y}
                     existingDots={editRounds
-                      .filter(r => r.plant_x != null && r.plant_y != null)
+                      .filter((r, i) => i !== plantEditIdx && r.plant_x != null && r.plant_y != null)
                       .map(r => ({ x: r.plant_x!, y: r.plant_y!, win: r.result === 'win' }))}
                     onClose={() => setPlantEditIdx(null)}
                     onPick={(x, y) => {
@@ -952,18 +954,44 @@ export default function MatchDetailPage() {
 
 // ── Inline map picker for edit mode ──
 function InlineMapPicker({
-  mapName, imgUrl, roundNumber, existingDots, onClose, onPick,
+  mapName, imgUrl, roundNumber, currentX, currentY, existingDots, onClose, onPick,
 }: {
   mapName: string
   imgUrl: string | null
   roundNumber: number
+  currentX?: number | null
+  currentY?: number | null
   existingDots: { x: number; y: number; win: boolean }[]
   onClose: () => void
   onPick: (x: number, y: number) => void
 }) {
   const [imgError, setImgError] = useState(false)
-  const [mouse, setMouse] = useState<{ x: number; y: number } | null>(null)
+  const [hoverScreen, setHoverScreen] = useState<{ x: number; y: number } | null>(null)
   const rotation = MAP_ROTATION[normalizeMapKey(mapName)] ?? 0
+
+  function toScreenPos(mx: number, my: number) {
+    if (!rotation) return { x: mx, y: my }
+    const θ = rotation * Math.PI / 180
+    const cx = mx - 0.5, cy = my - 0.5
+    return {
+      x: cx * Math.cos(θ) - cy * Math.sin(θ) + 0.5,
+      y: cx * Math.sin(θ) + cy * Math.cos(θ) + 0.5,
+    }
+  }
+
+  function screenToMap(sx: number, sy: number) {
+    if (!rotation) return { x: sx, y: sy }
+    const θ = rotation * Math.PI / 180
+    const cx = sx - 0.5, cy = sy - 0.5
+    return {
+      x:  cx * Math.cos(θ) + cy * Math.sin(θ) + 0.5,
+      y: -cx * Math.sin(θ) + cy * Math.cos(θ) + 0.5,
+    }
+  }
+
+  const currentScreen = currentX != null && currentY != null
+    ? toScreenPos(currentX, currentY)
+    : null
 
   return (
     <div className="border-t border-border/60 px-4 py-3 space-y-2">
@@ -980,50 +1008,70 @@ function InlineMapPicker({
         style={{ width: '100%', maxWidth: 320, aspectRatio: '1 / 1' }}
         onClick={e => {
           const rect = e.currentTarget.getBoundingClientRect()
-          onPick(
-            Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
-            Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
-          )
+          const sx = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
+          const sy = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height))
+          const { x, y } = screenToMap(sx, sy)
+          onPick(x, y)
         }}
         onMouseMove={e => {
           const rect = e.currentTarget.getBoundingClientRect()
-          setMouse({
+          setHoverScreen({
             x: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
             y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
           })
         }}
-        onMouseLeave={() => setMouse(null)}
+        onMouseLeave={() => setHoverScreen(null)}
       >
-        {imgUrl && !imgError ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={imgUrl} alt={mapName}
-            className="w-full h-full object-cover select-none"
-            draggable={false}
-            onError={() => setImgError(true)}
-            style={rotation ? { transform: `rotate(${rotation}deg)` } : undefined}
-          />
-        ) : (
-          <div className="w-full h-full bg-muted flex flex-col items-center justify-center gap-1">
-            <span className="text-muted-foreground text-sm">{mapName}</span>
-            {imgError && <span className="text-muted-foreground/50 text-[10px]">画像を読み込めません</span>}
-          </div>
-        )}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none">
-          {existingDots.map((d, i) => (
-            <circle key={i}
-              cx={`${d.x * 100}%`} cy={`${d.y * 100}%`}
-              r={3} fill={d.win ? '#00D4A0' : '#FF4655'} fillOpacity={0.85}
-              stroke="rgba(0,0,0,0.4)" strokeWidth={0.8}
+        <div
+          className="w-full h-full"
+          style={rotation ? { transform: `rotate(${rotation}deg)` } : undefined}
+        >
+          {imgUrl && !imgError ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={imgUrl} alt={mapName}
+              className="w-full h-full object-cover select-none"
+              draggable={false}
+              onError={() => setImgError(true)}
             />
-          ))}
-          {mouse && (
+          ) : (
+            <div className="w-full h-full bg-muted flex flex-col items-center justify-center gap-1">
+              <span className="text-muted-foreground text-sm">{mapName}</span>
+              {imgError && <span className="text-muted-foreground/50 text-[10px]">画像を読み込めません</span>}
+            </div>
+          )}
+        </div>
+        <svg className="absolute inset-0 w-full h-full pointer-events-none">
+          {existingDots.map((d, i) => {
+            const s = toScreenPos(d.x, d.y)
+            return (
+              <circle key={i}
+                cx={`${s.x * 100}%`} cy={`${s.y * 100}%`}
+                r={3} fill={d.win ? '#00D4A0' : '#FF4655'} fillOpacity={0.85}
+                stroke="rgba(0,0,0,0.4)" strokeWidth={0.8}
+              />
+            )
+          })}
+          {currentScreen && (
             <g>
-              <line x1={`${mouse.x * 100}%`} y1="0" x2={`${mouse.x * 100}%`} y2="100%"
+              <circle
+                cx={`${currentScreen.x * 100}%`} cy={`${currentScreen.y * 100}%`}
+                r={10} fill="#FF4655" fillOpacity={0.9} stroke="white" strokeWidth={1.5}
+              />
+              <text
+                x={`${currentScreen.x * 100}%`} y={`${currentScreen.y * 100}%`}
+                textAnchor="middle" dominantBaseline="central"
+                fill="white" fontSize={9} fontWeight="bold"
+              >{roundNumber}</text>
+            </g>
+          )}
+          {hoverScreen && (
+            <g>
+              <line x1={`${hoverScreen.x * 100}%`} y1="0" x2={`${hoverScreen.x * 100}%`} y2="100%"
                 stroke="#FF4655" strokeWidth="0.6" strokeOpacity="0.5" strokeDasharray="4 4" />
-              <line x1="0" y1={`${mouse.y * 100}%`} x2="100%" y2={`${mouse.y * 100}%`}
+              <line x1="0" y1={`${hoverScreen.y * 100}%`} x2="100%" y2={`${hoverScreen.y * 100}%`}
                 stroke="#FF4655" strokeWidth="0.6" strokeOpacity="0.5" strokeDasharray="4 4" />
-              <circle cx={`${mouse.x * 100}%`} cy={`${mouse.y * 100}%`}
+              <circle cx={`${hoverScreen.x * 100}%`} cy={`${hoverScreen.y * 100}%`}
                 r={3} fill="#FF4655" fillOpacity={0.9} stroke="white" strokeWidth={0.8} />
             </g>
           )}
