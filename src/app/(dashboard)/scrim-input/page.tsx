@@ -991,9 +991,11 @@ function InlineMapPin({ mapName, x, y, roundNumber, onPinSet }: {
           {hoverScreen && (
             <g>
               <line x1={`${hoverScreen.x * 100}%`} y1="0" x2={`${hoverScreen.x * 100}%`} y2="100%"
-                stroke="#FF4655" strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 3" />
+                stroke="#FF4655" strokeWidth="0.6" strokeOpacity="0.5" strokeDasharray="4 4" />
               <line x1="0" y1={`${hoverScreen.y * 100}%`} x2="100%" y2={`${hoverScreen.y * 100}%`}
-                stroke="#FF4655" strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 3" />
+                stroke="#FF4655" strokeWidth="0.6" strokeOpacity="0.5" strokeDasharray="4 4" />
+              <circle cx={`${hoverScreen.x * 100}%`} cy={`${hoverScreen.y * 100}%`}
+                r={3} fill="#FF4655" fillOpacity={0.9} stroke="white" strokeWidth={0.8} />
             </g>
           )}
           {pinScreen && (
