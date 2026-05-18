@@ -1355,7 +1355,7 @@ function RoundPlantPicker({
       }}
       onMouseMove={e => setHoverScreen(getScreenCoords(e))}
       onMouseLeave={() => setHoverScreen(null)}
-      className="relative rounded-xl overflow-hidden border border-[#6C63FF]/50 cursor-crosshair bg-muted"
+      className="relative rounded-xl overflow-hidden border border-[#6C63FF]/50 cursor-none bg-muted"
       style={{ width: '100%', aspectRatio: '1 / 1' }}
     >
       {/* 回転 div: 画像のみ */}
@@ -1381,9 +1381,11 @@ function RoundPlantPicker({
         {hoverScreen && (
           <g>
             <line x1={`${hoverScreen.x * 100}%`} y1="0" x2={`${hoverScreen.x * 100}%`} y2="100%"
-              stroke="#6C63FF" strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 3" />
+              stroke="#6C63FF" strokeWidth="0.6" strokeOpacity="0.5" strokeDasharray="4 4" />
             <line x1="0" y1={`${hoverScreen.y * 100}%`} x2="100%" y2={`${hoverScreen.y * 100}%`}
-              stroke="#6C63FF" strokeWidth="0.8" strokeOpacity="0.5" strokeDasharray="3 3" />
+              stroke="#6C63FF" strokeWidth="0.6" strokeOpacity="0.5" strokeDasharray="4 4" />
+            <circle cx={`${hoverScreen.x * 100}%`} cy={`${hoverScreen.y * 100}%`}
+              r={3} fill="#6C63FF" fillOpacity={0.9} stroke="white" strokeWidth={0.8} />
           </g>
         )}
         {pinScreen && (
