@@ -965,7 +965,7 @@ function InlineMapPin({ mapName, x, y, roundNumber, onPinSet }: {
         }}
         onMouseMove={e => setHoverScreen(getScreenCoords(e))}
         onMouseLeave={() => setHoverScreen(null)}
-        className="relative rounded-xl overflow-hidden border border-[#FF4655]/50 cursor-crosshair flex-shrink-0 bg-muted"
+        className="relative rounded-xl overflow-hidden border border-[#FF4655]/50 cursor-none flex-shrink-0 bg-muted"
         style={{ width: 320, height: 320 }}
       >
         {/* 回転 div: 画像のみ */}
