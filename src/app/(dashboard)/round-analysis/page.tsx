@@ -642,7 +642,7 @@ export default function RoundAnalysisPage() {
             <div>{t('common.opponent')}</div><div>{t('common.map')}</div>
             <div className="text-center">{t('common.score')}</div>
             <div className="text-center">ATK%</div>
-            <div className="text-right">{t('common.date')}</div>
+            <div className="text-right pr-3">{t('common.date')}</div>
             <div />
           </div>
           {filteredMatches.map(m => {
@@ -678,7 +678,7 @@ export default function RoundAnalysisPage() {
                   <button className={cn('text-center text-xs font-semibold', atkPct !== null ? (atkPct >= 50 ? 'text-[#00D4A0]' : 'text-[#FF4655]') : 'text-muted-foreground')} onClick={() => enterAnalysis(m)}>
                     {atkPct !== null ? `${atkPct}%` : '--'}
                   </button>
-                  <button className="text-right text-xs text-muted-foreground" onClick={() => enterAnalysis(m)}>
+                  <button className="text-right text-xs text-muted-foreground pr-3" onClick={() => enterAnalysis(m)}>
                     {new Date(m.match_date).toLocaleDateString('ja-JP')}
                   </button>
                   {/* Actions */}
