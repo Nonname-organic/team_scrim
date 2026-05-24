@@ -1,36 +1,21 @@
 'use client'
 
-import { useState } from 'react'
-import { X, Check, Minus, Zap, Loader2, AlertCircle, Clock } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { X, Check, Minus, Zap, AlertCircle, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePlan } from '@/contexts/PlanContext'
 import { PLANS, PLAN_FEATURES, PAYMENTS_ENABLED, type Plan } from '@/lib/plans'
 
 export function UpgradeModal() {
   const { plan, upgradeOpen, upgradeTrigger, hideUpgrade } = usePlan()
-  const [upgrading, setUpgrading] = useState<Plan | null>(null)
-  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   if (!upgradeOpen) return null
 
   async function handleUpgrade(targetPlan: Plan) {
     if (targetPlan === 'free' || targetPlan === plan) return
-    setUpgrading(targetPlan)
-    setError(null)
-    try {
-      const res  = await fetch('/api/upgrade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan: targetPlan }),
-      })
-      const json = await res.json()
-      if (!res.ok) { setError(json.error ?? 'エラーが発生しました'); return }
-      if (json.url) window.location.href = json.url
-    } catch (e) {
-      setError(String(e))
-    } finally {
-      setUpgrading(null)
-    }
+    router.push(`/pricing`)
+    hideUpgrade()
   }
 
   return (
@@ -89,7 +74,6 @@ export function UpgradeModal() {
             {PLANS.map(p => {
               const isCurrent = p.id === plan
               const isPopular = p.id === 'pro'
-              const isUpgrading = upgrading === p.id
 
               return (
                 <div
@@ -121,7 +105,7 @@ export function UpgradeModal() {
 
                   <div className="mb-1">
                     <span className="text-2xl font-black text-white">{p.priceLabel}</span>
-                    {p.price > 0 && <span className="text-xs text-muted-foreground">/月</span>}
+                    {p.price > 0 && <span className="text-xs text-muted-foreground">/月〜</span>}
                   </div>
                   <div className="text-[10px] text-muted-foreground mb-4">{p.tagline}</div>
 
@@ -139,17 +123,14 @@ export function UpgradeModal() {
                     ) : (
                       <button
                         onClick={() => handleUpgrade(p.id)}
-                        disabled={!!upgrading}
                         className={cn(
-                          'w-full text-xs font-bold rounded-lg py-2 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50',
+                          'w-full text-xs font-bold rounded-lg py-2 transition-all flex items-center justify-center gap-1.5',
                           p.id === 'pro'
                             ? 'bg-[#FFD700] hover:bg-[#FFD700]/80 text-black'
                             : 'bg-[#3B82F6] hover:bg-[#3B82F6]/80 text-white'
                         )}
                       >
-                        {isUpgrading
-                          ? <><Loader2 className="w-3 h-3 animate-spin" /> 処理中...</>
-                          : <><Zap className="w-3 h-3" /> アップグレード</>}
+                        <Zap className="w-3 h-3" /> アップグレード
                       </button>
                     )}
                   </div>
@@ -157,12 +138,6 @@ export function UpgradeModal() {
               )
             })}
           </div>
-
-          {error && (
-            <div className="mb-4 text-xs text-[#FF4655] bg-[#FF4655]/10 border border-[#FF4655]/20 rounded-lg px-3 py-2">
-              {error}
-            </div>
-          )}
 
           {/* Feature comparison */}
           <div className="border border-border rounded-xl overflow-hidden">

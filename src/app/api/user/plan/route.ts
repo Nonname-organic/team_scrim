@@ -7,6 +7,7 @@ interface UserTeamRow {
   plan: Plan
   ai_usage_count: number
   ai_usage_reset_at: string
+  plan_expires_at: string | null
 }
 
 export async function GET() {
@@ -14,16 +15,29 @@ export async function GET() {
   if (!auth) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const row = await queryOne<UserTeamRow>(
-    `SELECT plan, ai_usage_count, ai_usage_reset_at
+    `SELECT plan, ai_usage_count, ai_usage_reset_at, plan_expires_at
      FROM user_teams WHERE user_id = $1 AND team_id = $2`,
     [auth.userId, auth.teamId]
   )
 
-  const plan: Plan = row?.plan ?? 'free'
+  let plan: Plan = row?.plan ?? 'free'
+  let usageCount = row?.ai_usage_count ?? 0
+
+  // Expire one-time plans past their end date
+  if (plan !== 'free' && row?.plan_expires_at) {
+    if (new Date(row.plan_expires_at) < new Date()) {
+      await queryOne(
+        `UPDATE user_teams SET plan = 'free', plan_expires_at = NULL
+         WHERE user_id = $1 AND team_id = $2`,
+        [auth.userId, auth.teamId]
+      )
+      plan = 'free'
+    }
+  }
+
   const limits = PLAN_LIMITS[plan]
 
   // Reset monthly usage if needed
-  let usageCount = row?.ai_usage_count ?? 0
   if (row?.ai_usage_reset_at) {
     const resetAt = new Date(row.ai_usage_reset_at)
     const now = new Date()

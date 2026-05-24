@@ -23,18 +23,34 @@ export async function POST(req: NextRequest) {
   switch (event.type) {
     case 'checkout.session.completed': {
       const session = event.data.object as Stripe.Checkout.Session
-      const { user_id, team_id, plan } = session.metadata ?? {}
+      const { user_id, team_id, plan, months, payment_mode } = session.metadata ?? {}
       if (!user_id || !team_id || !plan) break
 
-      await query(
-        `UPDATE user_teams
-         SET plan = $1,
-             stripe_customer_id = $2,
-             stripe_subscription_id = $3,
-             plan_expires_at = NULL
-         WHERE user_id = $4 AND team_id = $5`,
-        [plan, session.customer, session.subscription, user_id, team_id]
-      )
+      if (payment_mode === 'onetime') {
+        const numMonths = parseInt(months ?? '1', 10)
+        const expiresAt = new Date()
+        expiresAt.setMonth(expiresAt.getMonth() + numMonths)
+        await query(
+          `UPDATE user_teams
+           SET plan = $1,
+               stripe_customer_id = $2,
+               stripe_subscription_id = NULL,
+               plan_expires_at = $3
+           WHERE user_id = $4 AND team_id = $5`,
+          [plan, session.customer, expiresAt.toISOString(), user_id, team_id]
+        )
+      } else {
+        // subscription
+        await query(
+          `UPDATE user_teams
+           SET plan = $1,
+               stripe_customer_id = $2,
+               stripe_subscription_id = $3,
+               plan_expires_at = NULL
+           WHERE user_id = $4 AND team_id = $5`,
+          [plan, session.customer, session.subscription, user_id, team_id]
+        )
+      }
       break
     }
 

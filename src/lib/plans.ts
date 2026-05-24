@@ -126,3 +126,43 @@ export function planRank(plan: Plan): number {
 export function meetsRequirement(userPlan: Plan, requiredPlan: Plan): boolean {
   return planRank(userPlan) >= planRank(requiredPlan)
 }
+
+// ── Payment methods ──────────────────────────────────────────────────────────
+
+export type PaymentMethod = 'card_subscription' | 'card' | 'paypay' | 'konbini' | 'bank_transfer'
+
+export interface PaymentMethodConfig {
+  id: PaymentMethod
+  label: string
+  sublabel: string
+  recurring: boolean
+  available: boolean   // false = 準備中
+}
+
+export const PAYMENT_METHODS: PaymentMethodConfig[] = [
+  { id: 'card_subscription', label: 'クレジットカード', sublabel: '月次自動更新',    recurring: true,  available: true  },
+  { id: 'card',              label: 'クレジットカード', sublabel: '一括払い',         recurring: false, available: true  },
+  { id: 'paypay',            label: 'PayPay',           sublabel: '一括払い',         recurring: false, available: true  },
+  { id: 'konbini',           label: 'コンビニ払い',     sublabel: '一括払い',         recurring: false, available: true  },
+  { id: 'bank_transfer',     label: '銀行振り込み',     sublabel: '一括払い（3〜5営業日）', recurring: false, available: true  },
+]
+
+// Placeholder for WebMoney — needs KOMOJU integration
+export const WEBMONEY_AVAILABLE = false
+
+export interface BillingPeriod {
+  months: number
+  label: string
+  discount: number  // percent off
+}
+
+export const BILLING_PERIODS: BillingPeriod[] = [
+  { months: 1,  label: '1ヶ月',  discount: 0  },
+  { months: 6,  label: '6ヶ月',  discount: 5  },
+  { months: 12, label: '12ヶ月', discount: 10 },
+]
+
+export function calcAmount(planPrice: number, months: number): number {
+  const period = BILLING_PERIODS.find(p => p.months === months) ?? BILLING_PERIODS[0]
+  return Math.floor(planPrice * months * (1 - period.discount / 100))
+}
