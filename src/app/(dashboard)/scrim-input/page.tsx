@@ -289,7 +289,11 @@ export default function ScrimInputPage() {
     setError(null)
 
     const playersPayload = rows
-      .filter(r => r.player_id)
+      .filter(r =>
+        r.player_id &&
+        // 何も入力されていない事前埋め選手は除外
+        (r.agent !== '' || r.kills !== '' || r.deaths !== '' || r.assists !== '' || r.acs !== '')
+      )
       .map(r => ({
         player_id: r.player_id,
         ign: players.find(p => p.id === r.player_id)?.ign ?? '',
