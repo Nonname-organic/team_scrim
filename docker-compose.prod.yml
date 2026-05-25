@@ -1,0 +1,33 @@
+# ── 本番自己ホスト用 ──────────────────────────────────────────────────────────
+# 使い方: docker compose -f docker-compose.prod.yml up -d --build
+# 本番 DB は Supabase（外部）を使用
+# 事前に .env.production を作成しておくこと
+
+services:
+  app:
+    build:
+      context: .
+      target: runner        # 最適化済み standalone ビルド
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.production     # 本番環境変数（Git 管理外）
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/api/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Nginx リバースプロキシ（HTTPS 対応する場合に使用）
+  # nginx:
+  #   image: nginx:alpine
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+  #     - ./nginx/certs:/etc/nginx/certs:ro
+  #   depends_on:
+  #     - app
+  #   restart: unless-stopped

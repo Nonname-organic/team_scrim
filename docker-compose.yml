@@ -1,0 +1,47 @@
+# ── 開発環境 ──────────────────────────────────────────────────────────────────
+# 使い方: docker compose up
+# Next.js は hot reload、DB はローカル PostgreSQL を使用
+# 初回: docker compose up --build
+
+services:
+  app:
+    build:
+      context: .
+      target: deps          # node_modules だけインストール済みのステージを使用
+    command: npm run dev
+    volumes:
+      - .:/app              # ソースをマウント → hot reload 有効
+      - /app/node_modules   # コンテナ内の node_modules を上書きしない
+      - /app/.next          # .next キャッシュ保持
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env.local          # 共通の API キー等を読み込む
+    environment:
+      # ローカル DB に上書き（.env.local の DATABASE_URL を無視）
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/scrim_dev
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB:       scrim_dev
+    ports:
+      - "5432:5432"         # ローカルから直接接続可（TablePlus 等）
+    volumes:
+      - postgres_dev_data:/var/lib/postgresql/data
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d scrim_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  postgres_dev_data:
