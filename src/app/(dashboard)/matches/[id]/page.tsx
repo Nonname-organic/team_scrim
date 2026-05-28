@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, Fragment } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Shield, Crosshair, Pencil, Save, X, Plus, Trash2, MapPin, Flag, Bookmark, Check } from 'lucide-react'
+import { ArrowLeft, Shield, Crosshair, Pencil, Save, X, Plus, Trash2, MapPin, Flag, Bookmark } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AGENTS } from '@/types'
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
@@ -66,8 +66,6 @@ export default function MatchDetailPage() {
   const [editPlayers, setEditPlayers] = useState<PEdit[]>([])
   const [editRounds, setEditRounds] = useState<REdit[]>([])
   const [editDate, setEditDate] = useState('')
-  const [dateEditMode, setDateEditMode] = useState(false)
-  const [dateSaving, setDateSaving] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [roundSaveError, setRoundSaveError] = useState<string | null>(null)
@@ -109,28 +107,6 @@ export default function MatchDetailPage() {
   const defenseWins = Number(match.defense_rounds_won ?? 0)
   const defenseTotal = Number(match.defense_rounds_played ?? 0)
   const totalRounds = Number(match.team_score ?? 0) + Number(match.opponent_score ?? 0)
-
-  async function saveDateInline() {
-    if (!editDate) return
-    setDateSaving(true)
-    try {
-      await fetch(`/api/matches/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ match_date: editDate }),
-      })
-      const j = await fetch(`/api/matches/${id}`).then(r => r.json())
-      setData(j.data)
-      setEditDate(String(j.data?.match?.match_date ?? '').slice(0, 10))
-    } catch {}
-    setDateSaving(false)
-    setDateEditMode(false)
-  }
-
-  function cancelDateEdit() {
-    setEditDate(String(match.match_date ?? '').slice(0, 10))
-    setDateEditMode(false)
-  }
 
   function enterEdit() {
     setSaveError(null)
@@ -313,42 +289,8 @@ export default function MatchDetailPage() {
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div>
-          <div className="text-xs text-muted-foreground flex items-center gap-1.5">
-              {dateEditMode ? (
-                <>
-                  <input
-                    type="date"
-                    value={editDate}
-                    onChange={e => setEditDate(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') saveDateInline(); if (e.key === 'Escape') cancelDateEdit() }}
-                    autoFocus
-                    className="bg-muted border border-[#FF4655] rounded px-2 py-0.5 text-xs text-white outline-none"
-                  />
-                  <button
-                    onClick={saveDateInline}
-                    disabled={dateSaving}
-                    className="p-0.5 rounded text-[#00D4A0] hover:bg-[#00D4A0]/10 transition-colors disabled:opacity-50"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={cancelDateEdit}
-                    className="p-0.5 rounded text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setDateEditMode(true)}
-                  className="flex items-center gap-1 group hover:text-white transition-colors"
-                  title="日付を編集"
-                >
-                  <span>{matchDate}</span>
-                  <Pencil className="w-2.5 h-2.5 opacity-0 group-hover:opacity-60 transition-opacity" />
-                </button>
-              )}
-              <span>· {String(match.map)} · {String(match.match_type)}</span>
+          <div className="text-xs text-muted-foreground">
+              {matchDate} · {String(match.map)} · {String(match.match_type)}
             </div>
           <h1 className="text-xl font-bold text-white mt-0.5">
             VS <span style={{ color: resultColor }}>{String(match.opponent_name)}</span>
@@ -442,6 +384,17 @@ export default function MatchDetailPage() {
               </div>
             )}
           </div>
+          {editMode && (
+            <div className="px-5 py-3 border-b border-border flex items-center gap-3">
+              <label className="text-xs text-muted-foreground whitespace-nowrap">試合日付</label>
+              <input
+                type="date"
+                value={editDate}
+                onChange={e => setEditDate(e.target.value)}
+                className="bg-muted border border-border rounded px-2 py-1 text-xs text-white focus:border-[#FF4655] outline-none"
+              />
+            </div>
+          )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
