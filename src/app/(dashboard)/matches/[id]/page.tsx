@@ -75,7 +75,11 @@ export default function MatchDetailPage() {
   useEffect(() => {
     fetch(`/api/matches/${id}`)
       .then(r => r.json())
-      .then(j => { setData(j.data); setLoading(false) })
+      .then(j => {
+        setData(j.data)
+        setEditDate(String(j.data?.match?.match_date ?? '').slice(0, 10))
+        setLoading(false)
+      })
       .catch(() => setLoading(false))
   }, [id])
 
@@ -103,6 +107,21 @@ export default function MatchDetailPage() {
   const defenseWins = Number(match.defense_rounds_won ?? 0)
   const defenseTotal = Number(match.defense_rounds_played ?? 0)
   const totalRounds = Number(match.team_score ?? 0) + Number(match.opponent_score ?? 0)
+
+  async function saveDateInline(newDate: string) {
+    if (!newDate) return
+    const current = String(match.match_date ?? '').slice(0, 10)
+    if (newDate === current) return
+    try {
+      await fetch(`/api/matches/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ match_date: newDate }),
+      })
+      const j = await fetch(`/api/matches/${id}`).then(r => r.json())
+      setData(j.data)
+    } catch {}
+  }
 
   function enterEdit() {
     setSaveError(null)
@@ -285,7 +304,16 @@ export default function MatchDetailPage() {
           <ArrowLeft className="w-4 h-4" />
         </button>
         <div>
-          <div className="text-xs text-muted-foreground">{matchDate} · {String(match.map)} · {String(match.match_type)}</div>
+          <div className="text-xs text-muted-foreground flex items-center gap-1">
+              <input
+                type="date"
+                value={editDate}
+                onChange={e => setEditDate(e.target.value)}
+                onBlur={e => saveDateInline(e.target.value)}
+                className="bg-transparent border-b border-transparent hover:border-border focus:border-[#FF4655] text-xs text-muted-foreground outline-none cursor-pointer w-28"
+              />
+              <span>· {String(match.map)} · {String(match.match_type)}</span>
+            </div>
           <h1 className="text-xl font-bold text-white mt-0.5">
             VS <span style={{ color: resultColor }}>{String(match.opponent_name)}</span>
           </h1>
@@ -378,17 +406,6 @@ export default function MatchDetailPage() {
               </div>
             )}
           </div>
-          {editMode && (
-            <div className="px-5 py-3 border-b border-border flex items-center gap-3">
-              <label className="text-xs text-muted-foreground whitespace-nowrap">{t('matches.matchDateEdit')}</label>
-              <input
-                type="date"
-                value={editDate}
-                onChange={e => setEditDate(e.target.value)}
-                className="bg-muted border border-border rounded px-2 py-1 text-xs text-white focus:border-[#FF4655] outline-none"
-              />
-            </div>
-          )}
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
