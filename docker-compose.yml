@@ -3,6 +3,8 @@
 # Next.js は hot reload、DB はローカル PostgreSQL を使用
 # 初回: docker compose up --build
 
+name: axelia-dev
+
 services:
   app:
     build:
@@ -35,7 +37,7 @@ services:
       - "5432:5432"         # ローカルから直接接続可（TablePlus 等）
     volumes:
       - postgres_dev_data:/var/lib/postgresql/data
-      - ./sql/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./sql/docker-init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d scrim_dev"]
       interval: 5s

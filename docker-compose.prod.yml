@@ -3,6 +3,8 @@
 # 本番 DB は Supabase（外部）を使用
 # 事前に .env.production を作成しておくこと
 
+name: axelia-prod
+
 services:
   app:
     build:

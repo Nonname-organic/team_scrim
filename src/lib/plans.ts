@@ -40,7 +40,7 @@ export const PLAN_LIMITS: Record<Plan, PlanLimits> = {
     style_diagnosis: true,
   },
   team: {
-    ai_feedback_monthly: null,
+    ai_feedback_monthly: 40,
     round_preview_limit: null,
     vod_analysis: true,
     advanced_filters: true,
