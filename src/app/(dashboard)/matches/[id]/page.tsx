@@ -347,7 +347,7 @@ export default function MatchDetailPage() {
               className="flex items-center gap-1.5 mt-1 group text-muted-foreground hover:text-white transition-colors"
             >
               <Calendar className="w-3 h-3" />
-              <span className="text-sm">{matchDate}</span>
+              <span className="text-base font-medium text-white">{matchDate}</span>
               <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-60 transition-opacity" />
             </button>
           )}
