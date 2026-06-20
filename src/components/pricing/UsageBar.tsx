@@ -2,10 +2,12 @@
 
 import { cn } from '@/lib/utils'
 import { usePlan } from '@/contexts/PlanContext'
+import { PAYMENTS_ENABLED, AI_ENABLED } from '@/lib/plans'
 
 export function AIUsageBar({ className }: { className?: string }) {
   const { plan, aiUsageCount, aiUsageLimit, showUpgrade } = usePlan()
 
+  if (!PAYMENTS_ENABLED || !AI_ENABLED) return null
   if (aiUsageLimit === null) return null // unlimited → don't show
 
   const pct = Math.min(100, Math.round((aiUsageCount / aiUsageLimit) * 100))

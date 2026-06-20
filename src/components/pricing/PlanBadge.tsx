@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import type { Plan } from '@/lib/plans'
+import { PAYMENTS_ENABLED, type Plan } from '@/lib/plans'
 
 const CFG: Record<Plan, { label: string; color: string; bg: string; border: string }> = {
   free: {
@@ -33,6 +33,7 @@ export function PlanBadge({
   size?: 'xs' | 'sm'
   className?: string
 }) {
+  if (!PAYMENTS_ENABLED) return null
   const cfg = CFG[plan]
   return (
     <span
