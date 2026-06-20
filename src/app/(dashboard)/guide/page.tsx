@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import {
   ChevronDown, ChevronUp, BookOpen, ClipboardEdit, Lightbulb,
-  BarChart2, Bot, AlertTriangle, CheckCircle2, Info, Crosshair,
+  BarChart2, AlertTriangle, CheckCircle2, Info, Crosshair,
   Shield, Zap, TrendingUp, Target, Flag, HelpCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -202,14 +202,12 @@ function getContent(locale: string) {
       { id: 'input',    label: 'Entering Match Data',  icon: ClipboardEdit },
       { id: 'terms',    label: 'Terminology',           icon: HelpCircle },
       { id: 'analysis', label: 'Reading Analysis',     icon: BarChart2 },
-      { id: 'ai',       label: 'AI Feedback',           icon: Bot },
       { id: 'mistakes', label: 'Common Mistakes',      icon: AlertTriangle },
     ] : [
       { id: 'intro',    label: 'はじめに',         icon: BookOpen },
       { id: 'input',    label: 'スクリム入力方法',  icon: ClipboardEdit },
       { id: 'terms',    label: '用語解説',          icon: HelpCircle },
       { id: 'analysis', label: '分析の見方',        icon: BarChart2 },
-      { id: 'ai',       label: 'AIフィードバック',   icon: Bot },
       { id: 'mistakes', label: 'よくあるミス',      icon: AlertTriangle },
     ],
     tocLabel: en ? 'Contents' : '目次',
@@ -222,12 +220,12 @@ function getContent(locale: string) {
         : 'AXELIA Analytics は、スクリム（練習試合）のデータを記録・分析するツールです。試合後にデータを入力するだけで、チームの弱点・強みを数値で把握できます。',
       features: en ? [
         { icon: '📊', title: 'Find Weaknesses with Data', desc: '"Feels like defense is weak" — prove it with data and decide which drills to run first' },
-        { icon: '🤖', title: 'AI Auto-Analysis',          desc: 'AI analyzes your data and generates feedback from a pro-coach perspective' },
         { icon: '📈', title: 'Visualize Growth',          desc: 'Charts update as you play, showing your team\'s improvement at a glance' },
+        { icon: '🗂️', title: 'Record Every Match',        desc: 'Build a data history across scrims so you can compare trends over time' },
       ] : [
         { icon: '📊', title: 'データで弱点を発見', desc: '「なんとなく守りが弱い」をデータで証明し、優先練習メニューを決められる' },
-        { icon: '🤖', title: 'AIが自動で分析',     desc: '入力したデータをAIが分析し、プロコーチ視点でフィードバックを生成' },
         { icon: '📈', title: '成長が可視化',        desc: '試合を重ねるごとにグラフが更新され、チームの成長が一目でわかる' },
+        { icon: '🗂️', title: '試合記録の蓄積',     desc: 'スクリムのデータを積み重ねることで、長期的なトレンド比較ができる' },
       ],
       whyTitle: en ? 'Why is analysis important?' : 'なぜ分析が重要なのか？',
       whyDesc: en
@@ -541,47 +539,8 @@ function getContent(locale: string) {
         ? 'Start by picking the single worst number and focusing on fixing that. Trying to fix everything at once scatters your practice sessions.'
         : '分析は「一番悪い数字を1つ選んで改善する」ことから始めましょう。全部同時に直そうとすると練習が散漫になります。',
     },
-    ai: {
-      sectionTitle: en ? '⑤ AI Feedback' : '⑤ AIフィードバック',
-      intro: en
-        ? "AI analyzes your round data and generates feedback from a pro-coach perspective. Run it from the 'AI Analysis' button on the match detail page."
-        : 'AIは入力されたラウンドデータを分析し、プロコーチ視点のフィードバックを生成します。試合詳細ページの「AI分析」ボタンから実行できます。',
-      stepsTitle: en ? 'The 7 Items AI Analyzes' : 'AIが分析する7つの項目',
-      steps: en ? [
-        { num: '1', label: 'Intent Assessment',    desc: 'Reads the tactics your team attempted from the data' },
-        { num: '2', label: 'EV Evaluation',        desc: 'Judges whether the tactical choices were rational' },
-        { num: '3', label: 'Breakdown Point',      desc: 'Identifies which round the momentum shifted' },
-        { num: '4', label: 'Cause Separation',     desc: 'Classifies whether the issue was tactical, execution, judgment, or information' },
-        { num: '5', label: 'Reproducibility',      desc: 'Determines whether the win was a fluke or repeatable' },
-        { num: '6', label: 'Improvement Plan',     desc: 'Presents who, when, what, and why something should change' },
-        { num: '7', label: 'Team Rule Creation',   desc: 'Generates reproducible "if~then~" decision rules' },
-      ] : [
-        { num: '1', label: '意図の推測',     desc: 'チームが試みた戦術をデータから読み取ります' },
-        { num: '2', label: '期待値評価',     desc: 'その戦術選択が合理的だったかを判定します' },
-        { num: '3', label: '崩壊点の特定',   desc: '何ラウンド目に流れが変わったかを特定します' },
-        { num: '4', label: '原因分離',       desc: '問題が戦術・実行・判断・情報のどれかを分類します' },
-        { num: '5', label: '再現性評価',     desc: '勝ちが偶然か、再現できるものかを判定します' },
-        { num: '6', label: '改善提案',       desc: '誰が・いつ・何を・なぜ変えるべきかを提示します' },
-        { num: '7', label: 'チームルール化', desc: '「if〜then〜」形式の再現可能なルールを生成します' },
-      ],
-      tip: en
-        ? 'A high AI score does not mean a good match. A low-scoring match with clear improvement areas is often more valuable for the next session.'
-        : 'AIフィードバックは「スコアが高い＝良い試合」ではありません。低いスコアでも「改善策が明確」な試合は次に活かしやすい試合です。',
-      readingTitle: en ? 'How to Read the Feedback' : 'AIフィードバックの読み方',
-      reading: en ? [
-        { color: '#FFD700', icon: '🎯', label: 'Win Factor',        desc: "Captures the essential reason the match was decided in one sentence. The most important part." },
-        { color: '#FF4655', icon: '⚠️', label: 'Breakdown Points',  desc: 'The rounds where momentum shifted and why. Check what caused the collapse at those moments.' },
-        { color: '#6C63FF', icon: '📋', label: 'Improvement Plan',  desc: '"Who, when, what to change" format. Share with the whole team before your next scrim.' },
-        { color: '#FFD700', icon: '📏', label: 'Team Rules',        desc: '"If X then Y" decision principles. Add them to your team rulebook.' },
-      ] : [
-        { color: '#FFD700', icon: '🎯', label: '勝敗要因',   desc: '「この試合が決まった本質的な理由」を1文で表します。一番重要な部分です。' },
-        { color: '#FF4655', icon: '⚠️', label: '崩壊点',     desc: '流れが変わったラウンドと状況。「なぜそのラウンドで崩れたか」を確認しましょう。' },
-        { color: '#6C63FF', icon: '📋', label: '改善提案',   desc: '「誰が・いつ・何を変える」という形式。次のスクリム前に全員で共有してください。' },
-        { color: '#FFD700', icon: '📏', label: 'チームルール', desc: '「もし〜なら〜する」という形式の行動原則。ルールブックに追加していきましょう。' },
-      ],
-    },
     mistakes: {
-      sectionTitle: en ? '⑥ Common Mistakes' : '⑥ よくあるミス',
+      sectionTitle: en ? '⑤ Common Mistakes' : '⑤ よくあるミス',
       intro: en
         ? "Common pitfalls for beginners. Data quality directly affects analysis accuracy — pay attention to input errors."
         : '初心者が特につまずきやすいポイントをまとめました。データの質が分析の精度に直結するため、入力ミスに注意してください。',
@@ -892,43 +851,7 @@ export default function GuidePage() {
         </div>
       </GuideSection>
 
-      {/* ⑤ AI Feedback */}
-      <GuideSection id="ai" icon={Bot} title={c.ai.sectionTitle} color="#6C63FF">
-        <div className="pt-4 space-y-4">
-          <p className="text-sm text-muted-foreground leading-relaxed">{c.ai.intro}</p>
-
-          <div className="rounded-xl bg-[#6C63FF]/8 border border-[#6C63FF]/20 px-4 py-4 space-y-3">
-            <div className="text-xs font-bold text-[#6C63FF] uppercase tracking-wider">{c.ai.stepsTitle}</div>
-            {c.ai.steps.map(item => (
-              <div key={item.num} className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-[#6C63FF]/30 flex items-center justify-center text-[#6C63FF] text-xs font-black flex-shrink-0 mt-0.5">
-                  {item.num}
-                </div>
-                <div>
-                  <span className="text-sm font-bold text-white">{item.label}</span>
-                  <span className="text-xs text-muted-foreground ml-2">{item.desc}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <TipBox type="info">{c.ai.tip}</TipBox>
-
-          <div className="space-y-2">
-            <h3 className="text-sm font-bold text-white">{c.ai.readingTitle}</h3>
-            <div className="space-y-2 text-sm text-muted-foreground">
-              {c.ai.reading.map(item => (
-                <div key={item.label} className="flex items-start gap-2">
-                  <span className="font-bold flex-shrink-0" style={{ color: item.color }}>{item.icon} {item.label}</span>
-                  <span>{item.desc}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </GuideSection>
-
-      {/* ⑥ Common Mistakes */}
+      {/* ⑤ Common Mistakes */}
       <GuideSection id="mistakes" icon={AlertTriangle} title={c.mistakes.sectionTitle} color="#FF8C42">
         <div className="pt-4 space-y-3">
           <p className="text-sm text-muted-foreground pb-1">{c.mistakes.intro}</p>

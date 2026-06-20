@@ -10,10 +10,7 @@ import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSele
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
 import { detectSite } from '@/lib/geometry'
 import { useAuth } from '@/contexts/AuthContext'
-import { usePlan } from '@/contexts/PlanContext'
 import { useRouter } from 'next/navigation'
-import { LockedFeature } from '@/components/pricing/LockedFeature'
-import { MatchFeedbackPanel } from '@/components/feedback/FeedbackPanel'
 import { useLanguage } from '@/contexts/LanguageContext'
 
 // ── constants ────────────────────────────────────────────────────────────────
@@ -95,7 +92,6 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default function RoundAnalysisPage() {
   const { teamId } = useAuth()
-  const { limits, showUpgrade } = usePlan()
   const { t } = useLanguage()
   const router = useRouter()
   const [matches, setMatches] = useState<Match[]>([])
@@ -329,14 +325,10 @@ export default function RoundAnalysisPage() {
               <div className="flex-1 flex items-center justify-center text-muted-foreground text-xs">{t('analysis.loading')}</div>
             ) : (
               <div className="flex-1 overflow-y-auto">
-                {/* Free プランのラウンド制限 */}
                 {(() => {
-                  const limit = limits.round_preview_limit
-                  const visible = limit !== null ? rounds.slice(0, limit) : rounds
-                  const hidden  = limit !== null ? rounds.length - visible.length : 0
                   return (
                     <>
-                      {visible.map(r => {
+                      {rounds.map(r => {
                   const isActive = activeRound?.id === r.id
                   const isWin = r.result === 'win'
                   return (
@@ -413,22 +405,6 @@ export default function RoundAnalysisPage() {
                     </div>
                   )
                 })}
-                      {/* 制限バナー */}
-                      {hidden > 0 && (
-                        <button
-                          onClick={() => showUpgrade({
-                            feature: 'round_preview_limit',
-                            title: 'すべてのラウンドを表示',
-                            message: `あと${hidden}件のラウンドが非表示です。Teamプランにアップグレードするとすべてのラウンドを分析できます。`,
-                          })}
-                          className="w-full px-3 py-3 text-center border-t border-border bg-[#FFD700]/5 hover:bg-[#FFD700]/10 transition-colors"
-                        >
-                          <div className="text-[10px] font-bold text-[#FFD700]">
-                            さらに{hidden}件 →
-                          </div>
-                          <div className="text-[9px] text-muted-foreground">Teamプランで全表示</div>
-                        </button>
-                      )}
                     </>
                   )
                 })()}
@@ -456,21 +432,7 @@ export default function RoundAnalysisPage() {
 
           {/* ── CENTER: Video player ── */}
           <div className="flex-1 flex flex-col overflow-hidden bg-[#12121A]">
-            {!limits.vod_analysis && analysisMatch?.video_url ? (
-              <LockedFeature
-                requiredPlan="pro"
-                trigger={{
-                  feature: 'vod_analysis',
-                  title: 'VOD連携分析を解放',
-                  message: 'ProプランにアップグレードするとVOD動画と連携し、ラウンドクリックで動画を自動シークできます。',
-                }}
-                minHeight={300}
-                className="flex-1"
-              >
-                <div />
-              </LockedFeature>
-            ) : (
-              <>
+            <>
                 <VideoPlayer
                   videoUrl={analysisMatch.video_url}
                   activeRound={activeRound}
@@ -506,8 +468,7 @@ export default function RoundAnalysisPage() {
                     </div>
                   </div>
                 )}
-              </>
-            )}
+            </>
           </div>
 
           {/* ── RIGHT: Round details + Feedback ── */}
@@ -551,10 +512,6 @@ export default function RoundAnalysisPage() {
           </div>
         </div>
 
-        {/* ── FEEDBACK: AI分析 + コーチメモ ── */}
-        <div className="flex-shrink-0 border-t border-border bg-[#12121A] px-4 py-4">
-          <MatchFeedbackPanel matchId={analysisMatch.id} />
-        </div>
       </div>
     )
   }

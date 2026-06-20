@@ -8,11 +8,8 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
-import { PlanProvider, usePlan } from '@/contexts/PlanContext'
+import { PlanProvider } from '@/contexts/PlanContext'
 import { LanguageProvider, useLanguage } from '@/contexts/LanguageContext'
-import { UpgradeModal } from '@/components/pricing/UpgradeModal'
-import { PlanBadge } from '@/components/pricing/PlanBadge'
-import { AIUsageBar } from '@/components/pricing/UsageBar'
 
 const NAV_ITEMS = [
   { href: '/',               key: 'nav.dashboard',     icon: LayoutDashboard },
@@ -26,7 +23,6 @@ const NAV_ITEMS = [
 
 function TeamInfo() {
   const { teamId } = useAuth()
-  const { plan, aiUsageLimit, showUpgrade } = usePlan()
   const [teamName, setTeamName] = useState('MY TEAM')
   const [teamTag, setTeamTag]   = useState('')
 
@@ -44,26 +40,10 @@ function TeamInfo() {
   }, [teamId])
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="text-[10px] text-muted-foreground">チーム</div>
-          <div className="text-xs font-semibold text-white mt-0.5">{teamName}</div>
-          {teamTag && <div className="text-[10px] text-muted-foreground mt-0.5">[{teamTag}]</div>}
-        </div>
-        <PlanBadge plan={plan} size="xs" />
-      </div>
-      {aiUsageLimit !== null && (
-        <AIUsageBar />
-      )}
-      {plan === 'free' && (
-        <button
-          onClick={() => showUpgrade()}
-          className="w-full text-[10px] font-bold text-[#FFD700] bg-[#FFD700]/10 hover:bg-[#FFD700]/20 border border-[#FFD700]/20 rounded-lg py-1.5 transition-colors"
-        >
-          ⭐ Proにアップグレード
-        </button>
-      )}
+    <div>
+      <div className="text-[10px] text-muted-foreground">チーム</div>
+      <div className="text-xs font-semibold text-white mt-0.5">{teamName}</div>
+      {teamTag && <div className="text-[10px] text-muted-foreground mt-0.5">[{teamTag}]</div>}
     </div>
   )
 }
@@ -157,7 +137,6 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
       <main className="flex-1 ml-56 p-6 min-h-screen">
         {children}
       </main>
-      <UpgradeModal />
     </>
   )
 }

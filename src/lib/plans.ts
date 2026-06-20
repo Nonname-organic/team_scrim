@@ -3,7 +3,10 @@
 // ============================================================
 
 // 決済機能の有効フラグ — false の間はすべての機能をアンロックし、支払いフローを無効化
-export const PAYMENTS_ENABLED = true
+export const PAYMENTS_ENABLED = false
+
+// AI機能の有効フラグ
+export const AI_ENABLED = false
 
 export type Plan = 'free' | 'pro' | 'team'
 

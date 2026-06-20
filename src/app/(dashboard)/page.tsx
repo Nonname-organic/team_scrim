@@ -11,7 +11,6 @@ import { TimingWinRates } from '@/components/dashboard/TimingWinRates'
 import { AlertTriangle } from 'lucide-react'
 import { MAPS } from '@/types'
 import { useAuth } from '@/contexts/AuthContext'
-import { LockedFeature } from '@/components/pricing/LockedFeature'
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
 
@@ -158,38 +157,21 @@ export default function DashboardPage() {
         <SiteWinRates data={site_win_rates as Record<string, unknown>} />
       </div>
 
-      {/* Round Win Rates + Timing Win Rates — Pro locked */}
-      <LockedFeature
-        requiredPlan="pro"
-        trigger={{
-          feature: 'growth_tracking',
-          title: '成長トラッキングを解放',
-          message: 'ラウンド番号別・タイミング別の勝率分析はProプランの機能です。弱点パターンを数値で把握し、練習に活かしましょう。',
-        }}
-        preview={
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <div className="bg-card rounded-xl p-5 border border-border h-48" />
-            <div className="bg-card rounded-xl p-5 border border-border h-48" />
-          </div>
-        }
-        minHeight={200}
-      >
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <div className="bg-card rounded-xl p-5 border border-border">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-              {t('dashboard.roundNumberWinRate')}
-            </h2>
-            <RoundWinRates data={round_win_rates as Record<string, unknown>[]} />
-          </div>
-
-          <div className="bg-card rounded-xl p-5 border border-border">
-            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-              {t('dashboard.timingWinRate')}
-            </h2>
-            <TimingWinRates data={(timing_win_rates ?? []) as Record<string, unknown>[]} />
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-card rounded-xl p-5 border border-border">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+            {t('dashboard.roundNumberWinRate')}
+          </h2>
+          <RoundWinRates data={round_win_rates as Record<string, unknown>[]} />
         </div>
-      </LockedFeature>
+
+        <div className="bg-card rounded-xl p-5 border border-border">
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
+            {t('dashboard.timingWinRate')}
+          </h2>
+          <TimingWinRates data={(timing_win_rates ?? []) as Record<string, unknown>[]} />
+        </div>
+      </div>
 
       {/* Recent Matches */}
       <div className="bg-card rounded-xl p-5 border border-border">
