@@ -10,7 +10,8 @@ type Category = 'bug' | 'feature' | 'support' | 'other'
 const inputCls = 'w-full bg-muted/50 border border-border rounded-xl px-4 py-2.5 text-sm text-white placeholder-muted-foreground focus:border-[#FF4655] outline-none transition-colors'
 
 export default function ContactPage() {
-  const { t } = useLanguage()
+  const { t, locale } = useLanguage()
+  const en = locale === 'en'
   const [name, setName]         = useState('')
   const [email, setEmail]       = useState('')
   const [category, setCategory] = useState<Category>('support')
@@ -149,10 +150,16 @@ export default function ContactPage() {
             rows={6}
             placeholder={
               category === 'bug'
-                ? '発生した状況・手順・エラーメッセージ等を詳しく記載してください'
+                ? en
+                  ? 'Describe the issue, steps to reproduce, and any error messages.'
+                  : '発生した状況・手順・エラーメッセージ等を詳しく記載してください'
                 : category === 'feature'
-                ? 'どんな機能が欲しいか、どのような課題を解決したいかを教えてください'
-                : 'お問い合わせ内容を入力してください'
+                ? en
+                  ? 'What feature would you like, and what problem would it solve?'
+                  : 'どんな機能が欲しいか、どのような課題を解決したいかを教えてください'
+                : en
+                  ? 'Enter your message here.'
+                  : 'お問い合わせ内容を入力してください'
             }
             value={message}
             onChange={e => setMessage(e.target.value)}
