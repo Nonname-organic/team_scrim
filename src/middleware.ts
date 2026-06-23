@@ -1,7 +1,23 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+const MAINTENANCE_MODE = process.env.MAINTENANCE_MODE === 'true'
+
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname
+
+  // ── メンテナンスモード ──────────────────────────────────────
+  // MAINTENANCE_MODE=true の場合、/maintenance と /api/health 以外をブロック
+  if (MAINTENANCE_MODE && path !== '/maintenance' && !path.startsWith('/api/health')) {
+    if (path.startsWith('/api/')) {
+      return NextResponse.json(
+        { error: 'メンテナンス中です。しばらくしてからお試しください。' },
+        { status: 503, headers: { 'Retry-After': '300' } }
+      )
+    }
+    return NextResponse.redirect(new URL('/maintenance', request.url))
+  }
+
   const response = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -22,8 +38,12 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const path = request.nextUrl.pathname
-  const isAuthPage = path.startsWith('/login') || path.startsWith('/register') || path.startsWith('/reset-password')
+  const isAuthPage = path.startsWith('/login') ||
+                     path.startsWith('/register') ||
+                     path.startsWith('/reset-password') ||
+                     path.startsWith('/terms') ||
+                     path.startsWith('/privacy') ||
+                     path === '/maintenance'
 
   // 未ログイン → /login へリダイレクト
   if (!user && !isAuthPage) {
@@ -31,7 +51,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // ログイン済みで認証ページ → / へリダイレクト
-  if (user && isAuthPage) {
+  if (user && isAuthPage && path !== '/maintenance') {
     return NextResponse.redirect(new URL('/', request.url))
   }
 

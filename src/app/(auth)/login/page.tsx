@@ -96,6 +96,11 @@ export default function LoginPage() {
           チームを登録
         </Link>
       </div>
+
+      <div className="text-center text-[10px] text-muted-foreground/50 space-x-3">
+        <Link href="/terms"   className="hover:text-muted-foreground transition-colors">利用規約</Link>
+        <Link href="/privacy" className="hover:text-muted-foreground transition-colors">プライバシーポリシー</Link>
+      </div>
     </div>
   )
 }
