@@ -50,6 +50,6 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('[auth/delete]', err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return NextResponse.json({ error: 'アカウント削除に失敗しました' }, { status: 500 })
   }
 }

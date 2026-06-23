@@ -92,6 +92,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: session.url })
   } catch (err) {
     console.error('[upgrade]', err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return NextResponse.json({ error: '決済処理に失敗しました' }, { status: 500 })
   }
 }

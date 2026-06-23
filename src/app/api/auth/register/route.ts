@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ teamId: team.id }, { status: 201 })
   } catch (err) {
     console.error('[auth/register]', err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    console.error('[auth/register]', err)
+    return NextResponse.json({ error: 'チーム登録に失敗しました' }, { status: 500 })
   }
 }

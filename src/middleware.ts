@@ -23,7 +23,7 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
 
   const path = request.nextUrl.pathname
-  const isAuthPage = path.startsWith('/login') || path.startsWith('/register')
+  const isAuthPage = path.startsWith('/login') || path.startsWith('/register') || path.startsWith('/reset-password')
 
   // 未ログイン → /login へリダイレクト
   if (!user && !isAuthPage) {
