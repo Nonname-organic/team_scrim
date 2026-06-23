@@ -103,9 +103,10 @@ export async function POST(
     const matchCheck = await queryOne('SELECT id FROM matches WHERE id = $1 AND team_id = $2', [match_id, auth.teamId])
     if (!matchCheck) return notFoundError('試合が見つかりません')
 
-    const kpr  = rounds_played > 0 ? kills   / rounds_played : 0
-    const dpr  = rounds_played > 0 ? deaths  / rounds_played : 0
-    const apr  = rounds_played > 0 ? assists / rounds_played : 0
+    const clamp = (v: number) => Math.min(Math.max(v, 0), 9.999)
+    const kpr  = clamp(rounds_played > 0 ? kills   / rounds_played : 0)
+    const dpr  = clamp(rounds_played > 0 ? deaths  / rounds_played : 0)
+    const apr  = clamp(rounds_played > 0 ? assists / rounds_played : 0)
     const fbsr = (first_bloods + first_deaths) > 0 ? first_bloods / (first_bloods + first_deaths) : 0
 
     const stat = await queryOne(

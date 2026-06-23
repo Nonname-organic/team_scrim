@@ -74,9 +74,10 @@ export async function POST(req: NextRequest) {
         if (!p.player_id) continue
 
         const rounds = p.rounds_played || totalRounds
-        const kpr  = rounds > 0 ? p.kills   / rounds : 0
-        const dpr  = rounds > 0 ? p.deaths  / rounds : 0
-        const apr  = rounds > 0 ? p.assists / rounds : 0
+        const clamp = (v: number) => Math.min(Math.max(v, 0), 9.999)
+        const kpr  = clamp(rounds > 0 ? p.kills   / rounds : 0)
+        const dpr  = clamp(rounds > 0 ? p.deaths  / rounds : 0)
+        const apr  = clamp(rounds > 0 ? p.assists / rounds : 0)
         const fbsr = (p.first_bloods + p.first_deaths) > 0
           ? p.first_bloods / (p.first_bloods + p.first_deaths) : 0
 
