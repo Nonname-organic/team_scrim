@@ -32,8 +32,19 @@ export async function POST(req: NextRequest) {
       players,
     } = body
 
-    if (!opponent_name || !map || !players?.length) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
+    if (!opponent_name || !map) {
+      return NextResponse.json({ error: '対戦相手とマップは必須です' }, { status: 400 })
+    }
+    if (team_score == null || opponent_score == null || isNaN(Number(team_score)) || isNaN(Number(opponent_score))) {
+      return NextResponse.json({ error: 'スコアを入力してください' }, { status: 400 })
+    }
+    const ts = Number(team_score)
+    const os = Number(opponent_score)
+    if (ts + os === 0) {
+      return NextResponse.json({ error: 'スコアを入力してください（0-0 は無効です）' }, { status: 400 })
+    }
+    if (!players?.length) {
+      return NextResponse.json({ error: '選手スタッツを入力してください' }, { status: 400 })
     }
 
     const result = await withTransaction(async (client) => {
@@ -96,7 +107,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ data: result }, { status: 201 })
   } catch (err) {
-    console.error('[OCR save]', err)
+    const e = err as { message?: string; code?: string; detail?: string }
+    console.error('[OCR save] error:', e.message, '| code:', e.code, '| detail:', e.detail)
     return NextResponse.json({ error: '保存に失敗しました' }, { status: 500 })
   }
 }
