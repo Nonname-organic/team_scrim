@@ -65,6 +65,6 @@ export async function GET(req: NextRequest) {
     })
   } catch (err) {
     console.error('[dashboard]', err)
-    return NextResponse.json({ error: 'DB connection failed', details: String(err) }, { status: 503 })
+    return NextResponse.json({ error: 'データの取得に失敗しました' }, { status: 503 })
   }
 }

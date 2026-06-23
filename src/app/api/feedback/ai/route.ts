@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { query, queryOne } from '@/lib/db'
 import { buildTacticalFeedbackPrompt } from '@/lib/ai-prompts'
+import { getAuthContext, unauthorizedResponse } from '@/lib/server-auth'
+import { serverError } from '@/lib/api-error'
 
 export const maxDuration = 60
 
@@ -48,8 +50,11 @@ const ANALYSIS_TOOL: Anthropic.Tool = {
 }
 
 export async function POST(req: NextRequest) {
+  const auth = await getAuthContext()
+  if (!auth) return unauthorizedResponse()
+
   if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json({ error: 'ANTHROPIC_API_KEY が設定されていません' }, { status: 503 })
+    return NextResponse.json({ error: 'AI機能は現在利用できません' }, { status: 503 })
   }
 
   try {
@@ -60,8 +65,8 @@ export async function POST(req: NextRequest) {
     const match = await queryOne<Record<string, unknown>>(
       `SELECT m.*, t.name AS team_name
        FROM matches m JOIN teams t ON t.id = m.team_id
-       WHERE m.id = $1`,
-      [match_id]
+       WHERE m.id = $1 AND m.team_id = $2`,
+      [match_id, auth.teamId]
     )
     if (!match) return NextResponse.json({ error: '試合が見つかりません' }, { status: 404 })
 
@@ -161,7 +166,6 @@ All text fields MUST be written entirely in English.`
 
     return NextResponse.json({ data: saved[0] })
   } catch (err) {
-    console.error('[feedback/ai POST]', err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return serverError('feedback/ai POST', err)
   }
 }

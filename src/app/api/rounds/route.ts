@@ -1,15 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { withTransaction } from '@/lib/db'
+import { queryOne, withTransaction } from '@/lib/db'
+import { getAuthContext, unauthorizedResponse } from '@/lib/server-auth'
+import { serverError, notFoundError } from '@/lib/api-error'
 
 export async function POST(req: NextRequest) {
+  const auth = await getAuthContext()
+  if (!auth) return unauthorizedResponse()
+
   try {
     const { match_id, rounds } = await req.json()
     if (!match_id || !rounds?.length) {
       return NextResponse.json({ error: 'match_id and rounds required' }, { status: 400 })
     }
 
+    // Verify match belongs to team
+    const matchCheck = await queryOne('SELECT id FROM matches WHERE id = $1 AND team_id = $2', [match_id, auth.teamId])
+    if (!matchCheck) return notFoundError('試合が見つかりません')
+
     await withTransaction(async (client) => {
-      // Delete existing rounds for this match first
       await client.query('DELETE FROM rounds WHERE match_id = $1', [match_id])
 
       for (const r of rounds) {
@@ -39,7 +47,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ message: 'Rounds saved', count: rounds.length })
   } catch (err) {
-    console.error('[rounds POST]', err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return serverError('rounds POST', err)
   }
 }

@@ -97,6 +97,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ data: result }, { status: 201 })
   } catch (err) {
     console.error('[OCR save]', err)
-    return NextResponse.json({ error: 'Save failed', details: String(err) }, { status: 500 })
+    return NextResponse.json({ error: '保存に失敗しました' }, { status: 500 })
   }
 }

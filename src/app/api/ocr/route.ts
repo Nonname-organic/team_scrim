@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { getAuthContext, unauthorizedResponse } from '@/lib/server-auth'
 
 const client = new Anthropic()
 
@@ -9,6 +10,9 @@ const client = new Anthropic()
 // ============================================================
 
 export async function POST(req: NextRequest) {
+  const auth = await getAuthContext()
+  if (!auth) return unauthorizedResponse()
+
   try {
     const formData = await req.formData()
     const file = formData.get('image') as File
@@ -108,9 +112,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, ...parsed })
   } catch (err) {
     console.error('[OCR]', err)
-    return NextResponse.json(
-      { success: false, error: String(err) },
-      { status: 500 }
-    )
+    return NextResponse.json({ success: false, error: 'OCR処理に失敗しました' }, { status: 500 })
   }
 }

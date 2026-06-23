@@ -54,6 +54,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 
+  const ts = Number(team_score)
+  const os = Number(opponent_score)
+  if (ts + os === 0) {
+    return NextResponse.json({ error: 'スコアを入力してください（0-0 は無効です）' }, { status: 400 })
+  }
+  if (ts < 0 || os < 0 || ts > 25 || os > 25) {
+    return NextResponse.json({ error: 'スコアは 0〜25 の範囲で入力してください' }, { status: 400 })
+  }
+
   const match = await queryOne(
     `INSERT INTO matches
        (team_id, opponent_name, match_date, map, match_type, team_score, opponent_score,

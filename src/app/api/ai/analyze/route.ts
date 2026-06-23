@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     })
   } catch (err) {
     console.error('[AI analyze]', err)
-    return NextResponse.json({ error: 'AI analysis failed', details: String(err) }, { status: 500 })
+    return NextResponse.json({ error: 'AI分析に失敗しました' }, { status: 500 })
   }
 }
 

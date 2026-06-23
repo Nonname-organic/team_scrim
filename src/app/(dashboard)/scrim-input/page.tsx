@@ -316,7 +316,7 @@ export default function ScrimInputPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           opponent_name: opponentName || '未登録',
-          match_date: matchDate + 'T00:00:00',
+          match_date: matchDate + 'T00:00:00+09:00',
           map, match_type: matchType,
           team_score: Number(finalTeam),
           opponent_score: Number(finalOpp),
