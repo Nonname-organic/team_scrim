@@ -2,9 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Loader2 } from 'lucide-react'
+import { getCallbackUrl } from '@/lib/auth'
+import { Loader2, Mail, RefreshCcw } from 'lucide-react'
 
 export default function RegisterPage() {
   const [email, setEmail]       = useState('')
@@ -13,10 +13,13 @@ export default function RegisterPage() {
   const [teamTag, setTeamTag]   = useState('')
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState<string | null>(null)
-  const router = useRouter()
+  const [emailSent, setEmailSent] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resent, setResent]     = useState(false)
 
   const inputCls = 'w-full bg-muted/50 border border-border rounded-lg px-4 py-2.5 text-sm text-white placeholder-muted-foreground focus:border-[#FF4655] outline-none transition-colors'
 
+  // ── 新規登録 ────────────────────────────────────────────────────
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -24,37 +27,104 @@ export default function RegisterPage() {
 
     const supabase = createClient()
 
-    // 1. Supabase Auth でユーザー作成
-    const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
-    if (signUpError || !data.user) {
-      setError(signUpError?.message ?? 'アカウントの作成に失敗しました')
-      setLoading(false)
-      return
-    }
-
-    // 2. チームを作成してユーザーに紐付け
-    // signUp直後はCookieが未送信のため、access_tokenをヘッダーで渡す
-    const accessToken = data.session?.access_token ?? ''
-    const res = await fetch('/api/auth/register', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
+    const { error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        // メール確認後に /auth/callback でチームを作成するため
+        // team_name / team_tag を user_metadata に埋め込む
+        data: {
+          team_name: teamName,
+          team_tag: teamTag,
+        },
+        emailRedirectTo: getCallbackUrl(),
       },
-      body: JSON.stringify({ team_name: teamName, team_tag: teamTag }),
     })
 
-    if (!res.ok) {
-      const json = await res.json()
-      setError(json.error ?? 'チームの作成に失敗しました')
-      setLoading(false)
-      return
+    if (signUpError) {
+      // すでに登録済みのメールは Supabase がエラーを返さず確認メールを再送する
+      // それ以外のエラーのみ表示
+      if (signUpError.message !== 'User already registered') {
+        setError(signUpError.message)
+        setLoading(false)
+        return
+      }
     }
 
-    router.push('/')
-    router.refresh()
+    setEmailSent(true)
+    setLoading(false)
   }
 
+  // ── 確認メール再送 ───────────────────────────────────────────────
+  const handleResend = async () => {
+    if (!email || resending) return
+    setResending(true)
+    setResent(false)
+    const supabase = createClient()
+    await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: getCallbackUrl() },
+    })
+    setResending(false)
+    setResent(true)
+    setTimeout(() => setResent(false), 5000)
+  }
+
+  // ── メール送信済み画面 ───────────────────────────────────────────
+  if (emailSent) {
+    return (
+      <div className="bg-card border border-border rounded-2xl p-8 space-y-6 text-center">
+        <div className="flex justify-center">
+          <div className="w-16 h-16 rounded-full bg-[#FF4655]/10 border border-[#FF4655]/20 flex items-center justify-center">
+            <Mail className="w-8 h-8 text-[#FF4655]" />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <h2 className="text-xl font-bold text-white">確認メールを送信しました</h2>
+          <p className="text-sm text-muted-foreground">
+            <span className="text-white font-medium">{email}</span>{' '}
+            に確認メールを送りました。
+          </p>
+          <p className="text-sm text-muted-foreground">
+            メール内のリンクをクリックして登録を完了してください。
+          </p>
+        </div>
+
+        <div className="bg-muted/20 border border-border rounded-xl px-4 py-3 text-left space-y-1.5">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">確認できない場合</p>
+          <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+            <li>迷惑メールフォルダを確認してください</li>
+            <li>数分待ってから再送信してください</li>
+            <li>メールアドレスが正しいか確認してください</li>
+          </ul>
+        </div>
+
+        <div className="space-y-3">
+          {resent && (
+            <p className="text-xs text-[#00D4A0]">メールを再送信しました</p>
+          )}
+          <button
+            onClick={handleResend}
+            disabled={resending}
+            className="flex items-center gap-2 mx-auto text-xs text-muted-foreground hover:text-white transition-colors disabled:opacity-50"
+          >
+            {resending
+              ? <Loader2 className="w-3 h-3 animate-spin" />
+              : <RefreshCcw className="w-3 h-3" />}
+            確認メールを再送信
+          </button>
+        </div>
+
+        <Link href="/login" className="block text-sm text-muted-foreground hover:text-white transition-colors">
+          ← ログインに戻る
+        </Link>
+      </div>
+    )
+  }
+
+  // ── 登録フォーム ────────────────────────────────────────────────
   return (
     <div className="bg-card border border-border rounded-2xl p-8 space-y-6">
       <div>
@@ -63,6 +133,7 @@ export default function RegisterPage() {
       </div>
 
       <form onSubmit={handleRegister} className="space-y-4">
+        {/* アカウント情報 */}
         <div className="border border-border/50 rounded-xl p-4 space-y-3">
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
             アカウント情報
@@ -74,6 +145,7 @@ export default function RegisterPage() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="team@example.com"
+              autoComplete="email"
               className={inputCls}
             />
           </div>
@@ -84,11 +156,13 @@ export default function RegisterPage() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               placeholder="••••••••"
+              autoComplete="new-password"
               className={inputCls}
             />
           </div>
         </div>
 
+        {/* チーム情報 */}
         <div className="border border-border/50 rounded-xl p-4 space-y-3">
           <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
             チーム情報
@@ -100,6 +174,7 @@ export default function RegisterPage() {
               value={teamName}
               onChange={e => setTeamName(e.target.value)}
               placeholder="Team Example"
+              autoComplete="organization"
               className={inputCls}
             />
           </div>
@@ -127,8 +202,12 @@ export default function RegisterPage() {
           className="w-full bg-[#FF4655] hover:bg-[#FF4655]/80 text-white font-semibold rounded-lg py-2.5 text-sm transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
         >
           {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-          {loading ? '作成中...' : 'チームを作成してはじめる'}
+          {loading ? '送信中...' : 'チームを作成してはじめる'}
         </button>
+
+        <p className="text-center text-[10px] text-muted-foreground/60 leading-relaxed">
+          登録後、確認メールを送信します。メール内のリンクをクリックすると登録が完了します。
+        </p>
       </form>
 
       <div className="text-center text-sm text-muted-foreground">
