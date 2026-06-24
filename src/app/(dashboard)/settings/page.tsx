@@ -367,13 +367,13 @@ export default function SettingsPage() {
         </div>
 
         {!showDeleteSection ? (
-          <div className="flex items-start justify-between gap-4">
-            <p className="text-xs text-muted-foreground leading-relaxed max-w-md">
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               {t('settings.deleteAccountDesc')}
             </p>
             <button
               onClick={() => setShowDeleteSection(true)}
-              className="flex-shrink-0 px-4 py-2 border border-[#FF4655]/40 text-[#FF4655] text-xs font-semibold rounded-lg hover:bg-[#FF4655]/10 transition-colors"
+              className="px-4 py-2.5 min-h-[44px] border border-[#FF4655]/40 text-[#FF4655] text-xs font-semibold rounded-lg hover:bg-[#FF4655]/10 transition-colors"
             >
               {t('settings.deleteAccount')}
             </button>
@@ -525,7 +525,7 @@ export default function SettingsPage() {
   )
 }
 
-const inputCls = 'w-full bg-muted border border-border rounded-lg px-3 py-2 text-sm text-white focus:border-[#FF4655] outline-none'
+const inputCls = 'w-full bg-muted border border-border rounded-lg px-3 py-2.5 text-sm text-white focus:border-[#FF4655] outline-none min-h-[44px]'
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (

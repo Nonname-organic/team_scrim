@@ -1,17 +1,23 @@
 'use client'
 
 import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { cn } from '@/lib/utils'
 import {
   ChevronDown, ChevronUp, Search, X, ArrowLeft, Settings2,
   Play, Shield, Crosshair, Zap, Flag, Bookmark, Trash2, Link2, Check, Pencil, Loader2, MapPin,
 } from 'lucide-react'
-import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSelector'
+import type { PlantRound } from '@/components/map/MapPlantSelector'
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
 import { detectSite } from '@/lib/geometry'
 import { useAuth } from '@/contexts/AuthContext'
 import { useRouter } from 'next/navigation'
 import { useLanguage } from '@/contexts/LanguageContext'
+
+const MapPlantSelector = dynamic(
+  () => import('@/components/map/MapPlantSelector').then(m => m.MapPlantSelector),
+  { loading: () => <div className="aspect-square w-full bg-muted rounded-xl animate-pulse" />, ssr: false }
+)
 
 // ── constants ────────────────────────────────────────────────────────────────
 
@@ -106,6 +112,9 @@ export default function RoundAnalysisPage() {
   const [rounds, setRounds] = useState<Round[]>([])
   const [loadingRounds, setLoadingRounds] = useState(false)
   const [activeRound, setActiveRound] = useState<Round | null>(null)
+
+  // Mobile tab for analysis view
+  const [mobileTab, setMobileTab] = useState<'rounds' | 'video' | 'details'>('rounds')
 
   // VOD settings
   const [vodOffset, setVodOffset]     = useState(0)
@@ -248,7 +257,7 @@ export default function RoundAnalysisPage() {
       roundTimestamps[r.id] ?? (vodOffset + (r.round_number - 1) * secPerRound)
 
     return (
-      <div className="flex flex-col min-h-[calc(100vh-96px)] -m-6">
+      <div className="flex flex-col -mx-3 lg:-m-6">
         {/* Top bar */}
         <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-[#18181F] flex-shrink-0">
           <button
@@ -286,6 +295,28 @@ export default function RoundAnalysisPage() {
           </div>
         </div>
 
+        {/* Mobile tab bar */}
+        <div className="lg:hidden flex border-b border-border bg-[#18181F] flex-shrink-0">
+          {([
+            { key: 'rounds' as const, label: 'ラウンド' },
+            { key: 'video'  as const, label: 'VOD' },
+            { key: 'details' as const, label: '詳細' },
+          ]).map(tab => (
+            <button
+              key={tab.key}
+              onClick={() => setMobileTab(tab.key)}
+              className={cn(
+                'flex-1 py-3 text-xs font-semibold transition-colors border-b-2',
+                mobileTab === tab.key
+                  ? 'text-[#FF4655] border-[#FF4655]'
+                  : 'text-muted-foreground border-transparent hover:text-white'
+              )}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
         {/* VOD settings bar */}
         {showVodSettings && (
           <div className="flex items-center gap-4 px-4 py-2 border-b border-border bg-card flex-shrink-0 text-xs">
@@ -312,10 +343,17 @@ export default function RoundAnalysisPage() {
           </div>
         )}
 
-        {/* 3-pane */}
-        <div className="flex overflow-hidden" style={{ height: 'calc(100vh - 96px)' }}>
+        {/* 3-pane: Desktop always shows all 3 / Mobile shows one tab at a time */}
+        <div className="analysis-3pane flex overflow-hidden">
           {/* ── LEFT: Round list ── */}
-          <div className="w-64 border-r border-border flex flex-col bg-card overflow-hidden flex-shrink-0">
+          <div className={cn(
+            // ベースには display を設定しない (flex-col は flex-direction のみ)
+            'border-r border-border flex-col bg-card overflow-hidden',
+            // Desktop: 常に表示, 固定幅
+            'lg:flex lg:w-64 lg:flex-shrink-0',
+            // Mobile: アクティブタブのみ full-width 表示、それ以外は非表示
+            mobileTab === 'rounds' ? 'flex flex-1' : 'hidden'
+          )}>
             <div className="px-3 py-2 border-b border-border flex-shrink-0">
               <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
                 {t('analysis.roundList')} ({rounds.length})
@@ -341,8 +379,11 @@ export default function RoundAnalysisPage() {
                     >
                       {/* Main clickable: ラウンド選択 */}
                       <button
-                        className="flex-1 flex items-center gap-2.5 px-3 py-2 text-left min-w-0"
-                        onClick={() => setActiveRound(isActive ? null : r)}
+                        className="flex-1 flex items-center gap-2.5 px-3 py-2 text-left min-w-0 min-h-[48px]"
+                        onClick={() => {
+                          setActiveRound(isActive ? null : r)
+                          if (!isActive) setMobileTab('details')
+                        }}
                       >
                         {/* 注目フラグ + ラウンド番号 */}
                         <div className="flex items-center gap-1 flex-shrink-0">
@@ -389,6 +430,7 @@ export default function RoundAnalysisPage() {
                         onClick={() => {
                           setActiveRound(r)
                           setFocusMemoId(r.id)
+                          setMobileTab('details')
                         }}
                         className={cn(
                           'flex-shrink-0 px-2 py-2 transition-colors',
@@ -431,7 +473,11 @@ export default function RoundAnalysisPage() {
           </div>
 
           {/* ── CENTER: Video player ── */}
-          <div className="flex-1 flex flex-col overflow-hidden bg-[#12121A]">
+          <div className={cn(
+            'flex-col overflow-hidden bg-[#12121A]',
+            'lg:flex lg:flex-1',
+            mobileTab === 'video' ? 'flex flex-1' : 'hidden'
+          )}>
             <>
                 <VideoPlayer
                   videoUrl={analysisMatch.video_url}
@@ -472,7 +518,11 @@ export default function RoundAnalysisPage() {
           </div>
 
           {/* ── RIGHT: Round details + Feedback ── */}
-          <div className="w-80 border-l border-border flex flex-col overflow-hidden flex-shrink-0 bg-card">
+          <div className={cn(
+            'border-l border-border flex-col overflow-hidden bg-card',
+            'lg:flex lg:w-80 lg:flex-shrink-0',
+            mobileTab === 'details' ? 'flex flex-1' : 'hidden'
+          )}>
             <div className="flex-1 overflow-y-auto">
               {activeRound ? (
                 <RoundDetailPanel
@@ -595,7 +645,8 @@ export default function RoundAnalysisPage() {
         </div>
       ) : (
         <div className="space-y-2">
-          <div className="grid grid-cols-[1fr_100px_100px_60px_70px_80px] text-[10px] text-muted-foreground uppercase tracking-wider px-4 py-1.5">
+          {/* Desktop column headers */}
+          <div className="hidden md:grid grid-cols-[1fr_100px_100px_60px_70px_80px] text-[10px] text-muted-foreground uppercase tracking-wider px-4 py-1.5">
             <div>{t('common.opponent')}</div><div>{t('common.map')}</div>
             <div className="text-center">{t('common.score')}</div>
             <div className="text-center">ATK%</div>
@@ -609,11 +660,75 @@ export default function RoundAnalysisPage() {
             const isVodEdit = editVodId === m.id
             return (
               <div key={m.id} className="space-y-0">
+                {/* ── Mobile card ── */}
                 <div className={cn(
-                  'w-full grid grid-cols-[1fr_100px_100px_60px_70px_80px] items-center bg-card border rounded-xl px-4 py-3 transition-all group',
+                  'md:hidden bg-card border rounded-xl transition-all',
+                  isConfirmDelete ? 'border-[#FF4655]/60 bg-[#FF4655]/5' : 'border-border'
+                )}>
+                  <div className="flex items-center gap-3 px-4 py-3 min-h-[56px]">
+                    <div className={cn('w-2.5 h-2.5 rounded-full flex-shrink-0', isWin ? 'bg-[#00D4A0]' : 'bg-[#FF4655]')} />
+                    <button className="flex-1 min-w-0 text-left" onClick={() => enterAnalysis(m)}>
+                      <div className="text-sm font-semibold text-white truncate">vs {m.opponent_name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5">
+                        <span>{m.map}</span>
+                        <span>·</span>
+                        <span>{new Date(m.match_date).toLocaleDateString('ja-JP')}</span>
+                        {m.video_url && <Play className="w-2.5 h-2.5 text-[#FF4655]" fill="currentColor" />}
+                      </div>
+                    </button>
+                    <button className="flex-shrink-0 text-right" onClick={() => enterAnalysis(m)}>
+                      <span className={cn('font-bold text-sm', isWin ? 'text-[#00D4A0]' : 'text-[#FF4655]')}>{m.team_score}</span>
+                      <span className="text-muted-foreground mx-1">:</span>
+                      <span className="text-white text-sm">{m.opponent_score}</span>
+                    </button>
+                    {isConfirmDelete ? (
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button onClick={() => deleteMatch(m.id)} disabled={deletingId === m.id}
+                          className="text-[10px] text-white bg-[#FF4655] px-2.5 py-1.5 rounded font-bold min-h-[36px]">
+                          {deletingId === m.id ? '...' : t('common.delete')}
+                        </button>
+                        <button onClick={() => setConfirmDeleteId(null)} className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center text-muted-foreground">
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                        <button onClick={() => { setEditVodId(isVodEdit ? null : m.id); setVodInput(m.video_url ?? '') }}
+                          className={cn('p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center rounded transition-colors',
+                            m.video_url ? 'text-[#FF4655]' : 'text-muted-foreground')}>
+                          <Link2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={() => setConfirmDeleteId(m.id)}
+                          className="p-2.5 min-w-[40px] min-h-[40px] flex items-center justify-center rounded text-muted-foreground hover:text-[#FF4655] transition-colors">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  {isVodEdit && (
+                    <div className="flex items-center gap-2 px-4 py-2 border-t border-border">
+                      <Link2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+                      <input autoFocus type="url" value={vodInput} onChange={e => setVodInput(e.target.value)}
+                        placeholder={t('matches.vodUrl')}
+                        className="flex-1 bg-muted/50 border border-border rounded px-2 py-1.5 text-xs text-white placeholder-muted-foreground focus:border-[#FF4655] outline-none min-h-[36px]" />
+                      <button onClick={() => saveVodUrl(m.id)} disabled={vodSaving}
+                        className="flex items-center gap-1 text-xs bg-[#FF4655] text-white px-3 py-1.5 rounded min-h-[36px] disabled:opacity-50">
+                        {vodSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                        {t('common.save')}
+                      </button>
+                      <button onClick={() => setEditVodId(null)}
+                        className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center text-muted-foreground">
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Desktop row ── */}
+                <div className={cn(
+                  'hidden md:grid w-full grid-cols-[1fr_100px_100px_60px_70px_80px] items-center bg-card border rounded-xl px-4 py-3 transition-all group',
                   isConfirmDelete ? 'border-[#FF4655]/60 bg-[#FF4655]/5' : 'border-border hover:border-[#FF4655]/40 hover:bg-muted/10'
                 )}>
-                  {/* Main clickable area */}
                   <button className="flex items-center gap-3 text-left" onClick={() => enterAnalysis(m)}>
                     <div className={cn('w-2 h-2 rounded-full flex-shrink-0', isWin ? 'bg-[#00D4A0]' : 'bg-[#FF4655]')} />
                     <div>
@@ -638,14 +753,10 @@ export default function RoundAnalysisPage() {
                   <button className="text-right text-xs text-muted-foreground pr-3" onClick={() => enterAnalysis(m)}>
                     {new Date(m.match_date).toLocaleDateString('ja-JP')}
                   </button>
-                  {/* Actions */}
                   {isConfirmDelete ? (
                     <div className="flex items-center gap-1 justify-end">
-                      <button
-                        onClick={() => deleteMatch(m.id)}
-                        disabled={deletingId === m.id}
-                        className="text-[10px] text-white bg-[#FF4655] px-2 py-1 rounded font-bold hover:bg-[#FF4655]/80 disabled:opacity-50"
-                      >
+                      <button onClick={() => deleteMatch(m.id)} disabled={deletingId === m.id}
+                        className="text-[10px] text-white bg-[#FF4655] px-2 py-1 rounded font-bold hover:bg-[#FF4655]/80 disabled:opacity-50">
                         {deletingId === m.id ? '...' : t('common.delete')}
                       </button>
                       <button onClick={() => setConfirmDeleteId(null)} className="text-[10px] text-muted-foreground hover:text-white px-1 py-1">
@@ -654,46 +765,30 @@ export default function RoundAnalysisPage() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-1 justify-end">
-                      <button
-                        onClick={() => router.push(`/matches/${m.id}`)}
-                        title={t('common.edit')}
-                        className="p-1.5 rounded text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
-                      >
+                      <button onClick={() => router.push(`/matches/${m.id}`)} title={t('common.edit')}
+                        className="p-1.5 rounded text-muted-foreground hover:text-white hover:bg-white/5 transition-colors">
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
-                      <button
-                        onClick={() => { setEditVodId(isVodEdit ? null : m.id); setVodInput(m.video_url ?? '') }}
-                        title="VOD"
-                        className={cn('p-1.5 rounded transition-colors', m.video_url ? 'text-[#FF4655] hover:bg-[#FF4655]/10' : 'text-muted-foreground hover:text-white hover:bg-white/5')}
-                      >
+                      <button onClick={() => { setEditVodId(isVodEdit ? null : m.id); setVodInput(m.video_url ?? '') }} title="VOD"
+                        className={cn('p-1.5 rounded transition-colors', m.video_url ? 'text-[#FF4655] hover:bg-[#FF4655]/10' : 'text-muted-foreground hover:text-white hover:bg-white/5')}>
                         <Link2 className="w-3.5 h-3.5" />
                       </button>
-                      <button
-                        onClick={() => setConfirmDeleteId(m.id)}
-                        className="p-1.5 rounded text-muted-foreground hover:text-[#FF4655] hover:bg-[#FF4655]/10 transition-colors"
-                      >
+                      <button onClick={() => setConfirmDeleteId(m.id)}
+                        className="p-1.5 rounded text-muted-foreground hover:text-[#FF4655] hover:bg-[#FF4655]/10 transition-colors">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   )}
                 </div>
-                {/* Inline VOD editor */}
+                {/* Desktop VOD editor */}
                 {isVodEdit && (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-card border border-t-0 border-border rounded-b-xl">
+                  <div className="hidden md:flex items-center gap-2 px-4 py-2 bg-card border border-t-0 border-border rounded-b-xl">
                     <Link2 className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
-                    <input
-                      autoFocus
-                      type="url"
-                      value={vodInput}
-                      onChange={e => setVodInput(e.target.value)}
+                    <input autoFocus type="url" value={vodInput} onChange={e => setVodInput(e.target.value)}
                       placeholder={t('matches.vodUrl')}
-                      className="flex-1 bg-muted/50 border border-border rounded px-2 py-1 text-xs text-white placeholder-muted-foreground focus:border-[#FF4655] outline-none"
-                    />
-                    <button
-                      onClick={() => saveVodUrl(m.id)}
-                      disabled={vodSaving}
-                      className="flex items-center gap-1 text-xs bg-[#FF4655] hover:bg-[#FF4655]/80 text-white px-3 py-1 rounded disabled:opacity-50"
-                    >
+                      className="flex-1 bg-muted/50 border border-border rounded px-2 py-1 text-xs text-white placeholder-muted-foreground focus:border-[#FF4655] outline-none" />
+                    <button onClick={() => saveVodUrl(m.id)} disabled={vodSaving}
+                      className="flex items-center gap-1 text-xs bg-[#FF4655] hover:bg-[#FF4655]/80 text-white px-3 py-1 rounded disabled:opacity-50">
                       {vodSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
                       {t('common.save')}
                     </button>

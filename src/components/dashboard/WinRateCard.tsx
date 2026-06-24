@@ -25,7 +25,7 @@ export function WinRateCard({ label, value, matches, type }: Props) {
 
   return (
     <div
-      className="bg-card rounded-xl p-5 border border-border relative overflow-hidden"
+      className="bg-card rounded-xl p-3 lg:p-5 border border-border relative overflow-hidden"
       style={{ borderTop: `2px solid ${color}` }}
     >
       {/* Background glow */}
@@ -34,16 +34,16 @@ export function WinRateCard({ label, value, matches, type }: Props) {
         style={{ background: color }}
       />
 
-      <div className="text-xs text-muted-foreground font-medium uppercase tracking-wider">
+      <div className="text-[10px] lg:text-xs text-muted-foreground font-medium uppercase tracking-wider leading-tight">
         {label}
       </div>
 
-      <div className="mt-3 flex items-end justify-between">
+      <div className="mt-2 lg:mt-3 flex items-end justify-between">
         <div>
-          <span className="text-3xl font-bold text-white">{pct}</span>
-          <span className="text-lg text-muted-foreground ml-0.5">%</span>
+          <span className="text-2xl lg:text-3xl font-bold text-white">{pct}</span>
+          <span className="text-base lg:text-lg text-muted-foreground ml-0.5">%</span>
         </div>
-        <Trend className="w-5 h-5" style={{ color: trendColor }} />
+        <Trend className="w-4 h-4 lg:w-5 lg:h-5" style={{ color: trendColor }} />
       </div>
 
       {/* Progress bar */}

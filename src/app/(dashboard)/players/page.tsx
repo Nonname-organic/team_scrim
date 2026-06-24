@@ -60,8 +60,8 @@ export default function PlayersPage() {
         {/* Player list */}
         <div className="lg:col-span-2 space-y-2">
           {/* Stats table header */}
-          <div className="grid grid-cols-5 text-[10px] text-muted-foreground uppercase tracking-wider px-3 py-2">
-            <div className="col-span-2">{t('players.ign')}</div>
+          <div className="grid grid-cols-[1fr_52px_52px_44px] text-[10px] text-muted-foreground uppercase tracking-wider px-3 py-2">
+            <div>{t('players.ign')}</div>
             <div className="text-right">ACS</div>
             <div className="text-right">KD</div>
             <div className="text-right">{t('players.matches')}</div>
@@ -76,13 +76,13 @@ export default function PlayersPage() {
                 key={p.player_id}
                 onClick={() => setSelected(isSelected ? null : p.player_id)}
                 className={cn(
-                  'w-full grid grid-cols-5 items-center p-3 rounded-xl border text-sm transition-all',
+                  'w-full grid grid-cols-[1fr_52px_52px_44px] items-center px-3 py-3 min-h-[52px] rounded-xl border text-sm transition-all',
                   isSelected
                     ? 'bg-[#FF4655]/10 border-[#FF4655]/30'
                     : 'bg-card border-border hover:bg-muted/30'
                 )}
               >
-                <div className="col-span-2 flex items-center gap-2 text-left">
+                <div className="flex items-center gap-2 text-left min-w-0">
                   <div
                     className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
                     style={{ background: `${roleCfg.color}20`, color: roleCfg.color }}

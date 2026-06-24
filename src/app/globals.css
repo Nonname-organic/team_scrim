@@ -88,3 +88,91 @@ select option {
   background-color: hsl(240 10% 13%);
   color: hsl(var(--foreground));
 }
+
+/* ── Mobile UX ──────────────────────────────────────────────────── */
+
+/* Safe area insets — iOS notch / Android cutout / home indicator */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Remove tap-highlight flicker on mobile WebKit */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Prevent 300ms double-tap delay on interactive elements */
+button, a, [role="button"], label, select, input, textarea {
+  touch-action: manipulation;
+}
+
+/* Momentum scroll on iOS for scrollable containers */
+.overflow-y-auto,
+.overflow-x-auto,
+.overflow-y-scroll,
+.overflow-x-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Contain overscroll to prevent pull-to-refresh inside scroll areas */
+.overscroll-contain {
+  overscroll-behavior: contain;
+}
+
+/* Round Analysis 3-pane height — mobile/desktop responsive */
+.analysis-3pane {
+  /* モバイル: header(48) + bottomnav(56) + analysis-topbar(44) + tab-bar(44) = 192 */
+  height: calc(100dvh - 192px);
+}
+@media (min-width: 1024px) {
+  .analysis-3pane {
+    /* デスクトップ: サイドバーは固定、トップバーのみ考慮 */
+    height: calc(100vh - 96px);
+  }
+}
+
+/* Sticky footer safe zone for forms / save buttons on mobile */
+.sticky-safe-bottom {
+  position: sticky;
+  bottom: 0;
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 8px);
+  background: hsl(var(--background));
+  border-top: 1px solid hsl(var(--border));
+}
+
+/* Mobile tab indicator */
+.mobile-tab-active {
+  color: #FF4655;
+  border-bottom: 2px solid #FF4655;
+}
+.mobile-tab-inactive {
+  color: hsl(var(--muted-foreground));
+  border-bottom: 2px solid transparent;
+}
+
+/* ── Accessibility ──────────────────────────────────────────────── */
+
+/* Visible focus ring for keyboard navigation (WCAG 2.4.7) */
+:focus-visible {
+  outline: 2px solid #FF4655;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Ensure minimum contrast for muted text on dark backgrounds */
+@media (prefers-contrast: more) {
+  .text-muted-foreground {
+    color: hsl(240 5% 75%);
+  }
+}
+
+/* Respect user motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

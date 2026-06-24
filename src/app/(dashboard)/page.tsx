@@ -60,18 +60,18 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
+      <div className="space-y-3">
         <div>
-          <h1 className="text-2xl font-bold text-white">{t('dashboard.title')}</h1>
+          <h1 className="text-xl lg:text-2xl font-bold text-white">{t('dashboard.title')}</h1>
           <p className="text-muted-foreground text-sm mt-1">{t('dashboard.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {/* Map filter */}
-          <span className="text-xs text-muted-foreground">{t('common.map')}</span>
+          <span className="text-xs text-muted-foreground shrink-0">{t('common.map')}</span>
           <select
             value={mapFilter}
             onChange={e => setMapFilter(e.target.value)}
-            className="bg-muted border border-border rounded-lg px-3 py-1.5 text-sm text-white focus:border-[#FF4655] outline-none"
+            className="bg-muted border border-border rounded-lg px-3 py-2 text-sm text-white focus:border-[#FF4655] outline-none min-h-[40px]"
           >
             <option value="">{t('common.allMaps')}</option>
             {MAPS.map(m => <option key={m} value={m}>{m}</option>)}
@@ -83,7 +83,7 @@ export default function DashboardPage() {
               key={t}
               onClick={() => setTypeFilter(prev => prev === t ? '' : t)}
               className={cn(
-                'px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors',
+                'px-3 py-2 rounded-lg text-xs font-medium border transition-colors min-h-[40px]',
                 typeFilter === t
                   ? t === 'official'
                     ? 'bg-[#00D4A0]/15 border-[#00D4A0]/40 text-[#00D4A0]'

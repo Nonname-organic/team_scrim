@@ -376,24 +376,25 @@ export default function ScrimInputPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-white">
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-xl lg:text-2xl font-bold text-white">
           {t('matchInput.title')} <span className="text-[#FF4655]">{t('matchInput.titleAccent')}</span>
         </h1>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-shrink-0">
           {/* OCR button */}
           <button
             onClick={() => fileRef.current?.click()}
             disabled={ocrLoading}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border border-border text-sm text-muted-foreground hover:text-white hover:border-white/30 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2.5 min-h-[44px] rounded-lg border border-border text-sm text-muted-foreground hover:text-white hover:border-white/30 transition-colors disabled:opacity-50"
           >
             {ocrLoading
               ? <Loader2 className="w-4 h-4 animate-spin text-[#FF4655]" />
               : <Upload className="w-4 h-4" />
             }
-            {t('matchInput.autoFill')}
+            <span className="hidden sm:inline">{t('matchInput.autoFill')}</span>
+            <span className="sm:hidden">OCR</span>
           </button>
-          <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleOcr} />
+          <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleOcr} />
         </div>
       </div>
 
@@ -408,15 +409,16 @@ export default function ScrimInputPage() {
       <div className="bg-card border border-border rounded-xl p-5 space-y-4">
         <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('matchInput.matchInfo')}</div>
         <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-          <div className="md:col-span-1">
+          <div className="col-span-2 md:col-span-1">
             <Label>{t('matchInput.matchDate')}</Label>
             <input type="date" className={cls} value={matchDate}
               onChange={e => setMatchDate(e.target.value)} />
           </div>
-          <div className="md:col-span-2">
+          <div className="col-span-2 md:col-span-2">
             <Label>{t('matchInput.opponent')}</Label>
             <input className={cls} placeholder="Team Name" value={opponentName}
-              onChange={e => setOpponentName(e.target.value)} />
+              onChange={e => setOpponentName(e.target.value)}
+              autoComplete="off" enterKeyHint="next" />
           </div>
           <div>
             <Label>{t('common.map')}</Label>
@@ -429,6 +431,7 @@ export default function ScrimInputPage() {
             <Label>{t('matchInput.teamScore')}</Label>
             <input
               type="number" min={0} max={25} className={cls}
+              inputMode="numeric" pattern="[0-9]*"
               value={teamScoreInput}
               onChange={e => setTeamScoreInput(e.target.value)}
               onBlur={() => setTeamScore(teamScoreInput === '' ? '' : Number(teamScoreInput))}
@@ -439,6 +442,7 @@ export default function ScrimInputPage() {
             <Label>{t('matchInput.opponentScore')}</Label>
             <input
               type="number" min={0} max={25} className={cls}
+              inputMode="numeric" pattern="[0-9]*"
               value={oppScoreInput}
               onChange={e => setOppScoreInput(e.target.value)}
               onBlur={() => setOppScore(oppScoreInput === '' ? '' : Number(oppScoreInput))}
@@ -461,7 +465,7 @@ export default function ScrimInputPage() {
               <option value="practice">Practice</option>
             </select>
           </div>
-          <div className="md:col-span-2">
+          <div className="col-span-2 md:col-span-2">
             <Label>{t('matchInput.totalRounds')}</Label>
             <div className={cn(cls, 'bg-muted/10 text-muted-foreground cursor-default')}>
               {totalRounds > 0 ? `${totalRounds} R` : t('matchInput.autoCalc')}
@@ -532,6 +536,7 @@ export default function ScrimInputPage() {
                     <td key={key} className="align-middle px-2 py-2">
                       <input
                         type="number" min={0}
+                        inputMode="numeric" pattern="[0-9]*"
                         className="w-14 bg-muted border border-transparent hover:border-border focus:border-[#FF4655] rounded px-2 py-1 text-xs text-white outline-none text-center transition-colors"
                         value={row[key]}
                         placeholder="0"
@@ -585,13 +590,197 @@ export default function ScrimInputPage() {
         </button>
 
         {showRounds && (
-          <div className="border-t border-border p-4 space-y-3">
+          <div className="border-t border-border p-3 md:p-4 space-y-3">
             {rounds.length === 0 ? (
               <p className="text-xs text-muted-foreground py-4 text-center">
                 {t('matchInput.generateRounds')}
               </p>
             ) : (
-              <div className="overflow-x-auto rounded-lg border border-border">
+              <>
+              {/* ── Mobile: Card per round ── */}
+              <div className="md:hidden space-y-2">
+                {rounds.map((r, i) => (
+                  <React.Fragment key={i}>
+                    {i === 24 && (
+                      <div className="flex items-center gap-3 py-2 border-t border-[#FFD700]/30">
+                        <span className="text-[10px] font-black text-[#FFD700] uppercase tracking-wider">OT R25〜</span>
+                        {(['attack', 'defense'] as const).map(s => (
+                          <button key={s} type="button" onClick={() => setOtSide(prev => prev === s ? '' : s)}
+                            className={cn('px-3 py-1 rounded text-[10px] font-bold border min-h-[32px] transition-colors',
+                              otSide === s
+                                ? s === 'attack' ? 'bg-[#FF8C42]/20 border-[#FF8C42]/50 text-[#FF8C42]' : 'bg-[#00D4A0]/20 border-[#00D4A0]/50 text-[#00D4A0]'
+                                : 'border-border text-muted-foreground')}>
+                            {s === 'attack' ? 'ATK' : 'DEF'}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div className={cn(
+                      'bg-card border rounded-xl p-3 space-y-2.5',
+                      r.result === 'win' ? 'border-[#00D4A0]/30' : r.result === 'loss' ? 'border-[#FF4655]/30' : 'border-border'
+                    )}>
+                      {/* Row 1: R#, Side, W/L, Notable, Memo */}
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          'w-9 h-9 rounded-lg flex items-center justify-center text-xs font-bold flex-shrink-0 border',
+                          r.result === 'win' ? 'bg-[#00D4A0]/15 text-[#00D4A0] border-[#00D4A0]/30' :
+                          r.result === 'loss' ? 'bg-[#FF4655]/15 text-[#FF4655] border-[#FF4655]/30' :
+                          'bg-muted text-muted-foreground border-border'
+                        )}>R{r.round_number}</span>
+                        <span className={cn('text-xs font-bold flex-shrink-0', r.side === 'attack' ? 'text-[#FF8C42]' : 'text-[#00D4A0]')}>
+                          {r.side === 'attack' ? 'ATK' : 'DEF'}
+                        </span>
+                        <div className="flex gap-1.5">
+                          {[
+                            { value: 'win',  label: 'W', color: 'text-[#00D4A0]', bg: 'bg-[#00D4A0]/20 border-[#00D4A0]/40' },
+                            { value: 'loss', label: 'L', color: 'text-[#FF4655]', bg: 'bg-[#FF4655]/20 border-[#FF4655]/40' },
+                          ].map(opt => (
+                            <button key={opt.value} type="button"
+                              onClick={() => updateRound(i, 'result', r.result === opt.value ? '' : opt.value)}
+                              className={cn(
+                                'px-3 py-1.5 rounded text-xs font-bold border transition-colors min-w-[40px] min-h-[36px]',
+                                r.result === opt.value ? opt.bg + ' ' + opt.color : 'bg-transparent border-border text-muted-foreground'
+                              )}>
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="ml-auto flex gap-1">
+                          <button type="button" onClick={() => updateRound(i, 'notable', !r.notable)}
+                            className={cn('p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg transition-colors',
+                              r.notable ? 'text-[#FF4655] bg-[#FF4655]/10' : 'text-muted-foreground')}>
+                            <Flag className="w-4 h-4" fill={r.notable ? 'currentColor' : 'none'} />
+                          </button>
+                          <button type="button"
+                            onClick={() => setMemoOpenIdx(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n })}
+                            className={cn('p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg transition-colors',
+                              r.memo ? 'text-[#3498DB] bg-[#3498DB]/10' : memoOpenIdx.has(i) ? 'text-white bg-white/10' : 'text-muted-foreground')}>
+                            <Bookmark className="w-4 h-4" fill={r.memo ? 'currentColor' : 'none'} />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Row 2: Economy + Timing */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <select
+                          className="bg-muted border border-border rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-[#FF4655] outline-none min-h-[36px]"
+                          value={r.economy}
+                          onChange={e => updateRound(i, 'economy', e.target.value)}
+                        >
+                          <option value="">エコ</option>
+                          {ECO_OPTIONS.map(o => <option key={o} value={o}>{t(`eco.${o}`)}</option>)}
+                        </select>
+                        <div className="flex gap-1">
+                          {TIMING_OPTIONS.map(opt => (
+                            <button key={opt.value} type="button"
+                              onClick={() => updateRound(i, 'contact_timing', r.contact_timing === opt.value ? '' : opt.value)}
+                              className={cn(
+                                'px-2.5 py-1.5 rounded text-[10px] font-bold border transition-colors min-h-[36px]',
+                                r.contact_timing === opt.value ? opt.bg + ' ' + opt.color : 'bg-transparent border-border text-muted-foreground'
+                              )}>
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Row 3: ATK plant/site OR DEF retake + FB */}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        {r.side === 'attack' && (
+                          <>
+                            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                              <input type="checkbox" className="accent-[#FF4655] w-4 h-4"
+                                checked={r.plant}
+                                onChange={e => {
+                                  updateRound(i, 'plant', e.target.checked)
+                                  if (!e.target.checked) {
+                                    updateRound(i, 'site', '')
+                                    setMapOpenIdx(prev => { const n = new Set(prev); n.delete(i); return n })
+                                  } else {
+                                    setMapOpenIdx(prev => new Set([...prev, i]))
+                                  }
+                                }} />
+                              プラント
+                            </label>
+                            <div className="flex gap-1">
+                              {['A','B','C'].map(s => (
+                                <button key={s} type="button" onClick={() => updateRound(i, 'site', r.site === s ? '' : s)}
+                                  className={cn(
+                                    'w-9 h-9 rounded text-xs font-bold border transition-colors',
+                                    r.site === s ? 'bg-[#6C63FF]/20 border-[#6C63FF]/40 text-[#6C63FF]' : 'bg-transparent border-border text-muted-foreground'
+                                  )}>
+                                  {s}
+                                </button>
+                              ))}
+                            </div>
+                          </>
+                        )}
+                        {r.side === 'defense' && (
+                          <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                            <input type="checkbox" className="accent-[#6C63FF] w-4 h-4"
+                              checked={r.retake}
+                              onChange={e => updateRound(i, 'retake', e.target.checked)} />
+                            リテイク
+                          </label>
+                        )}
+                        <div className="ml-auto flex gap-1">
+                          {[
+                            { value: 'us', label: 'FB取', color: 'text-[#00D4A0]', bg: 'bg-[#00D4A0]/20 border-[#00D4A0]/40' },
+                            { value: 'them', label: 'FB負', color: 'text-[#FF4655]', bg: 'bg-[#FF4655]/20 border-[#FF4655]/40' },
+                          ].map(opt => {
+                            const cur = r.fb_team === '' ? '' : r.fb_team ? 'us' : 'them'
+                            return (
+                              <button key={opt.value} type="button"
+                                onClick={() => updateRound(i, 'fb_team', cur === opt.value ? '' : opt.value === 'us')}
+                                className={cn(
+                                  'px-2.5 py-1.5 rounded text-[10px] font-bold border min-h-[36px] transition-colors',
+                                  cur === opt.value ? opt.bg + ' ' + opt.color : 'bg-transparent border-border text-muted-foreground'
+                                )}>
+                                {opt.label}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Memo textarea */}
+                      {memoOpenIdx.has(i) && (
+                        <div className="flex items-start gap-2">
+                          <Bookmark className="w-3.5 h-3.5 text-[#3498DB] mt-1.5 flex-shrink-0" fill={r.memo ? 'currentColor' : 'none'} />
+                          <textarea rows={2} autoFocus value={r.memo}
+                            onChange={e => updateRound(i, 'memo', e.target.value)}
+                            placeholder={`R${r.round_number} のメモ`}
+                            className="flex-1 bg-muted/30 border border-[#3498DB]/30 rounded px-2.5 py-1.5 text-xs text-white placeholder-muted-foreground/50 focus:border-[#3498DB] outline-none resize-none" />
+                        </div>
+                      )}
+
+                      {/* Plant map (ATK + plant checked) */}
+                      {r.plant && r.side === 'attack' && mapOpenIdx.has(i) && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                              <MapPin className="w-3 h-3" /> R{r.round_number} プラント位置
+                            </span>
+                            <button type="button"
+                              onClick={() => setMapOpenIdx(prev => { const n = new Set(prev); n.delete(i); return n })}
+                              className="text-muted-foreground hover:text-white p-1 min-w-[32px] min-h-[32px] flex items-center justify-center">
+                              <ChevronUp className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <InlineMapPin mapName={map} x={r.plant_x} y={r.plant_y} roundNumber={r.round_number}
+                            onPinSet={(x, y, site) => {
+                              updateRound(i, 'plant_x', x); updateRound(i, 'plant_y', y)
+                              if (site) updateRound(i, 'site', site)
+                            }} />
+                        </div>
+                      )}
+                    </div>
+                  </React.Fragment>
+                ))}
+              </div>
+
+              {/* ── Desktop: Table ── */}
+              <div className="hidden md:block overflow-x-auto rounded-lg border border-border">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-muted/20 border-b border-border">
@@ -868,15 +1057,16 @@ export default function ScrimInputPage() {
                   </tbody>
                 </table>
               </div>
+              </> /* end mobile+desktop wrapper */
             )}
           </div>
         )}
       </div>
 
-      {/* ── Footer buttons ── */}
-      <div className="flex items-center justify-end gap-3 pb-8">
+      {/* ── Footer buttons — sticky on mobile ── */}
+      <div className="sticky-safe-bottom mt-4 flex items-center justify-end gap-3">
         <button onClick={handleReset}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-white transition-colors">
+          className="flex items-center gap-2 px-5 py-3 min-h-[48px] rounded-lg border border-border text-sm text-muted-foreground hover:text-white transition-colors">
           <RotateCcw className="w-4 h-4" />
           {t('matchInput.reset')}
         </button>
@@ -884,7 +1074,7 @@ export default function ScrimInputPage() {
           onClick={handleSave}
           disabled={saving || saved}
           className={cn(
-            'flex items-center gap-2 px-6 py-2.5 rounded-lg font-semibold text-sm transition-all',
+            'flex items-center gap-2 px-6 py-3 min-h-[48px] rounded-lg font-semibold text-sm transition-all flex-1 sm:flex-none justify-center',
             saved ? 'bg-[#00D4A0] text-white' :
             saving ? 'bg-muted text-muted-foreground cursor-not-allowed' :
             'bg-[#FF4655] hover:bg-[#e03e4d] text-white'
@@ -958,7 +1148,7 @@ function InlineMapPin({ mapName, x, y, roundNumber, onPinSet }: {
   const pinScreen = x !== null && y !== null ? toScreenPos(x, y) : null
 
   return (
-    <div className="flex items-start gap-4">
+    <div className="flex items-start gap-4 flex-wrap">
       <div
         ref={outerRef}
         onClick={e => {
@@ -969,8 +1159,7 @@ function InlineMapPin({ mapName, x, y, roundNumber, onPinSet }: {
         }}
         onMouseMove={e => setHoverScreen(getScreenCoords(e))}
         onMouseLeave={() => setHoverScreen(null)}
-        className="relative rounded-xl overflow-hidden border border-[#FF4655]/50 cursor-none flex-shrink-0 bg-muted"
-        style={{ width: 320, height: 320 }}
+        className="relative rounded-xl overflow-hidden border border-[#FF4655]/50 cursor-crosshair bg-muted w-full max-w-[320px] aspect-square"
       >
         {/* 回転 div: 画像のみ */}
         <div
