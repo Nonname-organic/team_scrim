@@ -257,7 +257,7 @@ export default function RoundAnalysisPage() {
       roundTimestamps[r.id] ?? (vodOffset + (r.round_number - 1) * secPerRound)
 
     return (
-      <div className="flex flex-col -mx-3 lg:-m-10">
+      <div className="flex flex-col -mx-3 lg:-mx-14 lg:-my-10">
         {/* Top bar */}
         <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-[#18181F] flex-shrink-0">
           <button
