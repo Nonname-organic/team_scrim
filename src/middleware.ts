@@ -41,7 +41,8 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = path.startsWith('/login') ||
                      path.startsWith('/register') ||
                      path.startsWith('/reset-password') ||
-                     path.startsWith('/auth/') ||   // /auth/callback（メール確認・OTP・OAuth共通）
+                     path.startsWith('/forgot-password') ||
+                     path.startsWith('/auth/') ||
                      path.startsWith('/terms') ||
                      path.startsWith('/privacy') ||
                      path === '/maintenance'

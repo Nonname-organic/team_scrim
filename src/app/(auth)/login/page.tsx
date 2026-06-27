@@ -77,7 +77,7 @@ function LoginInner() {
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="text-xs font-medium text-muted-foreground">パスワード</label>
-            <Link href="/reset-password" className="text-[10px] text-muted-foreground hover:text-white transition-colors">
+            <Link href="/forgot-password" className="text-[10px] text-muted-foreground hover:text-white transition-colors">
               パスワードを忘れた場合
             </Link>
           </div>

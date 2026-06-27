@@ -1,31 +1,34 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { Eye, EyeOff, KeyRound, Check } from 'lucide-react'
+import { Eye, EyeOff, KeyRound, Check, Loader2 } from 'lucide-react'
 
-function ResetPasswordInner() {
-  const router       = useRouter()
-  const searchParams = useSearchParams()
-  const [password, setPassword]     = useState('')
-  const [confirm, setConfirm]       = useState('')
-  const [showPw, setShowPw]         = useState(false)
-  const [loading, setLoading]       = useState(false)
-  const [error, setError]           = useState<string | null>(null)
-  const [done, setDone]             = useState(false)
-  const [sessionReady, setSessionReady] = useState(false)
+export default function ResetPasswordPage() {
+  const router = useRouter()
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm]   = useState('')
+  const [showPw, setShowPw]     = useState(false)
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState<string | null>(null)
+  const [done, setDone]         = useState(false)
+  const [hasSession, setHasSession] = useState(false)
 
-  // Supabase パスワードリセットリンクから code を受け取ってセッション確立
+  const inputCls = 'w-full bg-muted border border-border rounded-lg px-4 py-3 text-sm text-white focus:border-[#FF4655] outline-none'
+
+  // /auth/callback でセッション確立済みか確認
   useEffect(() => {
-    const code = searchParams.get('code')
-    if (!code) { setError('無効なリンクです。パスワード変更メールを再送してください。'); return }
     const supabase = createClient()
-    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-      if (error) setError('リンクが無効または期限切れです。再度メールを送信してください。')
-      else setSessionReady(true)
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        setHasSession(true)
+      } else {
+        // セッションなし = メールリンクを経由していない
+        router.replace('/forgot-password')
+      }
     })
-  }, [searchParams])
+  }, [router])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -33,14 +36,23 @@ function ResetPasswordInner() {
     if (password.length < 8)  { setError('パスワードは8文字以上にしてください'); return }
     setLoading(true)
     setError(null)
+
     const supabase = createClient()
     const { error } = await supabase.auth.updateUser({ password })
+
     if (error) { setError(error.message); setLoading(false); return }
+
     setDone(true)
     setTimeout(() => router.push('/'), 2000)
   }
 
-  const inputCls = 'w-full bg-muted border border-border rounded-lg px-4 py-3 text-sm text-white focus:border-[#FF4655] outline-none'
+  if (!hasSession) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-6 h-6 rounded-full border-2 border-[#FF4655] border-t-transparent animate-spin" />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[#0F0F17]">
@@ -62,16 +74,6 @@ function ResetPasswordInner() {
               <p className="text-white font-semibold">パスワードを変更しました</p>
               <p className="text-muted-foreground text-sm">ダッシュボードへ移動中...</p>
             </div>
-          ) : error && !sessionReady ? (
-            <div className="text-center space-y-4">
-              <p className="text-sm text-[#FF4655]">{error}</p>
-              <button
-                onClick={() => router.push('/settings')}
-                className="text-sm text-muted-foreground hover:text-white underline transition-colors"
-              >
-                設定ページに戻る
-              </button>
-            </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
@@ -88,6 +90,7 @@ function ResetPasswordInner() {
                     onChange={e => setPassword(e.target.value)}
                     required minLength={8}
                     placeholder="8文字以上"
+                    autoComplete="new-password"
                     className={inputCls}
                   />
                   <button type="button" onClick={() => setShowPw(v => !v)}
@@ -104,14 +107,16 @@ function ResetPasswordInner() {
                   onChange={e => setConfirm(e.target.value)}
                   required
                   placeholder="もう一度入力"
+                  autoComplete="new-password"
                   className={inputCls}
                 />
               </div>
               <button
                 type="submit"
-                disabled={loading || !sessionReady}
-                className="w-full py-3 bg-[#FF4655] hover:bg-[#e03d4a] text-white font-bold rounded-xl transition-colors disabled:opacity-50"
+                disabled={loading}
+                className="w-full py-3 bg-[#FF4655] hover:bg-[#e03d4a] text-white font-bold rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
+                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
                 {loading ? '変更中...' : 'パスワードを変更する'}
               </button>
             </form>
@@ -119,13 +124,5 @@ function ResetPasswordInner() {
         </div>
       </div>
     </div>
-  )
-}
-
-export default function ResetPasswordPage() {
-  return (
-    <Suspense>
-      <ResetPasswordInner />
-    </Suspense>
   )
 }
