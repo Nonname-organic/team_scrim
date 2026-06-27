@@ -53,7 +53,9 @@ export async function middleware(request: NextRequest) {
   }
 
   // ログイン済みで認証ページ → / へリダイレクト
-  if (user && isAuthPage && path !== '/maintenance') {
+  // ※ パスワードリセット中はセッションが存在するため除外
+  const isPasswordFlow = path.startsWith('/reset-password') || path.startsWith('/forgot-password')
+  if (user && isAuthPage && !isPasswordFlow && path !== '/maintenance') {
     return NextResponse.redirect(new URL('/', request.url))
   }
 

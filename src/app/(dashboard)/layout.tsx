@@ -223,7 +223,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
       <main className={cn(
         'flex-1 min-h-screen',
         // デスクトップ: サイドバー分インデント
-        'lg:ml-56 lg:px-10 lg:py-8',
+        'lg:ml-56 lg:p-8',
         // モバイル: トップヘッダー + ボトムナビ分のパディング
         'pt-12 pb-20 px-3 lg:pt-0 lg:pb-0 lg:px-0',
         // モバイルでの余分なoverscrollを抑制
