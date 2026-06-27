@@ -59,7 +59,7 @@ function Sidebar() {
   const { locale, setLocale, t } = useLanguage()
 
   return (
-    <aside className="hidden lg:flex w-64 bg-[#18181F] border-r border-border flex-col fixed h-full z-10">
+    <aside className="hidden lg:flex w-56 bg-[#18181F] border-r border-border flex-col fixed h-full z-10">
       <div className="px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2.5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -223,7 +223,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
       <main className={cn(
         'flex-1 min-h-screen',
         // デスクトップ: サイドバー分インデント
-        'lg:ml-64 lg:py-10 lg:px-14',
+        'lg:ml-56 lg:p-6',
         // モバイル: トップヘッダー + ボトムナビ分のパディング
         'pt-12 pb-20 px-3 lg:pt-0 lg:pb-0 lg:px-0',
         // モバイルでの余分なoverscrollを抑制
