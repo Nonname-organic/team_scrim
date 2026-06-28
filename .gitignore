@@ -35,3 +35,6 @@ next-env.d.ts
 .vercel
 # Scripts (contain hardcoded credentials — run locally only)
 scripts/
+
+# Seed data (contains real team/player info — local only)
+sql/seed.sql

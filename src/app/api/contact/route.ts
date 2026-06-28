@@ -15,9 +15,14 @@ export async function POST(req: NextRequest) {
 
   const resend = new Resend(apiKey)
 
+  const to = process.env.CONTACT_EMAIL
+  if (!to) {
+    return NextResponse.json({ error: 'メール設定が未完了です' }, { status: 503 })
+  }
+
   const { error } = await resend.emails.send({
     from: 'AXELIA Analytics <onboarding@resend.dev>',
-    to: 'axelia.esports@gmail.com',
+    to,
     replyTo: email,
     subject: `[AXELIA Analytics] ${category}: ${name}`,
     html: `
