@@ -338,32 +338,16 @@ export async function getRoundNumberWinRates(teamId: string, mapFilter?: string,
 
 // ── Radar scoring helpers ──────────────────────────────────────────────────────
 
-function piecewise(v: number, pts: [number, number][]): number {
-  if (v <= pts[0][0]) return pts[0][1]
-  if (v >= pts[pts.length - 1][0]) return pts[pts.length - 1][1]
-  for (let i = 1; i < pts.length; i++) {
-    if (v <= pts[i][0]) {
-      const [x0, y0] = pts[i - 1]
-      const [x1, y1] = pts[i]
-      return Math.round(y0 + ((v - x0) / (x1 - x0)) * (y1 - y0))
-    }
-  }
-  return pts[pts.length - 1][1]
-}
 function clamp100(v: number) { return Math.max(0, Math.min(100, Math.round(v))) }
-function scoreACS(v: number)  { return clamp100((v - 120) / 160 * 100) }
-function scoreKPR(v: number)  { return piecewise(v, [[0.40,0],[0.55,40],[0.70,70],[0.85,90],[0.95,100]]) }
-function scoreKD(v: number)   { return clamp100((v - 0.70) / 0.80 * 100) }
-function scoreFB(v: number)   { return piecewise(v, [[5,0],[10,50],[15,80],[20,100]]) }
-function scoreKAST(v: number) { return piecewise(v, [[55,0],[65,40],[72,70],[78,90],[82,100]]) }
-function scoreAPR(v: number)  { return clamp100((v - 0.10) / 0.40 * 100) }
-function scoreDPR(v: number)  { return clamp100(100 - ((v - 0.55) / 0.40 * 100)) }
-// Estimate KAST% from KPR+APR (KAST not stored in DB)
+// Estimate KAST% from KPR+APR (not stored in DB)
 function estimateKAST(kpr: number, apr: number) {
-  return Math.max(55, Math.min(82, 55 + ((kpr + apr) / 0.90) * 27))
+  return Math.max(60, Math.min(85, 60 + ((kpr + apr) / 0.90) * 25))
 }
 
-export async function getPlayerRadarStats(playerId: string) {
+export async function getPlayerRadarStats(playerId: string): Promise<{
+  axes: { subject: string; value: number; fullMark: 100; raw: string }[]
+  overall: number
+} | null> {
   const s = await queryOne<PlayerCareerStats>(
     'SELECT * FROM v_player_career_stats WHERE player_id = $1',
     [playerId]
@@ -375,48 +359,27 @@ export async function getPlayerRadarStats(playerId: string) {
   const kpr  = Number(s.avg_kpr  ?? 0)
   const apr  = Number(s.avg_apr  ?? 0)
   const dpr  = Number(s.avg_dpr  ?? 0)
-  const mp   = Math.max(1, Number(s.matches_played ?? 1))
-  const fbPM = Number(s.total_first_bloods ?? 0) / mp
   const kast = estimateKAST(kpr, apr)
 
-  return [
-    {
-      subject: '戦闘力',
-      value: clamp100(0.6 * scoreACS(acs) + 0.4 * scoreKPR(kpr)),
-      fullMark: 100 as const,
-      components: { ACS: acs.toFixed(0), KPR: kpr.toFixed(2) },
-    },
-    {
-      subject: '効率',
-      value: scoreKD(kd),
-      fullMark: 100 as const,
-      components: { 'K/D': kd.toFixed(2) },
-    },
-    {
-      subject: '影響力',
-      value: clamp100(0.5 * scoreFB(fbPM) + 0.5 * scoreKAST(kast)),
-      fullMark: 100 as const,
-      components: { 'FB/試合': fbPM.toFixed(1), 'KAST※': `${kast.toFixed(0)}%` },
-    },
-    {
-      subject: '支援力',
-      value: scoreAPR(apr),
-      fullMark: 100 as const,
-      components: { APR: apr.toFixed(2) },
-    },
-    {
-      subject: '生存力',
-      value: scoreDPR(dpr),
-      fullMark: 100 as const,
-      components: { DPR: dpr.toFixed(2) },
-    },
-    {
-      subject: '安定感',
-      value: scoreKAST(kast),
-      fullMark: 100 as const,
-      components: { 'KAST※': `${kast.toFixed(0)}%` },
-    },
-  ]
+  const s1 = clamp100((acs  - 160)  / 160  * 100)
+  const s2 = clamp100((kd   - 0.80) / 0.80 * 100)
+  const s3 = clamp100((kpr  - 0.50) / 0.50 * 100)
+  const s4 = clamp100((apr  - 0.10) / 0.45 * 100)
+  const s5 = clamp100((kast - 60)   / 25   * 100)
+  const s6 = clamp100(100 - ((dpr - 0.50) / 0.40 * 100))
+  const overall = Math.round((s1 + s2 + s3 + s4 + s5 + s6) / 6)
+
+  return {
+    axes: [
+      { subject: 'ACS',  value: s1, fullMark: 100, raw: acs.toFixed(0) },
+      { subject: 'K/D',  value: s2, fullMark: 100, raw: kd.toFixed(2) },
+      { subject: 'KPR',  value: s3, fullMark: 100, raw: kpr.toFixed(2) },
+      { subject: 'APR',  value: s4, fullMark: 100, raw: apr.toFixed(2) },
+      { subject: 'KAST', value: s5, fullMark: 100, raw: `${kast.toFixed(0)}%※` },
+      { subject: 'DPR',  value: s6, fullMark: 100, raw: dpr.toFixed(2) },
+    ],
+    overall,
+  }
 }
 
 // ============================================================

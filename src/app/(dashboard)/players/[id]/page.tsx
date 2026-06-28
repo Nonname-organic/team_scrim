@@ -66,9 +66,10 @@ export default function PlayerDetailPage() {
     <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">{t('players.noPlayers')}</div>
   )
 
-  const career = data.career as Record<string, unknown> | null
-  const recent = (data.recent ?? []) as Record<string, unknown>[]
-  const radar  = (data.radar ?? []) as RadarEntry[]
+  const career  = data.career as Record<string, unknown> | null
+  const recent  = (data.recent ?? []) as Record<string, unknown>[]
+  const radar   = (data.radar ?? []) as RadarEntry[]
+  const overall = Number(data.radarOverall ?? 0)
   const mapStats = (data.map_stats ?? []) as Record<string, unknown>[]
   const agentStats = (data.agent_stats ?? []) as Record<string, unknown>[]
 
@@ -177,86 +178,102 @@ export default function PlayerDetailPage() {
             {/* Radar chart */}
             {radar.length > 0 && (
               <div className="bg-card border border-border rounded-xl p-5 space-y-4">
-                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                  スキルレーダー
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    スキルレーダー
+                  </div>
+                  {overall > 0 && (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground">Overall</span>
+                      <span className="text-lg font-black" style={{ color: getRank(overall).color }}>
+                        {overall}
+                      </span>
+                      <span className="text-xs font-bold px-1.5 py-0.5 rounded"
+                        style={{ color: getRank(overall).color, background: `${getRank(overall).color}20` }}>
+                        {getRank(overall).label}
+                      </span>
+                    </div>
+                  )}
                 </div>
-                <ResponsiveContainer width="100%" height={300}>
-                  <RadarChart data={radar} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
-                    <PolarGrid stroke="hsl(var(--border))" />
-                    <PolarRadiusAxis domain={[0, 100]} tickCount={6} tick={false} axisLine={false} />
-                    <PolarAngleAxis
-                      dataKey="subject"
-                      tick={(props: Record<string, unknown>) => {
-                        const { x, y, cx, cy, payload } = props as {
-                          x: number; y: number; cx: number; cy: number
-                          payload: { value: string }
-                        }
-                        const entry = radar.find(r => r.subject === payload.value)
-                        if (!entry) return <g />
-                        const rk = getRank(entry.value)
-                        const anchor = Math.abs(x - cx) < 10 ? 'middle' : x > cx ? 'start' : 'end'
-                        return (
-                          <g>
-                            <text x={x} y={y - 4} textAnchor={anchor}
-                              fill="hsl(var(--muted-foreground))" fontSize={10}>
-                              {payload.value}
-                            </text>
-                            <text x={x} y={y + 12} textAnchor={anchor}
-                              fill={rk.color} fontSize={14} fontWeight={800}>
-                              {entry.value}
-                            </text>
-                            <text x={x} y={y + 26} textAnchor={anchor}
-                              fill={rk.color} fontSize={10} fontWeight={700} opacity={0.8}>
-                              {rk.label}
-                            </text>
-                          </g>
-                        )
-                      }}
-                    />
-                    <Tooltip
-                      content={({ active, payload: pl }) => {
-                        if (!active || !pl?.[0]) return null
-                        const e = pl[0].payload as RadarEntry
-                        const rk = getRank(e.value)
-                        return (
-                          <div className="bg-[#18181F] border border-border rounded-lg p-3 text-xs shadow-xl">
-                            <div className="font-bold text-white mb-2">{e.subject}</div>
-                            {Object.entries(e.components).map(([k, v]) => (
-                              <div key={k} className="flex justify-between gap-6 text-muted-foreground">
-                                <span>{k}</span><span className="text-white font-mono">{v}</span>
-                              </div>
-                            ))}
-                            <div className="border-t border-border mt-2 pt-2 flex justify-between items-center">
-                              <span className="text-muted-foreground">スコア</span>
-                              <span style={{ color: rk.color }} className="font-black text-base">
+                <div className="relative">
+                  <ResponsiveContainer width="100%" height={300}>
+                    <RadarChart data={radar} margin={{ top: 24, right: 40, bottom: 24, left: 40 }}>
+                      <PolarGrid stroke="hsl(var(--border))" />
+                      <PolarRadiusAxis domain={[0, 100]} tickCount={6} tick={false} axisLine={false} />
+                      <PolarAngleAxis
+                        dataKey="subject"
+                        tick={(props: Record<string, unknown>) => {
+                          const { x, y, cx, cy, payload } = props as {
+                            x: number; y: number; cx: number; cy: number
+                            payload: { value: string }
+                          }
+                          const entry = radar.find(r => r.subject === payload.value)
+                          if (!entry) return <g />
+                          const rk = getRank(entry.value)
+                          const anchor = Math.abs(x - cx) < 10 ? 'middle' : x > cx ? 'start' : 'end'
+                          return (
+                            <g>
+                              <text x={x} y={y - 4} textAnchor={anchor}
+                                fill="hsl(var(--muted-foreground))" fontSize={10}>
+                                {payload.value}
+                              </text>
+                              <text x={x} y={y + 12} textAnchor={anchor}
+                                fill={rk.color} fontSize={14} fontWeight={800}>
+                                {entry.value}
+                              </text>
+                            </g>
+                          )
+                        }}
+                      />
+                      <Tooltip
+                        content={({ active, payload: pl }) => {
+                          if (!active || !pl?.[0]) return null
+                          const e = pl[0].payload as RadarEntry
+                          const rk = getRank(e.value)
+                          return (
+                            <div className="bg-[#18181F] border border-border rounded-lg px-3 py-2.5 text-xs shadow-xl">
+                              <div className="font-bold text-white mb-1.5">{e.subject}</div>
+                              <div className="text-muted-foreground font-mono">{e.raw}</div>
+                              <div className="text-muted-foreground text-[10px] my-0.5">↓</div>
+                              <div className="font-black text-base" style={{ color: rk.color }}>
                                 {e.value} <span className="text-sm">{rk.label}</span>
-                              </span>
+                              </div>
                             </div>
-                          </div>
-                        )
-                      }}
-                    />
-                    <Radar
-                      dataKey="value"
-                      stroke={roleCfg.color}
-                      fill={roleCfg.color}
-                      fillOpacity={0.2}
-                      strokeWidth={2}
-                    />
-                  </RadarChart>
-                </ResponsiveContainer>
-                {/* Score summary row */}
-                <div className="grid grid-cols-3 gap-1.5">
+                          )
+                        }}
+                      />
+                      <Radar
+                        dataKey="value"
+                        stroke={roleCfg.color}
+                        fill={roleCfg.color}
+                        fillOpacity={0.2}
+                        strokeWidth={2}
+                      />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                  {/* Overall score — center overlay */}
+                  {overall > 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="text-center">
+                        <div className="text-3xl font-black leading-none"
+                          style={{ color: getRank(overall).color }}>
+                          {overall}
+                        </div>
+                        <div className="text-[9px] text-muted-foreground mt-0.5 tracking-wider">
+                          OVERALL
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* Score row */}
+                <div className="grid grid-cols-6 gap-1">
                   {radar.map(e => {
                     const rk = getRank(e.value)
                     return (
-                      <div key={e.subject}
-                        className="bg-muted/20 rounded-lg px-2 py-1.5 flex items-center justify-between gap-1">
-                        <span className="text-[10px] text-muted-foreground truncate">{e.subject}</span>
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <span className="text-xs font-bold text-white">{e.value}</span>
-                          <span className="text-[10px] font-black" style={{ color: rk.color }}>{rk.label}</span>
-                        </div>
+                      <div key={e.subject} className="text-center">
+                        <div className="text-[9px] text-muted-foreground mb-0.5">{e.subject}</div>
+                        <div className="text-xs font-bold" style={{ color: rk.color }}>{e.value}</div>
                       </div>
                     )
                   })}

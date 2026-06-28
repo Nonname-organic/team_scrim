@@ -79,7 +79,14 @@ export async function GET(
       ),
     ])
 
-    return NextResponse.json({ data: { career, recent: recentStats, radar: radarStats, map_stats: mapStats, agent_stats: agentStats } })
+    return NextResponse.json({ data: {
+      career,
+      recent: recentStats,
+      radar: radarStats?.axes ?? [],
+      radarOverall: radarStats?.overall ?? 0,
+      map_stats: mapStats,
+      agent_stats: agentStats,
+    } })
   } catch (err) {
     return serverError('players/[id]/stats GET', err)
   }

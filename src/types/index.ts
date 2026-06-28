@@ -237,9 +237,9 @@ export interface PlayerCareerStats {
 
 export interface RadarAxis {
   subject: string
-  value: number
+  value: number       // 0-100 score
   fullMark: 100
-  components: Record<string, string>
+  raw: string         // raw metric value for hover display
 }
 
 export interface TeamWinRates {
