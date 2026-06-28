@@ -257,7 +257,7 @@ export default function RoundAnalysisPage() {
       roundTimestamps[r.id] ?? (vodOffset + (r.round_number - 1) * secPerRound)
 
     return (
-      <div className="flex flex-col -mx-3 lg:fixed lg:inset-0 lg:z-20 lg:m-0 lg:bg-background">
+      <div className="flex flex-col -mx-3 lg:-mx-12 lg:-my-10">
         {/* Top bar */}
         <div className="flex items-center gap-3 px-4 py-2.5 border-b border-border bg-[#18181F] flex-shrink-0">
           <button
@@ -344,7 +344,7 @@ export default function RoundAnalysisPage() {
         )}
 
         {/* 3-pane: Desktop always shows all 3 / Mobile shows one tab at a time */}
-        <div className="analysis-3pane flex overflow-hidden lg:flex-1">
+        <div className="analysis-3pane flex overflow-hidden">
           {/* ── LEFT: Round list ── */}
           <div className={cn(
             // ベースには display を設定しない (flex-col は flex-direction のみ)
