@@ -20,13 +20,15 @@ const ROLE_CONFIG: Record<string, { color: string; label: string }> = {
 }
 
 type Tab = 'overall' | 'map' | 'agent'
-type TrendMetric = 'ACS' | 'KD' | 'KDA' | 'K'
+type TrendMetric = 'ACS' | 'KD' | 'KDA' | 'K' | 'KPR' | 'APR'
 
 const TREND_METRICS: { id: TrendMetric; label: string }[] = [
   { id: 'ACS',  label: 'ACS' },
   { id: 'KD',   label: 'K/D' },
   { id: 'KDA',  label: 'KDA' },
   { id: 'K',    label: 'Kill数' },
+  { id: 'KPR',  label: 'KPR' },
+  { id: 'APR',  label: 'APR' },
 ]
 
 export default function PlayerDetailPage() {
@@ -67,21 +69,25 @@ export default function PlayerDetailPage() {
   const roleCfg = ROLE_CONFIG[String(career.role ?? '')] ?? { color: '#9B9BA4', label: String(career.role ?? '') }
 
   const kpiCards = [
-    { label: 'ACS',  value: Number(career.avg_acs  ?? 0).toFixed(0), threshold: 250 },
-    { label: 'K/D',  value: Number(career.avg_kd   ?? 0).toFixed(2), threshold: 1.1 },
-    { label: 'KPR',  value: Number(career.avg_kpr  ?? 0).toFixed(2), threshold: 0.7 },
+    { label: 'ACS',  value: Number(career.avg_acs  ?? 0).toFixed(0),  threshold: 250  },
+    { label: 'K/D',  value: Number(career.avg_kd   ?? 0).toFixed(2),  threshold: 1.1  },
+    { label: 'KPR',  value: Number(career.avg_kpr  ?? 0).toFixed(2),  threshold: 0.7  },
+    { label: 'APR',  value: Number(career.avg_apr  ?? 0).toFixed(2),  threshold: 0.3  },
   ]
 
   const trendData = [...recent].reverse().map((r, i) => {
-    const k = Number(r.kills ?? 0)
-    const d = Number(r.deaths ?? 0)
-    const a = Number(r.assists ?? 0)
+    const k  = Number(r.kills ?? 0)
+    const d  = Number(r.deaths ?? 0)
+    const a  = Number(r.assists ?? 0)
+    const rp = Number(r.rounds_played ?? 0)
     return {
       name: `#${i + 1}`,
       ACS: Number(r.acs ?? 0),
-      KD: Number(r.kd_ratio ?? 0),
+      KD:  Number(r.kd_ratio ?? 0),
       KDA: d > 0 ? Math.round(((k + a) / d) * 100) / 100 : k + a,
-      K: k,
+      K:   k,
+      KPR: rp > 0 ? Math.round((k / rp) * 100) / 100 : 0,
+      APR: rp > 0 ? Math.round((a / rp) * 100) / 100 : 0,
       map: String(r.map ?? ''),
     }
   })

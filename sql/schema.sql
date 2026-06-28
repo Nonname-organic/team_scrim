@@ -261,8 +261,21 @@ SELECT
   ROUND(AVG(ps.assists), 2)       AS avg_assists,
   ROUND(AVG(ps.acs), 1)           AS avg_acs,
   ROUND(AVG(ps.kd_ratio), 3)      AS avg_kd,
-  ROUND(AVG(ps.kpr), 3)           AS avg_kpr,
-  ROUND(AVG(ps.dpr), 3)           AS avg_dpr,
+  ROUND(
+    CASE WHEN SUM(ps.rounds_played) = 0 THEN 0
+         ELSE SUM(ps.kills)::NUMERIC / SUM(ps.rounds_played)
+    END, 3
+  )                               AS avg_kpr,
+  ROUND(
+    CASE WHEN SUM(ps.rounds_played) = 0 THEN 0
+         ELSE SUM(ps.assists)::NUMERIC / SUM(ps.rounds_played)
+    END, 3
+  )                               AS avg_apr,
+  ROUND(
+    CASE WHEN SUM(ps.rounds_played) = 0 THEN 0
+         ELSE SUM(ps.deaths)::NUMERIC / SUM(ps.rounds_played)
+    END, 3
+  )                               AS avg_dpr,
   ROUND(AVG(ps.adr), 1)           AS avg_adr,
   ROUND(AVG(ps.hs_pct), 1)        AS avg_hs_pct,
   SUM(ps.first_bloods)            AS total_first_bloods,

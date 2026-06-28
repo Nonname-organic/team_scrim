@@ -23,7 +23,14 @@ export async function GET(
     const [career, recentStats, radarStats, mapStats, agentStats] = await Promise.all([
       queryOne('SELECT * FROM v_player_career_stats WHERE player_id = $1', [playerId]),
       query(
-        `SELECT ps.*, m.match_date, m.map, m.opponent_name, m.result
+        `SELECT ps.*,
+                m.match_date, m.map, m.opponent_name, m.result,
+                CASE WHEN ps.rounds_played > 0
+                     THEN ROUND(ps.kills::NUMERIC   / ps.rounds_played, 3)
+                     ELSE ps.kpr END AS kpr,
+                CASE WHEN ps.rounds_played > 0
+                     THEN ROUND(ps.assists::NUMERIC / ps.rounds_played, 3)
+                     ELSE ps.apr END AS apr
          FROM player_stats ps
          JOIN matches m ON m.id = ps.match_id
          WHERE ps.player_id = $1
