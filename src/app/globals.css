@@ -129,8 +129,11 @@ button, a, [role="button"], label, select, input, textarea {
 }
 @media (min-width: 1024px) {
   .analysis-3pane {
-    /* デスクトップ: サイドバーは固定、トップバーのみ考慮 */
-    height: calc(100vh - 96px);
+    /* デスクトップ: fixed親がフルスクリーン、flex-1で残り高さを埋める */
+    flex: 1 1 0;
+    height: auto;
+    min-height: 0;
+    overflow: hidden;
   }
 }
 
