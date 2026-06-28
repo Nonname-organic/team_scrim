@@ -19,7 +19,7 @@ const ROLE_CONFIG: Record<string, { color: string; label: string }> = {
   igl:         { color: '#FFD700', label: 'IGL' },
 }
 
-type RadarEntry = { subject: string; value: number; fullMark: 100; components: Record<string, string> }
+type RadarEntry = { subject: string; value: number; fullMark: 100; raw: string }
 
 function getRank(v: number): { label: string; color: string } {
   if (v >= 90) return { label: 'S', color: '#FFD700' }
