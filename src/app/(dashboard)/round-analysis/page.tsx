@@ -520,7 +520,7 @@ export default function RoundAnalysisPage() {
           {/* ── RIGHT: Round details + Feedback ── */}
           <div className={cn(
             'border-l border-border flex-col overflow-hidden bg-card',
-            'lg:flex lg:w-60 lg:flex-none',
+            'lg:flex lg:w-64 lg:flex-none',
             mobileTab === 'details' ? 'flex flex-1' : 'hidden'
           )}>
             <div className="flex-1 overflow-y-auto">
