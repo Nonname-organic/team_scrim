@@ -350,7 +350,7 @@ export default function RoundAnalysisPage() {
             // ベースには display を設定しない (flex-col は flex-direction のみ)
             'border-r border-border flex-col bg-card overflow-hidden',
             // Desktop: 常に表示, 固定幅
-            'lg:flex lg:w-64 lg:flex-shrink-0',
+            'lg:flex lg:w-48 lg:flex-shrink-0',
             // Mobile: アクティブタブのみ full-width 表示、それ以外は非表示
             mobileTab === 'rounds' ? 'flex flex-1' : 'hidden'
           )}>
@@ -520,7 +520,7 @@ export default function RoundAnalysisPage() {
           {/* ── RIGHT: Round details + Feedback ── */}
           <div className={cn(
             'border-l border-border flex-col overflow-hidden bg-card',
-            'lg:flex lg:w-80 lg:flex-shrink-0',
+            'lg:flex lg:w-72 lg:flex-shrink-0',
             mobileTab === 'details' ? 'flex flex-1' : 'hidden'
           )}>
             <div className="flex-1 overflow-y-auto">
