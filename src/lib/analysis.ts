@@ -381,37 +381,37 @@ export async function getPlayerRadarStats(playerId: string) {
 
   return [
     {
-      subject: 'Combat',
+      subject: '戦闘力',
       value: clamp100(0.6 * scoreACS(acs) + 0.4 * scoreKPR(kpr)),
       fullMark: 100 as const,
       components: { ACS: acs.toFixed(0), KPR: kpr.toFixed(2) },
     },
     {
-      subject: 'Efficiency',
+      subject: '効率',
       value: scoreKD(kd),
       fullMark: 100 as const,
       components: { 'K/D': kd.toFixed(2) },
     },
     {
-      subject: 'Impact',
+      subject: '影響力',
       value: clamp100(0.5 * scoreFB(fbPM) + 0.5 * scoreKAST(kast)),
       fullMark: 100 as const,
       components: { 'FB/試合': fbPM.toFixed(1), 'KAST※': `${kast.toFixed(0)}%` },
     },
     {
-      subject: 'Support',
+      subject: '支援力',
       value: scoreAPR(apr),
       fullMark: 100 as const,
       components: { APR: apr.toFixed(2) },
     },
     {
-      subject: 'Survival',
+      subject: '生存力',
       value: scoreDPR(dpr),
       fullMark: 100 as const,
       components: { DPR: dpr.toFixed(2) },
     },
     {
-      subject: 'Consistency',
+      subject: '安定感',
       value: scoreKAST(kast),
       fullMark: 100 as const,
       components: { 'KAST※': `${kast.toFixed(0)}%` },
