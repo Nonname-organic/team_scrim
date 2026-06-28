@@ -336,19 +336,86 @@ export async function getRoundNumberWinRates(teamId: string, mapFilter?: string,
 // Player radar stats (normalized 0-100)
 // ============================================================
 
+// ── Radar scoring helpers ──────────────────────────────────────────────────────
+
+function piecewise(v: number, pts: [number, number][]): number {
+  if (v <= pts[0][0]) return pts[0][1]
+  if (v >= pts[pts.length - 1][0]) return pts[pts.length - 1][1]
+  for (let i = 1; i < pts.length; i++) {
+    if (v <= pts[i][0]) {
+      const [x0, y0] = pts[i - 1]
+      const [x1, y1] = pts[i]
+      return Math.round(y0 + ((v - x0) / (x1 - x0)) * (y1 - y0))
+    }
+  }
+  return pts[pts.length - 1][1]
+}
+function clamp100(v: number) { return Math.max(0, Math.min(100, Math.round(v))) }
+function scoreACS(v: number)  { return clamp100((v - 120) / 160 * 100) }
+function scoreKPR(v: number)  { return piecewise(v, [[0.40,0],[0.55,40],[0.70,70],[0.85,90],[0.95,100]]) }
+function scoreKD(v: number)   { return clamp100((v - 0.70) / 0.80 * 100) }
+function scoreFB(v: number)   { return piecewise(v, [[5,0],[10,50],[15,80],[20,100]]) }
+function scoreKAST(v: number) { return piecewise(v, [[55,0],[65,40],[72,70],[78,90],[82,100]]) }
+function scoreAPR(v: number)  { return clamp100((v - 0.10) / 0.40 * 100) }
+function scoreDPR(v: number)  { return clamp100(100 - ((v - 0.55) / 0.40 * 100)) }
+// Estimate KAST% from KPR+APR (KAST not stored in DB)
+function estimateKAST(kpr: number, apr: number) {
+  return Math.max(55, Math.min(82, 55 + ((kpr + apr) / 0.90) * 27))
+}
+
 export async function getPlayerRadarStats(playerId: string) {
-  const stats = await queryOne<PlayerCareerStats>(
+  const s = await queryOne<PlayerCareerStats>(
     'SELECT * FROM v_player_career_stats WHERE player_id = $1',
     [playerId]
   )
-  if (!stats) return null
+  if (!s) return null
 
-  // Normalize against rough competitive benchmarks
+  const acs  = Number(s.avg_acs  ?? 0)
+  const kd   = Number(s.avg_kd   ?? 0)
+  const kpr  = Number(s.avg_kpr  ?? 0)
+  const apr  = Number(s.avg_apr  ?? 0)
+  const dpr  = Number(s.avg_dpr  ?? 0)
+  const mp   = Math.max(1, Number(s.matches_played ?? 1))
+  const fbPM = Number(s.total_first_bloods ?? 0) / mp
+  const kast = estimateKAST(kpr, apr)
+
   return [
-    { subject: 'ACS',    value: Math.min(100, Math.round((stats.avg_acs  / 300)  * 100)), fullMark: 100 },
-    { subject: 'KD',     value: Math.min(100, Math.round((stats.avg_kd   / 1.8)  * 100)), fullMark: 100 },
-    { subject: 'ADR',    value: Math.min(100, Math.round((stats.avg_adr  / 180)  * 100)), fullMark: 100 },
-    { subject: 'KPR',    value: Math.min(100, Math.round((stats.avg_kpr  / 1.0)  * 100)), fullMark: 100 },
+    {
+      subject: 'Combat',
+      value: clamp100(0.6 * scoreACS(acs) + 0.4 * scoreKPR(kpr)),
+      fullMark: 100 as const,
+      components: { ACS: acs.toFixed(0), KPR: kpr.toFixed(2) },
+    },
+    {
+      subject: 'Efficiency',
+      value: scoreKD(kd),
+      fullMark: 100 as const,
+      components: { 'K/D': kd.toFixed(2) },
+    },
+    {
+      subject: 'Impact',
+      value: clamp100(0.5 * scoreFB(fbPM) + 0.5 * scoreKAST(kast)),
+      fullMark: 100 as const,
+      components: { 'FB/試合': fbPM.toFixed(1), 'KAST※': `${kast.toFixed(0)}%` },
+    },
+    {
+      subject: 'Support',
+      value: scoreAPR(apr),
+      fullMark: 100 as const,
+      components: { APR: apr.toFixed(2) },
+    },
+    {
+      subject: 'Survival',
+      value: scoreDPR(dpr),
+      fullMark: 100 as const,
+      components: { DPR: dpr.toFixed(2) },
+    },
+    {
+      subject: 'Consistency',
+      value: scoreKAST(kast),
+      fullMark: 100 as const,
+      components: { 'KAST※': `${kast.toFixed(0)}%` },
+    },
   ]
 }
 

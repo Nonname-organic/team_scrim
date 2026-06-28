@@ -226,12 +226,20 @@ export interface PlayerCareerStats {
   avg_acs: number
   avg_kd: number
   avg_kpr: number
+  avg_apr: number
   avg_dpr: number
   avg_adr: number
   avg_hs_pct: number
   total_first_bloods: number
   total_first_deaths: number
   career_fbsr: number
+}
+
+export interface RadarAxis {
+  subject: string
+  value: number
+  fullMark: 100
+  components: Record<string, string>
 }
 
 export interface TeamWinRates {
