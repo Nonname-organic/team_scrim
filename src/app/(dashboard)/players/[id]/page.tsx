@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import {
-  RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer, Tooltip,
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, ResponsiveContainer, Tooltip,
   LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts'
 import { cn } from '@/lib/utils'
@@ -182,7 +182,8 @@ export default function PlayerDetailPage() {
                 </div>
                 <ResponsiveContainer width="100%" height={300}>
                   <RadarChart data={radar} margin={{ top: 20, right: 30, bottom: 20, left: 30 }}>
-                    <PolarGrid gridCount={5} stroke="hsl(var(--border))" />
+                    <PolarGrid stroke="hsl(var(--border))" />
+                    <PolarRadiusAxis domain={[0, 100]} tickCount={6} tick={false} axisLine={false} />
                     <PolarAngleAxis
                       dataKey="subject"
                       tick={(props: Record<string, unknown>) => {
