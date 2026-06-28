@@ -350,7 +350,7 @@ export default function RoundAnalysisPage() {
             // ベースには display を設定しない (flex-col は flex-direction のみ)
             'border-r border-border flex-col bg-card overflow-hidden',
             // Desktop: 常に表示, 固定幅
-            'lg:flex lg:w-48 lg:flex-none',
+            'lg:flex lg:w-56 lg:flex-none',
             // Mobile: アクティブタブのみ full-width 表示、それ以外は非表示
             mobileTab === 'rounds' ? 'flex flex-1' : 'hidden'
           )}>
