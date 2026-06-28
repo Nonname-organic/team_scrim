@@ -4,7 +4,9 @@
 
 -- 1. Update view to calculate KPR/DPR/APR from raw kills/assists/rounds_played
 --    (avoids relying on stored kpr/apr which may be 0 for legacy rows)
-CREATE OR REPLACE VIEW v_player_career_stats AS
+--    DROP + CREATE required because column order changes (avg_apr added)
+DROP VIEW IF EXISTS v_player_career_stats;
+CREATE VIEW v_player_career_stats AS
 SELECT
   p.id AS player_id,
   p.ign,
