@@ -211,8 +211,9 @@ export default function ScrimInputPage() {
     setShowRounds(true)
   }, [teamScore, oppScore, firstHalfSide, otSide])
 
-  // Computed KPR/DPR/APR
-  const totalRounds = Number(teamScore || 0) + Number(oppScore || 0)
+  // Computed KPR/DPR/APR — use live input strings so display updates while typing
+  const totalRounds = (teamScoreInput !== '' ? Number(teamScoreInput) : Number(teamScore || 0))
+                    + (oppScoreInput  !== '' ? Number(oppScoreInput)  : Number(oppScore  || 0))
   function calcRate(val: number | '', rounds: number) {
     if (val === '' || rounds === 0) return '-'
     return (Number(val) / rounds).toFixed(2)
