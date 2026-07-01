@@ -40,7 +40,6 @@ export async function middleware(request: NextRequest) {
 
   const isAuthPage = path.startsWith('/login') ||
                      path.startsWith('/register') ||
-                     path.startsWith('/setup') ||
                      path.startsWith('/reset-password') ||
                      path.startsWith('/forgot-password') ||
                      path.startsWith('/auth/') ||
@@ -48,13 +47,22 @@ export async function middleware(request: NextRequest) {
                      path.startsWith('/privacy') ||
                      path === '/maintenance'
 
-  // 未ログイン → /login へリダイレクト
-  if (!user && !isAuthPage) {
+  // /setup はログイン済みユーザーが使うページ（チーム未所属時のリカバリー）
+  // isAuthPage には含めない → ログイン済みでも訪問できる
+  // 未ログインの場合は後段の !user && !isAuthPage チェックで /login へ飛ぶ
+  const isSetupPage = path.startsWith('/setup')
+
+  // 未ログイン → /login へリダイレクト（/setup も未ログインなら /login へ）
+  if (!user && !isAuthPage && !isSetupPage) {
+    return NextResponse.redirect(new URL('/login', request.url))
+  }
+  if (!user && isSetupPage) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
   // ログイン済みで認証ページ → / へリダイレクト
   // ※ パスワードリセット中はセッションが存在するため除外
+  // ※ /setup はログイン済みでもアクセス可（チーム未所属リカバリー用）
   const isPasswordFlow = path.startsWith('/reset-password') || path.startsWith('/forgot-password')
   if (user && isAuthPage && !isPasswordFlow && path !== '/maintenance') {
     return NextResponse.redirect(new URL('/', request.url))
