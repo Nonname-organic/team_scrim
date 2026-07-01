@@ -19,6 +19,8 @@ function LoginInner() {
   const searchParams = useSearchParams()
 
   const callbackError = searchParams.get('error')
+  // コールバックエラーで来た場合は最初から再送フォームを表示
+  const isLinkExpiredError = !!callbackError
 
   const inputCls = 'w-full bg-muted/50 border border-border rounded-lg px-4 py-2.5 text-sm text-white placeholder-muted-foreground focus:border-[#FF4655] outline-none transition-colors'
 
@@ -80,11 +82,37 @@ function LoginInner() {
         <p className="text-sm text-muted-foreground mt-1">チームアカウントでサインイン</p>
       </div>
 
-      {/* callback エラー表示 */}
+      {/* callback エラー表示（確認リンク無効・期限切れ） */}
       {callbackError && (
-        <div className="flex items-start gap-2 bg-[#FF4655]/10 border border-[#FF4655]/20 rounded-lg p-3">
-          <AlertCircle className="w-4 h-4 text-[#FF4655] flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-[#FF4655]">{callbackError}</p>
+        <div className="bg-[#FF4655]/10 border border-[#FF4655]/20 rounded-lg p-3 space-y-2">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 text-[#FF4655] flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-[#FF4655]">{callbackError}</p>
+          </div>
+          <p className="text-xs text-muted-foreground pl-6">
+            確認リンクは一度しか使えません。メールアドレスを入力して新しいリンクを送信してください。
+          </p>
+          {isLinkExpiredError && (
+            <div className="pl-6 flex items-center gap-2">
+              <input
+                type="email"
+                placeholder="登録したメールアドレス"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                className="flex-1 bg-muted/50 border border-border rounded px-2.5 py-1.5 text-xs text-white placeholder-muted-foreground focus:border-[#FF4655] outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resending || !email}
+                className="text-[11px] bg-[#FF4655]/20 text-[#FF4655] border border-[#FF4655]/30 rounded px-3 py-1.5 hover:bg-[#FF4655]/30 disabled:opacity-50 whitespace-nowrap flex items-center gap-1"
+              >
+                {resending && <Loader2 className="w-3 h-3 animate-spin" />}
+                再送する
+              </button>
+            </div>
+          )}
+          {resent && <p className="text-xs text-[#00D4A0] pl-6">確認メールを再送しました</p>}
         </div>
       )}
 
