@@ -27,12 +27,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     fetch('/api/auth/me')
       .then(async r => {
-        if (r.status === 401) {
-          // セッションなし → 正常な未ログイン状態
-          return null
-        }
+        if (r.status === 401) return null
         if (r.status === 403) {
-          // ログイン済みだがチーム未所属 → /setup へ
           router.replace('/setup')
           return null
         }
@@ -45,6 +41,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [router])
+
+  // 壊れたリフレッシュトークンをクライアント側で検知してクリア
+  useEffect(() => {
+    const supabase = createClient()
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+        // TOKEN_REFRESHED で session が null = リフレッシュ失敗
+        // SIGNED_OUT = セッション削除（middleware が削除した場合も含む）
+        setTeamId(null)
+        setUserId(null)
+      }
+    })
+    return () => subscription.unsubscribe()
+  }, [])
 
   const logout = useCallback(async () => {
     const supabase = createClient()

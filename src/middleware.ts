@@ -36,7 +36,16 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+  // リフレッシュトークンが無効（障害等で壊れたセッション）→ クッキーを削除してログインへ
+  if (authError?.status === 400) {
+    const redirect = NextResponse.redirect(new URL('/login', request.url))
+    request.cookies.getAll().forEach(cookie => {
+      if (cookie.name.startsWith('sb-')) redirect.cookies.delete(cookie.name)
+    })
+    return redirect
+  }
 
   const isAuthPage = path.startsWith('/login') ||
                      path.startsWith('/register') ||
