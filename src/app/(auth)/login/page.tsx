@@ -7,15 +7,17 @@ import { createClient } from '@/lib/supabase/client'
 import { Loader2, AlertCircle } from 'lucide-react'
 
 function LoginInner() {
-  const [email, setEmail]       = useState('')
-  const [password, setPassword] = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [error, setError]       = useState<string | null>(null)
+  const [email, setEmail]           = useState('')
+  const [password, setPassword]     = useState('')
+  const [loading, setLoading]       = useState(false)
+  const [error, setError]           = useState<string | null>(null)
+  const [showResend, setShowResend] = useState(false)
+  const [resending, setResending]   = useState(false)
+  const [resent, setResent]         = useState(false)
 
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  // /auth/callback からのエラーパラメータ表示
   const callbackError = searchParams.get('error')
 
   const inputCls = 'w-full bg-muted/50 border border-border rounded-lg px-4 py-2.5 text-sm text-white placeholder-muted-foreground focus:border-[#FF4655] outline-none transition-colors'
@@ -24,26 +26,51 @@ function LoginInner() {
     e.preventDefault()
     setLoading(true)
     setError(null)
+    setShowResend(false)
 
     const supabase = createClient()
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (signInError) {
-      setError('メールアドレスまたはパスワードが正しくありません')
+      const msg = signInError.message.toLowerCase()
+      if (msg.includes('not confirmed') || msg.includes('email')) {
+        // メール未確認の可能性
+        setError('メールアドレスの確認が完了していません。確認メールをご確認いただくか、再送してください。')
+        setShowResend(true)
+      } else {
+        setError('メールアドレスまたはパスワードが正しくありません')
+        setShowResend(true)  // パスワード間違いでも未確認の可能性があるため表示
+      }
       setLoading(false)
       return
     }
 
     const meRes = await fetch('/api/auth/me')
+    if (meRes.status === 403) {
+      // ログイン成功・チーム未所属 → /setup でリカバリー（サインアウトしない）
+      router.push('/setup')
+      return
+    }
     if (!meRes.ok) {
       await supabase.auth.signOut()
-      setError('このアカウントにはチームが登録されていません')
+      setError('ログインに失敗しました。もう一度お試しください。')
       setLoading(false)
       return
     }
 
     router.push('/')
     router.refresh()
+  }
+
+  const handleResend = async () => {
+    if (!email || resending) return
+    setResending(true)
+    setResent(false)
+    const supabase = createClient()
+    await supabase.auth.resend({ type: 'signup', email, options: { emailRedirectTo: `${window.location.origin}/auth/callback` } })
+    setResending(false)
+    setResent(true)
+    setTimeout(() => setResent(false), 5000)
   }
 
   return (
@@ -92,8 +119,22 @@ function LoginInner() {
         </div>
 
         {error && (
-          <div className="text-xs text-[#FF4655] bg-[#FF4655]/10 border border-[#FF4655]/20 rounded-lg px-3 py-2">
-            {error}
+          <div className="bg-[#FF4655]/10 border border-[#FF4655]/20 rounded-lg px-3 py-2.5 space-y-2">
+            <p className="text-xs text-[#FF4655]">{error}</p>
+            {showResend && email && (
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={handleResend}
+                  disabled={resending}
+                  className="text-[11px] text-[#FF4655] underline hover:no-underline disabled:opacity-50 flex items-center gap-1"
+                >
+                  {resending && <Loader2 className="w-3 h-3 animate-spin" />}
+                  確認メールを再送する
+                </button>
+                {resent && <span className="text-[11px] text-[#00D4A0]">送信しました</span>}
+              </div>
+            )}
           </div>
         )}
 
