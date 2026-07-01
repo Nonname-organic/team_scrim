@@ -40,6 +40,7 @@ export async function middleware(request: NextRequest) {
 
   const isAuthPage = path.startsWith('/login') ||
                      path.startsWith('/register') ||
+                     path.startsWith('/setup') ||
                      path.startsWith('/reset-password') ||
                      path.startsWith('/forgot-password') ||
                      path.startsWith('/auth/') ||

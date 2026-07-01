@@ -78,7 +78,18 @@ export async function GET(request: NextRequest) {
         }
       }
     } catch (e) {
-      console.error('[auth/callback] team creation failed:', e)
+      // チーム作成に失敗した場合は /setup に誘導（サイレント失敗を廃止）
+      console.error('[auth/callback] team creation failed, redirecting to /setup:', e)
+      return NextResponse.redirect(`${origin}/setup`)
+    }
+  } else if (!team_name || !team_tag) {
+    // user_metadata にチーム情報がない場合も /setup で補完させる
+    const existingTeam = await queryOne<{ team_id: string }>(
+      'SELECT team_id FROM user_teams WHERE user_id = $1 LIMIT 1',
+      [user.id]
+    ).catch(() => null)
+    if (!existingTeam) {
+      return NextResponse.redirect(`${origin}/setup`)
     }
   }
 

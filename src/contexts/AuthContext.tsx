@@ -26,14 +26,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     fetch('/api/auth/me')
-      .then(r => r.ok ? r.json() : null)
+      .then(async r => {
+        if (r.status === 401) {
+          // セッションなし → 正常な未ログイン状態
+          return null
+        }
+        if (r.status === 403) {
+          // ログイン済みだがチーム未所属 → /setup へ
+          router.replace('/setup')
+          return null
+        }
+        return r.ok ? r.json() : null
+      })
       .then(data => {
         setTeamId(data?.teamId ?? null)
         setUserId(data?.userId ?? null)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [router])
 
   const logout = useCallback(async () => {
     const supabase = createClient()
