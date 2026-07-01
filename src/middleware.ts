@@ -38,13 +38,20 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-  // リフレッシュトークンが無効（障害等で壊れたセッション）→ クッキーを削除してログインへ
+  // 壊れたリフレッシュトークンの検知:
+  // auth クッキーが存在する状態で 400 が返る = 無効なトークン → クリアしてログインへ
+  // auth クッキーがない場合は通常の未ログイン状態として扱う（エラーページ不要）
   if (authError?.status === 400) {
-    const redirect = NextResponse.redirect(new URL('/login', request.url))
-    request.cookies.getAll().forEach(cookie => {
-      if (cookie.name.startsWith('sb-')) redirect.cookies.delete(cookie.name)
-    })
-    return redirect
+    const hasBrokenCookie = request.cookies.getAll().some(
+      c => c.name.startsWith('sb-') && c.name.includes('auth-token')
+    )
+    if (hasBrokenCookie) {
+      const redirect = NextResponse.redirect(new URL('/login', request.url))
+      request.cookies.getAll().forEach(cookie => {
+        if (cookie.name.startsWith('sb-')) redirect.cookies.delete(cookie.name)
+      })
+      return redirect
+    }
   }
 
   const isAuthPage = path.startsWith('/login') ||
