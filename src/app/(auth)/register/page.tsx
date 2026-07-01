@@ -27,28 +27,35 @@ export default function RegisterPage() {
 
     const supabase = createClient()
 
-    const { error: signUpError } = await supabase.auth.signUp({
+    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        // メール確認後に /auth/callback でチームを作成するため
-        // team_name / team_tag を user_metadata に埋め込む
-        data: {
-          team_name: teamName,
-          team_tag: teamTag,
-        },
+        data: { team_name: teamName, team_tag: teamTag },
         emailRedirectTo: getCallbackUrl(),
       },
     })
 
     if (signUpError) {
-      // すでに登録済みのメールは Supabase がエラーを返さず確認メールを再送する
-      // それ以外のエラーのみ表示
-      if (signUpError.message !== 'User already registered') {
+      if (signUpError.message === 'User already registered') {
+        // メール確認済みのアカウントが存在 → ログイン or パスワードリセットへ誘導
+        setError('このメールアドレスは既に登録済みです。ログインするか、パスワードリセットをお試しください。')
+      } else {
         setError(signUpError.message)
-        setLoading(false)
-        return
       }
+      setLoading(false)
+      return
+    }
+
+    // identities が空配列 → メール未確認のアカウントが既に存在するケース
+    // signUp でメタデータ（team_name/team_tag）は更新されるが、
+    // 確認メールが届かない場合があるため明示的に resend する
+    if ((signUpData.user?.identities?.length ?? 1) === 0) {
+      await supabase.auth.resend({
+        type: 'signup',
+        email,
+        options: { emailRedirectTo: getCallbackUrl() },
+      })
     }
 
     setEmailSent(true)
@@ -191,8 +198,18 @@ export default function RegisterPage() {
         </div>
 
         {error && (
-          <div className="text-xs text-[#FF4655] bg-[#FF4655]/10 border border-[#FF4655]/20 rounded-lg px-3 py-2">
-            {error}
+          <div className="bg-[#FF4655]/10 border border-[#FF4655]/20 rounded-lg px-3 py-2.5 space-y-1.5">
+            <p className="text-xs text-[#FF4655]">{error}</p>
+            {error.includes('登録済み') && (
+              <div className="flex gap-3 text-xs">
+                <Link href="/login" className="text-[#FF4655] underline font-medium">
+                  ログインする →
+                </Link>
+                <Link href="/forgot-password" className="text-muted-foreground hover:text-white underline">
+                  パスワードをリセット
+                </Link>
+              </div>
+            )}
           </div>
         )}
 
