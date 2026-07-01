@@ -7,13 +7,12 @@ import { createClient } from '@/lib/supabase/client'
 import { Loader2, AlertCircle } from 'lucide-react'
 
 function LoginInner() {
-  const [email, setEmail]           = useState('')
-  const [password, setPassword]     = useState('')
-  const [loading, setLoading]       = useState(false)
-  const [error, setError]           = useState<string | null>(null)
-  const [showResend, setShowResend] = useState(false)
-  const [resending, setResending]   = useState(false)
-  const [resent, setResent]         = useState(false)
+  const [email, setEmail]         = useState('')
+  const [password, setPassword]   = useState('')
+  const [loading, setLoading]     = useState(false)
+  const [error, setError]         = useState<string | null>(null)
+  const [resending, setResending] = useState(false)
+  const [resent, setResent]       = useState(false)
 
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -34,15 +33,7 @@ function LoginInner() {
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (signInError) {
-      const msg = signInError.message.toLowerCase()
-      if (msg.includes('not confirmed') || msg.includes('email')) {
-        // メール未確認の可能性
-        setError('メールアドレスの確認が完了していません。確認メールをご確認いただくか、再送してください。')
-        setShowResend(true)
-      } else {
-        setError('メールアドレスまたはパスワードが正しくありません')
-        setShowResend(true)  // パスワード間違いでも未確認の可能性があるため表示
-      }
+      setError('メールアドレスまたはパスワードが正しくありません')
       setLoading(false)
       return
     }
@@ -147,22 +138,8 @@ function LoginInner() {
         </div>
 
         {error && (
-          <div className="bg-[#FF4655]/10 border border-[#FF4655]/20 rounded-lg px-3 py-2.5 space-y-2">
-            <p className="text-xs text-[#FF4655]">{error}</p>
-            {showResend && email && (
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={handleResend}
-                  disabled={resending}
-                  className="text-[11px] text-[#FF4655] underline hover:no-underline disabled:opacity-50 flex items-center gap-1"
-                >
-                  {resending && <Loader2 className="w-3 h-3 animate-spin" />}
-                  確認メールを再送する
-                </button>
-                {resent && <span className="text-[11px] text-[#00D4A0]">送信しました</span>}
-              </div>
-            )}
+          <div className="text-xs text-[#FF4655] bg-[#FF4655]/10 border border-[#FF4655]/20 rounded-lg px-3 py-2">
+            {error}
           </div>
         )}
 
