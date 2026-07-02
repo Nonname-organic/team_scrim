@@ -1,8 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
 
-const TEAM_ID = process.env.NEXT_PUBLIC_DEFAULT_TEAM_ID ?? 'YOUR_TEAM_UUID'
-
 const ECO_LABELS: Record<string, string> = {
   pistol: 'ピストル', eco: 'エコ', anti_eco: 'アンチエコ', semi_eco: 'セミエコ',
   semi_buy: 'セミバイ', full_buy: 'フルバイ', oper: 'オペ', second: 'セカンド', third: 'サード',
@@ -13,16 +11,32 @@ interface Entry { wins: number; total: number; win_rate: number }
 export default function ExportPage() {
   const [data, setData] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
-    fetch(`/api/analysis/dashboard?team_id=${TEAM_ID}`)
-      .then(r => r.json())
-      .then(j => { setData(j.data ?? null); setLoading(false) })
-      .catch(() => setLoading(false))
+    // team_id はサーバー側で認証セッションから解決（自チームのみ出力）
+    fetch('/api/export/report')
+      .then(async r => {
+        if (r.status === 429) {
+          setErrorMsg('出力回数の上限（10回/時）に達しました。しばらくしてからお試しください。')
+          return null
+        }
+        if (r.status === 401) {
+          setErrorMsg('ログインが必要です。')
+          return null
+        }
+        if (!r.ok) { setErrorMsg('データの取得に失敗しました。'); return null }
+        return r.json()
+      })
+      .then(j => { if (j) setData(j.data ?? null); setLoading(false) })
+      .catch(() => { setErrorMsg('通信エラーが発生しました。'); setLoading(false) })
   }, [])
 
   if (loading) return (
     <div className="flex items-center justify-center h-screen text-gray-500 text-sm">読み込み中...</div>
+  )
+  if (errorMsg) return (
+    <div className="flex items-center justify-center h-screen text-gray-500 text-sm">{errorMsg}</div>
   )
   if (!data) return (
     <div className="flex items-center justify-center h-screen text-gray-500 text-sm">データなし</div>

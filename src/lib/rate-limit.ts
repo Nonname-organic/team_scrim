@@ -71,4 +71,10 @@ export const RATE_LIMITS = {
     limit: 1000,
     windowMs: 60 * 60 * 1000,
   }),
+  /** Export: 1チーム10回/時 */
+  exportHourly: (teamId: string) => ({
+    key: `team:${teamId}:export_hourly:${new Date().toISOString().slice(0, 13)}`,
+    limit: 10,
+    windowMs: 60 * 60 * 1000,
+  }),
 } as const
