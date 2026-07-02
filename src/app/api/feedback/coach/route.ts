@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
 import { getAuthContext, unauthorizedResponse } from '@/lib/server-auth'
+import { guardWrite } from '@/lib/api-guard'
 import { serverError, notFoundError } from '@/lib/api-error'
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthContext()
   if (!auth) return unauthorizedResponse()
+
+  const limited = await guardWrite(auth, req, '/api/feedback/coach')
+  if (limited) return limited
 
   try {
     const { match_id, summary, strengths, weaknesses, action_items, style_tag } = await req.json()
@@ -43,6 +47,9 @@ export async function POST(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const auth = await getAuthContext()
   if (!auth) return unauthorizedResponse()
+
+  const limited = await guardWrite(auth, req, '/api/feedback/coach')
+  if (limited) return limited
 
   const id = req.nextUrl.searchParams.get('id')
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })

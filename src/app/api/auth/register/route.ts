@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
 import { query, queryOne } from '@/lib/db'
+import { isRateLimited, rateLimitedResponse, RATE_LIMITS } from '@/lib/rate-limit'
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,6 +27,11 @@ export async function POST(req: NextRequest) {
 
     if (!userId) {
       return NextResponse.json({ error: 'ログインが必要です' }, { status: 401 })
+    }
+
+    // レート制限（同一ユーザーの多重試行抑止）
+    if (await isRateLimited(RATE_LIMITS.apiHourly(userId))) {
+      return rateLimitedResponse()
     }
 
     // すでにチームがある場合はスキップ

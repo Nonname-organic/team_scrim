@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { query, queryOne } from '@/lib/db'
 import { buildTacticalFeedbackPrompt } from '@/lib/ai-prompts'
 import { getAuthContext, unauthorizedResponse } from '@/lib/server-auth'
+import { guardWrite } from '@/lib/api-guard'
 import { serverError } from '@/lib/api-error'
 
 export const maxDuration = 60
@@ -52,6 +53,9 @@ const ANALYSIS_TOOL: Anthropic.Tool = {
 export async function POST(req: NextRequest) {
   const auth = await getAuthContext()
   if (!auth) return unauthorizedResponse()
+
+  const limited = await guardWrite(auth, req, '/api/feedback/ai')
+  if (limited) return limited
 
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: 'AI機能は現在利用できません' }, { status: 503 })

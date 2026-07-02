@@ -77,4 +77,10 @@ export const RATE_LIMITS = {
     limit: 10,
     windowMs: 60 * 60 * 1000,
   }),
+  /** Contact: 1 IP 5回/時（未認証エンドポイントのスパム抑止） */
+  contactHourly: (ipHash: string) => ({
+    key: `contact:${ipHash}:${new Date().toISOString().slice(0, 13)}`,
+    limit: 5,
+    windowMs: 60 * 60 * 1000,
+  }),
 } as const
