@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "db:push": "node scripts/db-push.js schema",
-    "db:seed": "node scripts/db-push.js seed"
+    "db:seed": "node scripts/db-push.js seed",
+    "db:policy": "node scripts/policy-push.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.40.0",
