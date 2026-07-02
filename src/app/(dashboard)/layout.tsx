@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import {
   LayoutDashboard, Users, ClipboardEdit, BarChart2,
-  Settings, LogOut, Mail, BookOpen, MoreHorizontal, X,
+  Settings, LogOut, Mail, BookOpen, MoreHorizontal, X, ScrollText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
@@ -28,6 +28,15 @@ const NAV_ITEMS = [
   { href: '/settings',       key: 'nav.settings',      icon: Settings },
   { href: '/guide',          key: 'nav.guide',         icon: BookOpen },
   { href: '/contact',        key: 'nav.contact',       icon: Mail },
+]
+
+// ガイド配下に表示するポリシーリンク（別タブで開く）
+const POLICY_NAV = [
+  { href: '/terms',          label: '利用規約' },
+  { href: '/data-policy',    label: 'データ利用ポリシー' },
+  { href: '/privacy',        label: 'プライバシーポリシー' },
+  { href: '/security',       label: 'セキュリティポリシー' },
+  { href: '/policy/history', label: '改定履歴' },
 ]
 
 function TeamInfo() {
@@ -68,7 +77,7 @@ function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 p-2 space-y-0.5">
+      <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
         {NAV_ITEMS.map(({ href, key, icon: Icon }) => (
           <Link key={href} href={href}
             className={cn(
@@ -80,6 +89,21 @@ function Sidebar() {
             {t(key)}
           </Link>
         ))}
+
+        {/* 規程・ポリシー */}
+        <div className="pt-3 pb-1">
+          <div className="flex items-center gap-1.5 px-3 mb-1">
+            <ScrollText className="w-3.5 h-3.5 text-muted-foreground/50" />
+            <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest">規程</span>
+          </div>
+          {POLICY_NAV.map(({ href, label }) => (
+            <Link key={href} href={href} target="_blank"
+              className="flex items-center px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
       </nav>
 
       <div className="px-4 py-3 border-t border-border space-y-2">
@@ -141,6 +165,8 @@ function MobileBottomNav() {
     { href: '/contact',  key: 'nav.contact',  icon: Mail },
   ]
 
+  const policyItems = POLICY_NAV
+
   return (
     <>
       {/* More ドロワー */}
@@ -167,6 +193,17 @@ function MobileBottomNav() {
                 <Icon className="w-5 h-5" />{t(key)}
               </Link>
             ))}
+            {/* 規程 */}
+            <div className="pt-2 border-t border-border/50 mt-2">
+              <p className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-widest px-4 mb-1">規程</p>
+              {policyItems.map(({ href, label }) => (
+                <Link key={href} href={href} target="_blank" onClick={() => setMoreOpen(false)}
+                  className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-xs text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  {label}
+                </Link>
+              ))}
+            </div>
             <button onClick={() => { setMoreOpen(false); logout() }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
             >

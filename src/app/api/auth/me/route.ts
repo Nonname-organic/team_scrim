@@ -8,19 +8,41 @@ export async function GET() {
 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const row = await queryOne<{ team_id: string; tos_agreed_at: string | null }>(
-    'SELECT team_id, tos_agreed_at FROM user_teams WHERE user_id = $1 LIMIT 1',
+  const row = await queryOne<{ team_id: string }>(
+    'SELECT team_id FROM user_teams WHERE user_id = $1 LIMIT 1',
     [user.id]
   ).catch(() => null)
 
   if (!row?.team_id) {
-    // ログイン済みだがチーム未所属 → リカバリーが必要
     return NextResponse.json({ error: 'NoTeam', userId: user.id }, { status: 403 })
   }
 
-  if (!row.tos_agreed_at) {
-    // チームはあるが利用規約未同意
-    return NextResponse.json({ error: 'NeedsConsent', userId: user.id, teamId: row.team_id }, { status: 403 })
+  // 最新バージョンへの未同意ポリシーをチェック
+  try {
+    const unconsented = await queryOne<{ policy_type: string }>(
+      `SELECT pv.policy_type
+       FROM (
+         SELECT DISTINCT ON (policy_type)
+           policy_type, version, effective_date
+         FROM policy_versions
+         WHERE published = true
+         ORDER BY policy_type, effective_date DESC, created_at DESC
+       ) pv
+       WHERE NOT EXISTS (
+         SELECT 1 FROM user_consents uc
+         WHERE uc.user_id = $1
+           AND uc.policy_type = pv.policy_type
+           AND uc.version = pv.version
+       )
+       LIMIT 1`,
+      [user.id]
+    )
+
+    if (unconsented) {
+      return NextResponse.json({ error: 'NeedsConsent', userId: user.id, teamId: row.team_id }, { status: 403 })
+    }
+  } catch {
+    // policy_versions テーブルが未作成等のDB障害は同意済みとして扱う
   }
 
   return NextResponse.json({ userId: user.id, teamId: row.team_id })

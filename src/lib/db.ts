@@ -16,11 +16,17 @@ function createPool(): Pool {
     url.includes('railway') || url.includes('rlwy') || url.includes('supabase') ||
     host.includes('supabase') || host.includes('railway') || host.includes('rlwy')
   const ssl = isRemote ? { rejectUnauthorized: false } : false
+
+  // サーバーレス（Vercel）では接続を使い捨てにするため小さいプールサイズ。
+  // Supabase Transaction Pooler（port 6543）を使う場合も max:2 で十分。
+  const isServerless = process.env.VERCEL === '1'
+  const max = isServerless ? 2 : 10
+  const connectionTimeoutMillis = isServerless ? 5000 : 10000
+
   if (url) {
-    return new Pool({ connectionString: url, ssl, max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 10000 })
+    return new Pool({ connectionString: url, ssl, max, idleTimeoutMillis: 30000, connectionTimeoutMillis })
   }
-  // PGHOST / PGPORT / PGUSER / PGPASSWORD / PGDATABASE 環境変数を使用
-  return new Pool({ ssl, max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 10000 })
+  return new Pool({ ssl, max, idleTimeoutMillis: 30000, connectionTimeoutMillis })
 }
 
 // Singleton in dev (hot reload safe)

@@ -54,14 +54,24 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  const isAuthPage = path.startsWith('/login') ||
-                     path.startsWith('/register') ||
-                     path.startsWith('/reset-password') ||
-                     path.startsWith('/forgot-password') ||
-                     path.startsWith('/auth/') ||
-                     path.startsWith('/terms') ||
-                     path.startsWith('/privacy') ||
-                     path === '/maintenance'
+  // ログイン不要ページ（未認証でも閲覧可能）
+  const isPublicPage =
+    path.startsWith('/terms') ||
+    path.startsWith('/privacy') ||
+    path.startsWith('/data-policy') ||
+    path.startsWith('/security') ||
+    path.startsWith('/policy/')
+
+  // ログイン済みユーザーをリダイレクトする認証ページ
+  const isAuthOnlyPage =
+    path.startsWith('/login') ||
+    path.startsWith('/register') ||
+    path.startsWith('/reset-password') ||
+    path.startsWith('/forgot-password') ||
+    path.startsWith('/auth/') ||
+    path === '/maintenance'
+
+  const isAuthPage = isPublicPage || isAuthOnlyPage
 
   // /setup はログイン済みユーザーが使うページ（チーム未所属時のリカバリー）
   // isAuthPage には含めない → ログイン済みでも訪問できる
@@ -76,11 +86,11 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // ログイン済みで認証ページ → / へリダイレクト
+  // ログイン済みで「ログイン専用ページ」→ / へリダイレクト
   // ※ パスワードリセット中はセッションが存在するため除外
-  // ※ /setup はログイン済みでもアクセス可（チーム未所属リカバリー用）
+  // ※ ポリシーページ（isPublicPage）はログイン済みでも閲覧可能
   const isPasswordFlow = path.startsWith('/reset-password') || path.startsWith('/forgot-password')
-  if (user && isAuthPage && !isPasswordFlow && path !== '/maintenance') {
+  if (user && isAuthOnlyPage && !isPasswordFlow && path !== '/maintenance') {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
