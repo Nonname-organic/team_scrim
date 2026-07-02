@@ -19,7 +19,7 @@ export default function SetupPage() {
       .then(data => {
         if (data.teamId) {
           setStatus('success')
-          setTimeout(() => router.replace('/'), 1500)
+          setTimeout(() => router.replace('/consent'), 1500)
         } else if (data.needsInput) {
           setStatus('needsInput')
         } else {
@@ -48,7 +48,7 @@ export default function SetupPage() {
     setSaving(false)
     if (data.teamId) {
       setStatus('success')
-      setTimeout(() => router.replace('/'), 1500)
+      setTimeout(() => router.replace('/consent'), 1500)
     } else {
       setError(data.error ?? '登録に失敗しました')
     }

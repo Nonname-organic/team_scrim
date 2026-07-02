@@ -82,9 +82,11 @@ export async function GET(request: NextRequest) {
         redirectOverride = `${origin}/consent`
       }
     } catch (e) {
-      // チーム作成に失敗した場合は /setup に誘導（サイレント失敗を廃止）
+      // チーム作成に失敗した場合は /setup に誘導。
+      // response を使うことでセッションCookieを保持したままリダイレクト。
       console.error('[auth/callback] team creation failed, redirecting to /setup:', e)
-      return NextResponse.redirect(`${origin}/setup`)
+      response.headers.set('Location', `${origin}/setup`)
+      return response
     }
   } else if (!team_name || !team_tag) {
     // user_metadata にチーム情報がない場合も /setup で補完させる
@@ -93,17 +95,17 @@ export async function GET(request: NextRequest) {
       [user.id]
     ).catch(() => null)
     if (!existingTeam) {
-      return NextResponse.redirect(`${origin}/setup`)
+      response.headers.set('Location', `${origin}/setup`)
+      return response
     }
   }
 
-  // 新規ユーザーは /consent へ。セッションCookieを必ず引き継ぐ。
+  // 新規ユーザーは /consent へ。
+  // response には Supabase がセッションCookieを書き込み済みなので、
+  // Location ヘッダーだけ差し替えることで Cookie options を完全保持する。
   if (redirectOverride) {
-    const consentResponse = NextResponse.redirect(redirectOverride)
-    response.cookies.getAll().forEach(({ name, value }) => {
-      consentResponse.cookies.set(name, value)
-    })
-    return consentResponse
+    response.headers.set('Location', redirectOverride)
+    return response
   }
 
   return response
