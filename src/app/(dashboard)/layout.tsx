@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import {
   LayoutDashboard, Users, ClipboardEdit, BarChart2,
   Settings, LogOut, Mail, BookOpen, MoreHorizontal, X, ScrollText,
@@ -71,8 +72,7 @@ function Sidebar() {
     <aside className="hidden lg:flex w-56 bg-[#18181F] border-r border-border flex-col fixed h-full z-10">
       <div className="px-4 py-3 border-b border-border">
         <div className="flex items-center gap-2.5">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/logo.png" alt="Team Logo" className="w-9 h-9 rounded-xl object-cover flex-shrink-0" />
+          <Image src="/logo.png" alt="Team Logo" width={36} height={36} className="rounded-xl object-cover flex-shrink-0" priority />
           <div className="text-sm font-bold text-white tracking-wider">AXELIA Analytics</div>
         </div>
       </div>
@@ -135,8 +135,7 @@ function MobileHeader() {
   return (
     <header className="lg:hidden fixed top-0 left-0 right-0 z-20 bg-[#18181F] border-b border-border px-4 py-2 flex items-center justify-between safe-area-top">
       <div className="flex items-center gap-2">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="AXELIA" className="w-7 h-7 rounded-lg object-cover" />
+        <Image src="/logo.png" alt="AXELIA" width={28} height={28} className="rounded-lg object-cover" priority />
         <span className="text-sm font-bold text-white">AXELIA</span>
       </div>
       <div className="flex items-center gap-1">

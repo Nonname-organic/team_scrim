@@ -1,21 +1,8 @@
 import { PolicyContent } from '@/components/policy/PolicyContent'
-
-async function getPolicy() {
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/policies/security`,
-      { cache: 'no-store' }
-    )
-    if (!res.ok) return null
-    const json = await res.json()
-    return json.data ?? null
-  } catch {
-    return null
-  }
-}
+import { getLatestPolicy } from '@/lib/policy'
 
 export default async function SecurityPolicyPage() {
-  const policy = await getPolicy()
+  const policy = await getLatestPolicy('security')
 
   if (!policy) {
     return (
