@@ -59,6 +59,8 @@ export async function GET(request: NextRequest) {
     team_tag?: string
   }
 
+  let redirectOverride: string | null = null
+
   if (team_name && team_tag) {
     try {
       const existing = await queryOne<{ team_id: string }>(
@@ -76,6 +78,8 @@ export async function GET(request: NextRequest) {
             [user.id, team.id]
           )
         }
+        // 新規ユーザー → 利用規約同意画面へ
+        redirectOverride = `${origin}/consent`
       }
     } catch (e) {
       // チーム作成に失敗した場合は /setup に誘導（サイレント失敗を廃止）
@@ -91,6 +95,15 @@ export async function GET(request: NextRequest) {
     if (!existingTeam) {
       return NextResponse.redirect(`${origin}/setup`)
     }
+  }
+
+  // 新規ユーザーは /consent へ。セッションCookieを必ず引き継ぐ。
+  if (redirectOverride) {
+    const consentResponse = NextResponse.redirect(redirectOverride)
+    response.cookies.getAll().forEach(({ name, value }) => {
+      consentResponse.cookies.set(name, value)
+    })
+    return consentResponse
   }
 
   return response

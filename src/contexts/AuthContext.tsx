@@ -29,7 +29,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then(async r => {
         if (r.status === 401) return null
         if (r.status === 403) {
-          router.replace('/setup')
+          const body = await r.json().catch(() => ({}))
+          if (body.error === 'NeedsConsent') {
+            router.replace('/consent')
+          } else {
+            router.replace('/setup')
+          }
           return null
         }
         return r.ok ? r.json() : null
