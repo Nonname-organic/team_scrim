@@ -85,6 +85,15 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/', request.url))
   }
 
+  // ── セッション/端末セキュリティ（PR-8） ──
+  // 認証済みユーザーに返す保護ページは機微データ（チーム分析）を含むため、
+  // ブラウザ / プロキシ / BFCache にキャッシュさせない。
+  // 共有端末で「戻る」ボタン後にデータが残留するのを防ぐ。
+  if (user) {
+    response.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+  }
+
   return response
 }
 
