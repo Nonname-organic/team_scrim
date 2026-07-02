@@ -35,6 +35,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return r.ok ? r.json() : null
       })
       .then(data => {
+        if (data?.needsConsent) {
+          // 規約未同意 → セッションは維持したまま /consent でブロック
+          router.replace('/consent')
+          return
+        }
         setTeamId(data?.teamId ?? null)
         setUserId(data?.userId ?? null)
       })

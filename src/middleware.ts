@@ -63,10 +63,11 @@ export async function middleware(request: NextRequest) {
                      path.startsWith('/privacy') ||
                      path === '/maintenance'
 
-  // /setup はログイン済みユーザーが使うページ（チーム未所属時のリカバリー）
-  // isAuthPage には含めない → ログイン済みでも訪問できる
-  // 未ログインの場合は後段の !user && !isAuthPage チェックで /login へ飛ぶ
-  const isSetupPage = path.startsWith('/setup')
+  // /setup（チーム未所属リカバリー）と /consent（規約同意）は
+  // ログイン必須だが「認証ページ」ではない特別扱いページ。
+  // isAuthPage に含めない → ログイン済みでも訪問できる（/へ強制遷移しない）。
+  // 未ログインの場合は後段のチェックで /login へ飛ばす。
+  const isSetupPage = path.startsWith('/setup') || path.startsWith('/consent')
 
   // 未ログイン → /login へリダイレクト（/setup も未ログインなら /login へ）
   if (!user && !isAuthPage && !isSetupPage) {

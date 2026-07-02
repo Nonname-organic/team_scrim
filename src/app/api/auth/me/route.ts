@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { queryOne } from '@/lib/db'
+import { getPendingPolicies } from '@/lib/consent'
 
 export async function GET() {
   const supabase = await createClient()
@@ -18,5 +19,13 @@ export async function GET() {
     return NextResponse.json({ error: 'NoTeam', userId: user.id }, { status: 403 })
   }
 
-  return NextResponse.json({ userId: user.id, teamId: row.team_id })
+  // 未同意ポリシーの検知（規約更新時のみ再同意）
+  const pending = await getPendingPolicies(user.id)
+
+  return NextResponse.json({
+    userId: user.id,
+    teamId: row.team_id,
+    needsConsent: pending.length > 0,
+    pendingPolicies: pending,
+  })
 }
