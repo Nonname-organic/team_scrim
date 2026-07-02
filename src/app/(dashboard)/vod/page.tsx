@@ -19,9 +19,15 @@ interface Match {
 function getYouTubeId(url: string): string | null {
   try {
     const u = new URL(url)
-    if (u.hostname.includes('youtu.be')) return u.pathname.slice(1)
-    if (u.hostname.includes('youtube.com')) return u.searchParams.get('v')
-  } catch { /* not a URL */ }
+    if (u.hostname.includes('youtu.be')) return u.pathname.slice(1).split(/[?&]/)[0]
+    if (u.hostname.includes('youtube.com')) {
+      const v = u.searchParams.get('v')
+      if (v) return v
+      const seg = u.pathname.split('/').filter(Boolean)
+      const idx = seg.findIndex(s => ['live', 'shorts', 'embed'].includes(s))
+      if (idx !== -1 && seg[idx + 1]) return seg[idx + 1].split('?')[0]
+    }
+  } catch {}
   return null
 }
 

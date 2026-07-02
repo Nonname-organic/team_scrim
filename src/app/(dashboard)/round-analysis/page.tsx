@@ -78,8 +78,17 @@ interface YTPlayer {
 function getYouTubeId(url: string): string | null {
   try {
     const u = new URL(url)
-    if (u.hostname.includes('youtu.be')) return u.pathname.slice(1).split('?')[0]
-    if (u.hostname.includes('youtube.com')) return u.searchParams.get('v')
+    // youtu.be/ID
+    if (u.hostname.includes('youtu.be')) return u.pathname.slice(1).split(/[?&]/)[0]
+    if (u.hostname.includes('youtube.com')) {
+      // /watch?v=ID
+      const v = u.searchParams.get('v')
+      if (v) return v
+      // /live/ID  /shorts/ID  /embed/ID
+      const seg = u.pathname.split('/').filter(Boolean)
+      const idx = seg.findIndex(s => ['live', 'shorts', 'embed'].includes(s))
+      if (idx !== -1 && seg[idx + 1]) return seg[idx + 1].split('?')[0]
+    }
   } catch {}
   return null
 }
