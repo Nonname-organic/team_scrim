@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { queryOne, withTransaction } from '@/lib/db'
 import { getAuthContext, unauthorizedResponse } from '@/lib/server-auth'
+import { guardWrite } from '@/lib/api-guard'
 import { serverError, notFoundError } from '@/lib/api-error'
 
 export async function POST(req: NextRequest) {
   const auth = await getAuthContext()
   if (!auth) return unauthorizedResponse()
+
+  const limited = await guardWrite(auth, req, '/api/rounds')
+  if (limited) return limited
 
   try {
     const { match_id, rounds } = await req.json()

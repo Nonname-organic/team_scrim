@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
 import { getPlayerRadarStats } from '@/lib/analysis'
 import { getAuthContext, unauthorizedResponse } from '@/lib/server-auth'
+import { guardWrite } from '@/lib/api-guard'
 import { serverError, notFoundError } from '@/lib/api-error'
 
 export async function GET(
@@ -98,6 +99,9 @@ export async function POST(
 ) {
   const auth = await getAuthContext()
   if (!auth) return unauthorizedResponse()
+
+  const limited = await guardWrite(auth, req, '/api/players/[id]/stats')
+  if (limited) return limited
 
   try {
     const { id: playerId } = await params

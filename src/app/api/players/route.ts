@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
 import { getAuthContext, unauthorizedResponse } from '@/lib/server-auth'
+import { guardWrite } from '@/lib/api-guard'
 
 export async function GET(req: NextRequest) {
   const auth = await getAuthContext()
@@ -23,6 +24,9 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const auth = await getAuthContext()
   if (!auth) return unauthorizedResponse()
+
+  const limited = await guardWrite(auth, req, '/api/players')
+  if (limited) return limited
 
   const { ign, real_name, role, agent_pool } = await req.json()
 

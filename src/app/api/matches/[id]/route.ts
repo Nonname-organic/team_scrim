@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
 import { getAuthContext, unauthorizedResponse } from '@/lib/server-auth'
+import { guardWrite } from '@/lib/api-guard'
 import { serverError, notFoundError } from '@/lib/api-error'
 
 export async function GET(
@@ -49,6 +50,9 @@ export async function PATCH(
   const auth = await getAuthContext()
   if (!auth) return unauthorizedResponse()
 
+  const limited = await guardWrite(auth, req, '/api/matches/[id]')
+  if (limited) return limited
+
   try {
     const { id: matchId } = await params
     const body = await req.json()
@@ -75,11 +79,14 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await getAuthContext()
   if (!auth) return unauthorizedResponse()
+
+  const limited = await guardWrite(auth, req, '/api/matches/[id]')
+  if (limited) return limited
 
   try {
     const { id: matchId } = await params
