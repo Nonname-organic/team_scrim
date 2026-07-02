@@ -65,6 +65,12 @@ export const RATE_LIMITS = {
     limit: 100,
     windowMs: 31 * 24 * 60 * 60 * 1000,
   }),
+  /** OCR: 5回/分（バースト・DoS 抑止） */
+  ocrPerMinute: (userId: string) => ({
+    key: `user:${userId}:ocr_min:${new Date().toISOString().slice(0, 16)}`,
+    limit: 5,
+    windowMs: 60 * 1000,
+  }),
   /** API 全般: 1000回/時 */
   apiHourly: (userId: string) => ({
     key: `user:${userId}:api_hourly:${new Date().toISOString().slice(0, 13)}`,

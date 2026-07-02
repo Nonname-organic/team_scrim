@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getAuthContext, unauthorizedResponse } from '@/lib/server-auth'
+import { isRateLimited, rateLimitedResponse, RATE_LIMITS } from '@/lib/rate-limit'
+import { validateImage } from '@/lib/file-validation'
+import { logger, hashRequestMeta, newRequestId } from '@/lib/logger'
 
 const client = new Anthropic()
 
@@ -10,8 +13,21 @@ const client = new Anthropic()
 // ============================================================
 
 export async function POST(req: NextRequest) {
+  const requestId = newRequestId()
   const auth = await getAuthContext()
   if (!auth) return unauthorizedResponse()
+
+  const { ipHash, userAgentHash } = hashRequestMeta(req)
+
+  // ── Rate limit: 5回/分（バースト・DoS 抑止） ──
+  if (await isRateLimited(RATE_LIMITS.ocrPerMinute(auth.userId))) {
+    logger.security({
+      eventType: 'rate_limit_exceeded',
+      requestId, teamId: auth.teamId, userId: auth.userId,
+      path: '/api/ocr', ipHash, userAgentHash, message: 'ocr per-minute limit',
+    })
+    return rateLimitedResponse()
+  }
 
   try {
     const formData = await req.formData()
@@ -25,8 +41,22 @@ export async function POST(req: NextRequest) {
     // Read file as base64
     const bytes = await file.arrayBuffer()
     const buffer = Buffer.from(bytes)
+
+    // ── ファイル検証: サイズ / MIME / マジックバイト ──
+    const v = validateImage(buffer, file.type)
+    if (!v.ok || !v.mediaType) {
+      logger.security({
+        eventType: 'invalid_upload',
+        requestId, teamId: auth.teamId, userId: auth.userId,
+        path: '/api/ocr', ipHash, userAgentHash,
+        message: v.error ?? 'invalid image',
+        context: { declared_type: file.type, size: buffer.length },
+      })
+      return NextResponse.json({ success: false, error: v.error }, { status: v.status ?? 415 })
+    }
+
     const base64 = buffer.toString('base64')
-    const mediaType = file.type as 'image/jpeg' | 'image/png' | 'image/webp'
+    const mediaType = v.mediaType
 
     // Use Claude Vision to extract scoreboard data
     const message = await client.messages.create({
