@@ -27,7 +27,6 @@ function LoginInner() {
     e.preventDefault()
     setLoading(true)
     setError(null)
-    setShowResend(false)
 
     const supabase = createClient()
     const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
