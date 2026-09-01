@@ -8,6 +8,7 @@ export const ja = {
     settings:     '設定',
     guide:        '使い方ガイド',
     contact:      'お問い合わせ',
+    discord:      'AXELIAコミュニティ',
     logout:       'ログアウト',
   },
   common: {
@@ -328,6 +329,7 @@ export const en: TranslationDict = {
     settings:     'Settings',
     guide:        'Guide',
     contact:      'Contact',
+    discord:      'AXELIA Community',
     logout:       'Logout',
   },
   common: {
