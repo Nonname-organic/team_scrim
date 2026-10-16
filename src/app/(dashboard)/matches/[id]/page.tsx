@@ -133,6 +133,12 @@ export default function MatchDetailPage() {
     setDateEditMode(false)
   }
 
+  function openInfoEdit() {
+    setEditMap(String(match.map ?? ''))
+    setEditOpponent(String(match.opponent_name ?? ''))
+    setDateEditMode(true)
+  }
+
   function enterEdit() {
     setSaveError(null)
     setEditDate(String(match.match_date ?? '').slice(0, 10))
@@ -315,53 +321,67 @@ export default function MatchDetailPage() {
           <div className="text-xs text-muted-foreground">{String(match.map)} · {String(match.match_type)}</div>
           <h1 className="text-xl font-bold text-white mt-0.5">
             VS <span style={{ color: resultColor }}>{String(match.opponent_name)}</span>
+            {!dateEditMode && (
+              <button
+                onClick={openInfoEdit}
+                className="ml-2 inline-flex items-center gap-1 align-middle px-2 py-0.5 rounded border border-border text-[10px] font-medium text-muted-foreground hover:text-white hover:border-white/30 transition-colors"
+              >
+                <Pencil className="w-3 h-3" />
+                日付・マップ・相手名を編集
+              </button>
+            )}
           </h1>
           {dateEditMode ? (
-            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              <input
-                type="date"
-                value={editDate}
-                onChange={e => setEditDate(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') saveDate(); if (e.key === 'Escape') cancelDateEdit() }}
-                autoFocus
-                className="bg-muted border border-[#FF4655] rounded px-2 py-0.5 text-xs text-white outline-none"
-              />
-              <select
-                value={editMap}
-                onChange={e => setEditMap(e.target.value)}
-                className="bg-muted border border-[#FF4655] rounded px-2 py-0.5 text-xs text-white outline-none"
-              >
-                {MAPS.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-              <input
-                type="text"
-                value={editOpponent}
-                onChange={e => setEditOpponent(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') saveDate(); if (e.key === 'Escape') cancelDateEdit() }}
-                placeholder="対戦相手名"
-                className="bg-muted border border-[#FF4655] rounded px-2 py-0.5 text-xs text-white outline-none w-32"
-              />
+            <div className="flex items-end gap-2 mt-2 flex-wrap">
+              <div>
+                <div className="text-[10px] text-muted-foreground mb-0.5">日付</div>
+                <input
+                  type="date"
+                  value={editDate}
+                  onChange={e => setEditDate(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') saveDate(); if (e.key === 'Escape') cancelDateEdit() }}
+                  autoFocus
+                  className="bg-muted border border-[#FF4655] rounded px-2 py-1 text-xs text-white outline-none"
+                />
+              </div>
+              <div>
+                <div className="text-[10px] text-muted-foreground mb-0.5">マップ</div>
+                <select
+                  value={editMap}
+                  onChange={e => setEditMap(e.target.value)}
+                  className="bg-muted border border-[#FF4655] rounded px-2 py-1 text-xs text-white outline-none"
+                >
+                  {MAPS.map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </div>
+              <div>
+                <div className="text-[10px] text-muted-foreground mb-0.5">対戦相手名</div>
+                <input
+                  type="text"
+                  value={editOpponent}
+                  onChange={e => setEditOpponent(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') saveDate(); if (e.key === 'Escape') cancelDateEdit() }}
+                  placeholder="対戦相手名"
+                  className="bg-muted border border-[#FF4655] rounded px-2 py-1 text-xs text-white outline-none w-32"
+                />
+              </div>
               <button
                 onClick={saveDate}
                 disabled={dateSaving}
-                className="p-1 rounded text-[#00D4A0] hover:bg-[#00D4A0]/10 transition-colors disabled:opacity-50"
+                className="flex items-center gap-1 px-2 py-1 rounded bg-[#00D4A0]/10 text-[#00D4A0] text-xs hover:bg-[#00D4A0]/20 transition-colors disabled:opacity-50"
               >
-                <Check className="w-3.5 h-3.5" />
+                <Check className="w-3.5 h-3.5" />保存
               </button>
               <button
                 onClick={cancelDateEdit}
-                className="p-1 rounded text-muted-foreground hover:text-white hover:bg-white/5 transition-colors"
+                className="flex items-center gap-1 px-2 py-1 rounded text-muted-foreground text-xs hover:text-white hover:bg-white/5 transition-colors"
               >
-                <X className="w-3.5 h-3.5" />
+                <X className="w-3.5 h-3.5" />キャンセル
               </button>
             </div>
           ) : (
             <button
-              onClick={() => {
-                setEditMap(String(match.map ?? ''))
-                setEditOpponent(String(match.opponent_name ?? ''))
-                setDateEditMode(true)
-              }}
+              onClick={openInfoEdit}
               className="flex items-center gap-1.5 mt-1 group text-muted-foreground hover:text-white transition-colors"
             >
               <Calendar className="w-3 h-3" />
