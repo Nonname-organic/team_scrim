@@ -54,7 +54,6 @@ interface PlayerRow {
   assists: number | ''
   fb: number | ''
   fd: number | ''
-  acs: number | ''
   hs_pct: number | ''
 }
 
@@ -82,7 +81,7 @@ const TIMING_OPTIONS = [
 
 const EMPTY_ROW = (): PlayerRow => ({
   player_id: '', agent: '', kills: '', deaths: '', assists: '',
-  fb: '', fd: '', acs: '', hs_pct: '',
+  fb: '', fd: '', hs_pct: '',
 })
 
 const ECO_OPTIONS = ['pistol', 'second', 'third', 'eco', 'anti_eco', 'semi_eco', 'semi_buy', 'full_buy', 'oper']
@@ -262,7 +261,6 @@ export default function ScrimInputPage() {
             assists:hit.assists!= null ? Number(hit.assists): row.assists,
             fb:     hit.first_bloods != null ? Number(hit.first_bloods) : row.fb,
             fd:     hit.first_deaths != null ? Number(hit.first_deaths) : row.fd,
-            acs:    hit.acs    != null ? Number(hit.acs)    : row.acs,
             hs_pct: hit.hs_pct != null ? Number(hit.hs_pct): row.hs_pct,
           }
         })
@@ -293,7 +291,7 @@ export default function ScrimInputPage() {
       .filter(r =>
         r.player_id &&
         // 何も入力されていない事前埋め選手は除外
-        (r.agent !== '' || r.kills !== '' || r.deaths !== '' || r.assists !== '' || r.acs !== '')
+        (r.agent !== '' || r.kills !== '' || r.deaths !== '' || r.assists !== '')
       )
       .map(r => ({
         player_id: r.player_id,
@@ -302,7 +300,6 @@ export default function ScrimInputPage() {
         kills: Number(r.kills) || 0,
         deaths: Number(r.deaths) || 0,
         assists: Number(r.assists) || 0,
-        acs: Number(r.acs) || 0,
         adr: 0,
         hs_pct: Number(r.hs_pct) || 0,
         first_bloods: Number(r.fb) || 0,
@@ -493,7 +490,7 @@ export default function ScrimInputPage() {
                 <th className="text-left   align-middle px-4 py-2.5 text-xs text-muted-foreground font-medium w-8">#</th>
                 <th className="text-left   align-middle px-3 py-2.5 text-xs text-muted-foreground font-medium w-36">{t('players.ign')}</th>
                 <th className="text-left   align-middle px-3 py-2.5 text-xs text-muted-foreground font-medium w-40">{t('common.agent')}</th>
-                {['K','D','A','FB','FD','ACS'].map(h => (
+                {['K','D','A','FB','FD'].map(h => (
                   <th key={h} className="text-center align-middle px-2 py-2.5 text-xs text-muted-foreground font-medium w-16">{h}</th>
                 ))}
                 <th className="text-center align-middle px-2 py-2.5 text-xs text-muted-foreground font-medium w-14">KPR</th>
@@ -533,7 +530,7 @@ export default function ScrimInputPage() {
                   </td>
 
                   {/* Numeric stats */}
-                  {(['kills','deaths','assists','fb','fd','acs'] as const).map(key => (
+                  {(['kills','deaths','assists','fb','fd'] as const).map(key => (
                     <td key={key} className="align-middle px-2 py-2">
                       <input
                         type="number" min={0}

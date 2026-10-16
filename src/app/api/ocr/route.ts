@@ -73,7 +73,6 @@ export async function POST(req: NextRequest) {
                     "kills": 数値,
                     "deaths": 数値,
                     "assists": 数値,
-                    "acs": 数値,
                     "adr": 数値または null,
                     "hs_pct": 数値または null,
                     "first_bloods": 数値または null,
@@ -87,6 +86,8 @@ export async function POST(req: NextRequest) {
               \`\`\`
 
               数値が読み取れない場合は null にしてください。
+              スコアボードの列は「KDA（K/D/A）」「ファーストキル→first_bloods」の対応で読み取り、
+              「設置」「解除」列は無視してください。表示されていない項目（ADR, HS% など）は null にしてください。
               チームの区別は画像のチームカラーや配置から判断してください。`,
             },
           ],

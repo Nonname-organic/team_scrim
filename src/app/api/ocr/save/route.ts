@@ -9,7 +9,7 @@ interface PlayerEntry {
   kills: number
   deaths: number
   assists: number
-  acs: number
+  acs?: number  // スコアボードUI変更で入力廃止、既存行との互換のため残置
   adr: number
   hs_pct: number
   first_bloods: number
@@ -94,7 +94,7 @@ export async function POST(req: NextRequest) {
            RETURNING *`,
           [
             matchId, p.player_id, p.agent || 'unknown',
-            p.kills, p.deaths, p.assists, p.acs,
+            p.kills, p.deaths, p.assists, p.acs ?? 0,
             kpr, dpr, apr,
             p.first_bloods || 0, p.first_deaths || 0, fbsr,
             p.adr || 0, p.hs_pct || 0, rounds,
