@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { getAuthContext, unauthorizedResponse } from '@/lib/server-auth'
 
+// Vision 呼び出しは 20 秒超かかるため Vercel デフォルト(10s)では足りない
+export const maxDuration = 60
+
 const client = new Anthropic()
 
 // ============================================================
