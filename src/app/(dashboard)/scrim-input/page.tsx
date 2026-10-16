@@ -29,8 +29,8 @@ function normalizeAgent(name: string): string {
 function normalizeIgn(ign: string): string {
   return ign.toLowerCase().replace(/[\s\u3000]/g, '').split('#')[0]
 }
-// OCR名と登録名を照合（完全一致 → 前方一致 → 部分一致の順でフォールバック）
-function matchIgn(ocrIgn: string, regIgn: string): boolean {
+// OCR名と登録名を照合（完全一致 → 部分一致 → fuzzy指定時は編集距離）
+function matchIgn(ocrIgn: string, regIgn: string, fuzzy = false): boolean {
   const o = normalizeIgn(ocrIgn)
   const r = normalizeIgn(regIgn)
   if (!o || !r) return false
@@ -38,7 +38,18 @@ function matchIgn(ocrIgn: string, regIgn: string): boolean {
   // 短い方が長い方に含まれるか（3文字以上の場合）
   const shorter = o.length <= r.length ? o : r
   const longer  = o.length <= r.length ? r : o
-  return shorter.length >= 3 && longer.includes(shorter)
+  if (shorter.length >= 3 && longer.includes(shorter)) return true
+  // 低画質OCRの1〜2文字誤読を編集距離で吸収（例: Ayuka→Ayako）
+  return fuzzy && shorter.length >= 4 && editDistance(o, r) <= (shorter.length >= 5 ? 2 : 1)
+}
+
+function editDistance(a: string, b: string): number {
+  const dp = Array.from({ length: a.length + 1 }, (_, i) => [i, ...new Array<number>(b.length).fill(0)])
+  for (let j = 1; j <= b.length; j++) dp[0][j] = j
+  for (let i = 1; i <= a.length; i++)
+    for (let j = 1; j <= b.length; j++)
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1))
+  return dp[a.length][b.length]
 }
 
 // ============================================================
@@ -119,6 +130,7 @@ export default function ScrimInputPage() {
 
   // UI state
   const [ocrLoading, setOcrLoading] = useState(false)
+  const [ocrInfo, setOcrInfo] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -226,6 +238,7 @@ export default function ScrimInputPage() {
     if (!file) return
     setOcrLoading(true)
     setError(null)
+    setOcrInfo(null)
 
     const fd = new FormData()
     fd.append('image', file)
@@ -250,8 +263,9 @@ export default function ScrimInputPage() {
           const regPlayer = players.find(p => p.id === row.player_id)
           if (!regPlayer) return row
 
-          // OCRデータから名前が一致するものを探す（完全一致 → 部分一致フォールバック）
+          // OCRデータから名前が一致するものを探す（厳密一致を優先し、無ければ誤読吸収のあいまい一致）
           const hit = ocr.find(op => matchIgn(String(op.ign), regPlayer.ign))
+            ?? ocr.find(op => matchIgn(String(op.ign), regPlayer.ign, true))
           if (!hit) return row  // 一致なし → そのまま
 
           // スタッツだけ上書き（player_idはそのまま）
@@ -268,6 +282,16 @@ export default function ScrimInputPage() {
         })
         return next
       })
+
+      // 照合結果のフィードバック（無反応に見える事故を防ぐ）
+      const unmatchedPlayers = players.filter(p =>
+        !ocr.some(op => matchIgn(String(op.ign), p.ign) || matchIgn(String(op.ign), p.ign, true))
+      )
+      setOcrInfo(
+        unmatchedPlayers.length === 0
+          ? 'OCR完了: 全登録選手に反映しました'
+          : `OCR完了: 未反映の登録選手 → ${unmatchedPlayers.map(p => p.ign).join(', ')}（IGN誤読の可能性。手入力してください）`
+      )
     } catch (e) {
       setError(String(e))
     } finally {
@@ -478,6 +502,9 @@ export default function ScrimInputPage() {
       <div className="bg-card border border-border rounded-xl overflow-hidden">
         <div className="px-5 py-3 border-b border-border flex items-center justify-between">
           <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{t('matchInput.playerStats')}</div>
+          {!ocrLoading && ocrInfo && (
+            <div className="text-xs text-muted-foreground">{ocrInfo}</div>
+          )}
           {ocrLoading && (
             <div className="flex items-center gap-1.5 text-xs text-[#FF4655]">
               <Loader2 className="w-3 h-3 animate-spin" />
