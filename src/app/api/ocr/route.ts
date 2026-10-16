@@ -62,11 +62,17 @@ export async function POST(req: NextRequest) {
                   Clove→クローブ, Vyse→ヴァイス, Tejo→テホ,
                   Waylay→ウェイレイ, Mixes→ミクス
 
+              【マップ名】画像内のマップ表記（例: 右上の「マップ - ロータス」/ "MAP - LOTUS"）を読み取り、
+              map フィールドは必ず次の英語名のいずれかで返してください（日本語表記→英語名の対応）：
+              アビス→Abyss, アセント→Ascent, バインド→Bind, ブリーズ→Breeze, フラクチャー→Fracture,
+              ヘイヴン→Haven, アイスボックス→Icebox, ロータス→Lotus, パール→Pearl, スプリット→Split, サンセット→Sunset
+              画像から読み取れない場合は "${mapName || 'unknown'}" としてください。
+
               以下の形式のJSONで返してください：
 
               \`\`\`json
               {
-                "map": "${mapName || 'unknown'}",
+                "map": "英語マップ名",
                 "team_score": 数値,
                 "opponent_score": 数値,
                 "players": [

@@ -3,7 +3,7 @@ import { useEffect, useState, Fragment } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Shield, Crosshair, Pencil, Save, X, Plus, Trash2, MapPin, Flag, Bookmark, Calendar, Check } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { AGENTS } from '@/types'
+import { AGENTS, MAPS } from '@/types'
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
 import { detectSite } from '@/lib/geometry'
 import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSelector'
@@ -65,6 +65,8 @@ export default function MatchDetailPage() {
   const [editPlayers, setEditPlayers] = useState<PEdit[]>([])
   const [editRounds, setEditRounds] = useState<REdit[]>([])
   const [editDate, setEditDate] = useState('')
+  const [editMap, setEditMap] = useState('')
+  const [editOpponent, setEditOpponent] = useState('')
   const [dateEditMode, setDateEditMode] = useState(false)
   const [dateSaving, setDateSaving] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -110,13 +112,13 @@ export default function MatchDetailPage() {
   const totalRounds = Number(match.team_score ?? 0) + Number(match.opponent_score ?? 0)
 
   async function saveDate() {
-    if (!editDate) return
+    if (!editDate || !editOpponent.trim()) return
     setDateSaving(true)
     try {
       await fetch(`/api/matches/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ match_date: editDate }),
+        body: JSON.stringify({ match_date: editDate, map: editMap, opponent_name: editOpponent.trim() }),
       })
       const j = await fetch(`/api/matches/${id}`).then(r => r.json())
       setData(j.data)
@@ -315,7 +317,7 @@ export default function MatchDetailPage() {
             VS <span style={{ color: resultColor }}>{String(match.opponent_name)}</span>
           </h1>
           {dateEditMode ? (
-            <div className="flex items-center gap-1.5 mt-1">
+            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
               <input
                 type="date"
                 value={editDate}
@@ -323,6 +325,21 @@ export default function MatchDetailPage() {
                 onKeyDown={e => { if (e.key === 'Enter') saveDate(); if (e.key === 'Escape') cancelDateEdit() }}
                 autoFocus
                 className="bg-muted border border-[#FF4655] rounded px-2 py-0.5 text-xs text-white outline-none"
+              />
+              <select
+                value={editMap}
+                onChange={e => setEditMap(e.target.value)}
+                className="bg-muted border border-[#FF4655] rounded px-2 py-0.5 text-xs text-white outline-none"
+              >
+                {MAPS.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+              <input
+                type="text"
+                value={editOpponent}
+                onChange={e => setEditOpponent(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') saveDate(); if (e.key === 'Escape') cancelDateEdit() }}
+                placeholder="対戦相手名"
+                className="bg-muted border border-[#FF4655] rounded px-2 py-0.5 text-xs text-white outline-none w-32"
               />
               <button
                 onClick={saveDate}
@@ -340,7 +357,11 @@ export default function MatchDetailPage() {
             </div>
           ) : (
             <button
-              onClick={() => setDateEditMode(true)}
+              onClick={() => {
+                setEditMap(String(match.map ?? ''))
+                setEditOpponent(String(match.opponent_name ?? ''))
+                setDateEditMode(true)
+              }}
               className="flex items-center gap-1.5 mt-1 group text-muted-foreground hover:text-white transition-colors"
             >
               <Calendar className="w-3 h-3" />

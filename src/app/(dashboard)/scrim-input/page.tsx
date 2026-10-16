@@ -136,26 +136,6 @@ export default function ScrimInputPage() {
   const [error, setError] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // エージェント使用頻度（DB から取得して dropdown をソート）
-  const [agentUsage, setAgentUsage] = useState<Map<string, number>>(new Map())
-  useEffect(() => {
-    if (!teamId) return
-    fetch('/api/agents/usage')
-      .then(r => r.json())
-      .then(j => {
-        if (j.data) setAgentUsage(new Map(j.data.map((r: { agent: string; count: number }) => [r.agent, r.count])))
-      })
-      .catch(() => {})
-  }, [teamId])
-
-  // 使用頻度順（降順）→ 未使用は五十音順（AGENTS の定義順）
-  const sortedAgents = useMemo(() => {
-    const used = (AGENTS as readonly string[]).filter(a => agentUsage.has(a))
-      .sort((a, b) => (agentUsage.get(b) ?? 0) - (agentUsage.get(a) ?? 0))
-    const unused = (AGENTS as readonly string[]).filter(a => !agentUsage.has(a))
-    return [...used, ...unused]
-  }, [agentUsage])
-
   useEffect(() => {
     if (!teamId) return
     fetch('/api/players')
@@ -250,7 +230,8 @@ export default function ScrimInputPage() {
       if (!json.success) throw new Error(json.error ?? 'OCR失敗')
 
       // Populate match info
-      if (json.map && json.map !== 'unknown') setMap(json.map)
+      // OCRが返すのは英語正規名のみ採用（誤読をselectに入れない）
+      if (json.map && (MAPS as readonly string[]).includes(json.map)) setMap(json.map)
       if (json.team_score != null) { setTeamScore(json.team_score); setTeamScoreInput(String(json.team_score)) }
       if (json.opponent_score != null) { setOppScore(json.opponent_score); setOppScoreInput(String(json.opponent_score)) }
 
@@ -554,7 +535,7 @@ export default function ScrimInputPage() {
                       onChange={e => updateRow(i, 'agent', e.target.value)}
                     >
                       <option value="">{t('matchInput.agentSelect')}</option>
-                      {sortedAgents.map(a => <option key={a} value={a}>{a}</option>)}
+                      {AGENTS.map(a => <option key={a} value={a}>{a}</option>)}
                     </select>
                   </td>
 

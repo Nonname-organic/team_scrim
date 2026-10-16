@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
 import { getAuthContext, unauthorizedResponse } from '@/lib/server-auth'
 import { serverError, notFoundError } from '@/lib/api-error'
+import { MAPS } from '@/types'
 
 export async function GET(
   _req: NextRequest,
@@ -58,6 +59,17 @@ export async function PATCH(
     if ('video_url'  in body) { fields.push(`video_url = $${values.push(body.video_url)}`) }
     if ('notes'      in body) { fields.push(`notes = $${values.push(body.notes)}`) }
     if ('match_date' in body) { fields.push(`match_date = $${values.push(body.match_date)}`) }
+    if ('map' in body) {
+      if (!(MAPS as readonly string[]).includes(body.map)) {
+        return NextResponse.json({ error: '不正なマップ名です' }, { status: 400 })
+      }
+      fields.push(`map = $${values.push(body.map)}`)
+    }
+    if ('opponent_name' in body) {
+      const name = String(body.opponent_name ?? '').trim()
+      if (!name) return NextResponse.json({ error: '対戦相手名が空です' }, { status: 400 })
+      fields.push(`opponent_name = $${values.push(name)}`)
+    }
 
     if (fields.length === 0) return NextResponse.json({ error: 'No fields to update' }, { status: 400 })
 
