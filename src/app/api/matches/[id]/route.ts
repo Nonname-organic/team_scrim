@@ -18,7 +18,7 @@ export async function GET(
     query(
       `SELECT ps.*, p.ign, p.role FROM player_stats ps
        JOIN players p ON p.id = ps.player_id
-       WHERE ps.match_id = $1 ORDER BY ps.acs DESC`,
+       WHERE ps.match_id = $1 ORDER BY ps.kills DESC`,
       [matchId]
     ),
     query(

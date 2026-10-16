@@ -30,7 +30,6 @@ type PEdit = {
   kills: number
   deaths: number
   assists: number
-  acs: number
   hs_pct: number
   first_bloods: number
   first_deaths: number
@@ -142,7 +141,6 @@ export default function MatchDetailPage() {
       kills: Number(p.kills ?? 0),
       deaths: Number(p.deaths ?? 0),
       assists: Number(p.assists ?? 0),
-      acs: Number(p.acs ?? 0),
       hs_pct: Number(p.hs_pct ?? 0),
       first_bloods: Number(p.first_bloods ?? 0),
       first_deaths: Number(p.first_deaths ?? 0),
@@ -234,7 +232,6 @@ export default function MatchDetailPage() {
               kills: Number(p.kills),
               deaths: Number(p.deaths),
               assists: Number(p.assists),
-              acs: Number(p.acs),
               hs_pct: Number(p.hs_pct),
               first_bloods: Number(p.first_bloods),
               first_deaths: Number(p.first_deaths),
@@ -444,7 +441,7 @@ export default function MatchDetailPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border">
-                  {[t('matches.headerPlayer'), t('common.agent'), 'K', 'D', 'A', 'ACS', 'KD', 'FB', 'FD'].map(h => (
+                  {[t('matches.headerPlayer'), t('common.agent'), 'K', 'D', 'A', 'KD', 'FB', 'FD'].map(h => (
                     <th key={h} className="px-4 py-2.5 text-left text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
                       {h}
                     </th>
@@ -459,7 +456,6 @@ export default function MatchDetailPage() {
                   kills: Number(p.kills ?? 0),
                   deaths: Number(p.deaths ?? 0),
                   assists: Number(p.assists ?? 0),
-                  acs: Number(p.acs ?? 0),
                   hs_pct: Number(p.hs_pct ?? 0),
                   first_bloods: Number(p.first_bloods ?? 0),
                   first_deaths: Number(p.first_deaths ?? 0),
@@ -473,7 +469,6 @@ export default function MatchDetailPage() {
                         <td className="px-4 py-3 text-[#00D4A0] font-bold">{p.kills}</td>
                         <td className="px-4 py-3 text-[#FF4655]">{p.deaths}</td>
                         <td className="px-4 py-3 text-muted-foreground">{p.assists}</td>
-                        <td className="px-4 py-3 font-bold text-white">{p.acs}</td>
                         <td className={cn('px-4 py-3 font-semibold', kd >= 1.0 ? 'text-[#00D4A0]' : 'text-[#FF4655]')}>
                           {kd.toFixed(2)}
                         </td>
@@ -497,7 +492,7 @@ export default function MatchDetailPage() {
                           {AGENTS.map(a => <option key={a} value={a}>{a}</option>)}
                         </select>
                       </td>
-                      {(['kills', 'deaths', 'assists', 'acs'] as const).map(f => (
+                      {(['kills', 'deaths', 'assists'] as const).map(f => (
                         <td key={f} className="px-2 py-2">
                           <input
                             type="number"

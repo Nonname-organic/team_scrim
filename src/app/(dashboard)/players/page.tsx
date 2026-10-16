@@ -60,9 +60,8 @@ export default function PlayersPage() {
         {/* Player list */}
         <div className="lg:col-span-2 space-y-2">
           {/* Stats table header */}
-          <div className="grid grid-cols-[1fr_52px_52px_44px] text-[10px] text-muted-foreground uppercase tracking-wider px-3 py-2">
+          <div className="grid grid-cols-[1fr_52px_44px] text-[10px] text-muted-foreground uppercase tracking-wider px-3 py-2">
             <div>{t('players.ign')}</div>
-            <div className="text-right">ACS</div>
             <div className="text-right">KD</div>
             <div className="text-right">{t('players.matches')}</div>
           </div>
@@ -76,7 +75,7 @@ export default function PlayersPage() {
                 key={p.player_id}
                 onClick={() => setSelected(isSelected ? null : p.player_id)}
                 className={cn(
-                  'w-full grid grid-cols-[1fr_52px_52px_44px] items-center px-3 py-3 min-h-[52px] rounded-xl border text-sm transition-all',
+                  'w-full grid grid-cols-[1fr_52px_44px] items-center px-3 py-3 min-h-[52px] rounded-xl border text-sm transition-all',
                   isSelected
                     ? 'bg-[#FF4655]/10 border-[#FF4655]/30'
                     : 'bg-card border-border hover:bg-muted/30'
@@ -96,7 +95,6 @@ export default function PlayersPage() {
                     </div>
                   </div>
                 </div>
-                <StatCell value={Number(p.avg_acs).toFixed(0)} threshold={250} />
                 <StatCell value={Number(p.avg_kd).toFixed(2)} threshold={1.1} />
                 <div className="text-right text-muted-foreground text-xs">{p.matches_played}</div>
               </button>
@@ -142,7 +140,6 @@ export default function PlayersPage() {
 
               {/* Quick stats */}
               <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                <MiniStat label="ACS" value={Number(selectedPlayer.avg_acs).toFixed(0)} />
                 <MiniStat label="K/D" value={Number(selectedPlayer.avg_kd).toFixed(2)} />
               </div>
 

@@ -108,7 +108,7 @@ export async function POST(
 
     const body = await req.json()
     const {
-      match_id, agent, kills, deaths, assists, acs, adr = 0,
+      match_id, agent, kills, deaths, assists, acs = 0, adr = 0,
       hs_pct = 0, first_bloods = 0, first_deaths = 0,
       clutch_attempts = 0, clutch_wins = 0, rounds_played,
     } = body

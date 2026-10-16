@@ -360,24 +360,21 @@ export async function getPlayerRadarStats(playerId: string): Promise<{
   )
   if (!s) return null
 
-  const acs  = Number(s.avg_acs  ?? 0)
   const kd   = Number(s.avg_kd   ?? 0)
   const kpr  = Number(s.avg_kpr  ?? 0)
   const apr  = Number(s.avg_apr  ?? 0)
   const dpr  = Number(s.avg_dpr  ?? 0)
   const kast = estimateKAST(kpr, apr)
 
-  const s1 = clamp100((acs  - 160)  / 160  * 100)
   const s2 = clamp100((kd   - 0.80) / 0.80 * 100)
   const s3 = clamp100((kpr  - 0.50) / 0.50 * 100)
   const s4 = clamp100((apr  - 0.10) / 0.45 * 100)
   const s5 = clamp100((kast - 60)   / 25   * 100)
   const s6 = clamp100(100 - ((dpr - 0.50) / 0.40 * 100))
-  const overall = Math.round((s1 + s2 + s3 + s4 + s5 + s6) / 6)
+  const overall = Math.round((s2 + s3 + s4 + s5 + s6) / 5)
 
   return {
     axes: [
-      { subject: 'ACS',  value: s1, fullMark: 100, raw: acs.toFixed(0) },
       { subject: 'K/D',  value: s2, fullMark: 100, raw: kd.toFixed(2) },
       { subject: 'KPR',  value: s3, fullMark: 100, raw: kpr.toFixed(2) },
       { subject: 'APR',  value: s4, fullMark: 100, raw: apr.toFixed(2) },

@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
      FROM players p
      LEFT JOIN v_player_career_stats vcs ON vcs.player_id = p.id
      WHERE p.team_id = $1 ${activeOnly ? 'AND p.active = TRUE' : ''}
-     ORDER BY vcs.avg_acs DESC NULLS LAST`,
+     ORDER BY vcs.avg_kd DESC NULLS LAST`,
     [auth.teamId]
   )
 

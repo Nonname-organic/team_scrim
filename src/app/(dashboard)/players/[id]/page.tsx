@@ -30,10 +30,9 @@ function getRank(v: number): { label: string; color: string } {
 }
 
 type Tab = 'overall' | 'map' | 'agent'
-type TrendMetric = 'ACS' | 'KD' | 'KDA' | 'K' | 'KPR' | 'APR'
+type TrendMetric = 'KD' | 'KDA' | 'K' | 'KPR' | 'APR'
 
 const TREND_METRICS: { id: TrendMetric; label: string }[] = [
-  { id: 'ACS',  label: 'ACS' },
   { id: 'KD',   label: 'K/D' },
   { id: 'KDA',  label: 'KDA' },
   { id: 'K',    label: 'Kill数' },
@@ -48,7 +47,7 @@ export default function PlayerDetailPage() {
   const [data, setData] = useState<Record<string, unknown> | null>(null)
   const [loading, setLoading] = useState(true)
   const [tab, setTab] = useState<Tab>('overall')
-  const [trendMetric, setTrendMetric] = useState<TrendMetric>('ACS')
+  const [trendMetric, setTrendMetric] = useState<TrendMetric>('KD')
   const [selectedMap, setSelectedMap] = useState<string | null>(null)
   const [selectedAgent, setSelectedAgent] = useState<string | null>(null)
 
@@ -80,7 +79,6 @@ export default function PlayerDetailPage() {
   const roleCfg = ROLE_CONFIG[String(career.role ?? '')] ?? { color: '#9B9BA4', label: String(career.role ?? '') }
 
   const kpiCards = [
-    { label: 'ACS',  value: Number(career.avg_acs  ?? 0).toFixed(0),  threshold: 250  },
     { label: 'K/D',  value: Number(career.avg_kd   ?? 0).toFixed(2),  threshold: 1.1  },
     { label: 'KPR',  value: Number(career.avg_kpr  ?? 0).toFixed(2),  threshold: 0.7  },
     { label: 'APR',  value: Number(career.avg_apr  ?? 0).toFixed(2),  threshold: 0.3  },
@@ -93,7 +91,6 @@ export default function PlayerDetailPage() {
     const rp = Number(r.rounds_played ?? 0)
     return {
       name: `#${i + 1}`,
-      ACS: Number(r.acs ?? 0),
       KD:  Number(r.kd_ratio ?? 0),
       KDA: d > 0 ? Math.round(((k + a) / d) * 100) / 100 : k + a,
       K:   k,
@@ -311,7 +308,7 @@ export default function PlayerDetailPage() {
                         fontSize: 12,
                       }}
                       formatter={(v: number) => [
-                        trendMetric === 'ACS' || trendMetric === 'K' ? v : v.toFixed(2),
+                        trendMetric === 'K' ? v : v.toFixed(2),
                         TREND_METRICS.find(m => m.id === trendMetric)?.label ?? trendMetric,
                       ]}
                     />
@@ -332,7 +329,7 @@ export default function PlayerDetailPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border">
-                      {[t('common.date'), t('common.map'), t('common.opponent'), t('common.result'), t('common.agent'), 'K', 'D', 'A', 'ACS', 'KD'].map(h => (
+                      {[t('common.date'), t('common.map'), t('common.opponent'), t('common.result'), t('common.agent'), 'K', 'D', 'A', 'KD'].map(h => (
                         <th key={h} className="px-4 py-2.5 text-left text-[10px] text-muted-foreground uppercase tracking-wider font-medium whitespace-nowrap">
                           {h}
                         </th>
@@ -365,7 +362,6 @@ export default function PlayerDetailPage() {
                           <td className="px-4 py-2.5 text-[#00D4A0] font-bold">{String(r.kills ?? 0)}</td>
                           <td className="px-4 py-2.5 text-[#FF4655]">{String(r.deaths ?? 0)}</td>
                           <td className="px-4 py-2.5 text-muted-foreground">{String(r.assists ?? 0)}</td>
-                          <td className="px-4 py-2.5 font-bold text-white">{String(r.acs ?? 0)}</td>
                           <td className={cn('px-4 py-2.5 font-semibold', kd >= 1.0 ? 'text-[#00D4A0]' : 'text-[#FF4655]')}>
                             {kd.toFixed(2)}
                           </td>
@@ -426,7 +422,7 @@ export default function PlayerDetailPage() {
                       <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
                       <Tooltip contentStyle={{ background: '#18181F', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
-                        formatter={(v: number) => [trendMetric === 'ACS' || trendMetric === 'K' ? v : v.toFixed(2), TREND_METRICS.find(m => m.id === trendMetric)?.label ?? trendMetric]} />
+                        formatter={(v: number) => [trendMetric === 'K' ? v : v.toFixed(2), TREND_METRICS.find(m => m.id === trendMetric)?.label ?? trendMetric]} />
                       <Line dataKey={trendMetric} stroke={roleCfg.color} strokeWidth={2} dot={{ r: 3, fill: roleCfg.color }} />
                     </LineChart>
                   </ResponsiveContainer>
@@ -491,7 +487,7 @@ export default function PlayerDetailPage() {
                       <XAxis dataKey="name" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
                       <YAxis tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }} axisLine={false} tickLine={false} />
                       <Tooltip contentStyle={{ background: '#18181F', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }}
-                        formatter={(v: number) => [trendMetric === 'ACS' || trendMetric === 'K' ? v : v.toFixed(2), TREND_METRICS.find(m => m.id === trendMetric)?.label ?? trendMetric]} />
+                        formatter={(v: number) => [trendMetric === 'K' ? v : v.toFixed(2), TREND_METRICS.find(m => m.id === trendMetric)?.label ?? trendMetric]} />
                       <Line dataKey={trendMetric} stroke={roleCfg.color} strokeWidth={2} dot={{ r: 3, fill: roleCfg.color }} />
                     </LineChart>
                   </ResponsiveContainer>
@@ -518,8 +514,10 @@ export default function PlayerDetailPage() {
 // ============================================================
 
 function radarFromRow(row: Record<string, unknown>) {
+  // レーダーは3軸必要なため、ACS廃止後はKDAで代替
+  const kda = (Number(row.avg_kills ?? 0) + Number(row.avg_assists ?? 0)) / (Number(row.avg_deaths ?? 0) || 1)
   return [
-    { subject: 'ACS',  value: Math.min(100, Math.round((Number(row.avg_acs ?? 0) / 300) * 100)), fullMark: 100 },
+    { subject: 'KDA',  value: Math.min(100, Math.round((kda / 2.0) * 100)), fullMark: 100 },
     { subject: 'KD',   value: Math.min(100, Math.round((Number(row.avg_kd  ?? 0) / 1.8) * 100)), fullMark: 100 },
     { subject: 'KPR',  value: Math.min(100, Math.round((Number(row.avg_kpr ?? 0) / 1.0) * 100)), fullMark: 100 },
   ]
@@ -539,7 +537,6 @@ function buildTrendData(
       const a = Number(r.assists ?? 0)
       return {
         name: `#${i + 1}`,
-        ACS: Number(r.acs ?? 0),
         KD: Number(r.kd_ratio ?? 0),
         KDA: d > 0 ? Math.round(((k + a) / d) * 100) / 100 : k + a,
         K: k,
@@ -572,7 +569,7 @@ function BreakdownTable({
     )
   }
 
-  const headers = [nameLabel, t('players.matches'), t('common.result'), 'Avg ACS', 'Avg K', 'Avg D', 'Avg A', 'KPR']
+  const headers = [nameLabel, t('players.matches'), t('common.result'), 'Avg K', 'Avg D', 'Avg A', 'KPR']
 
   return (
     <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -616,7 +613,6 @@ function BreakdownTable({
                     </span>
                     <span className="text-muted-foreground text-xs ml-1">({wins}W)</span>
                   </td>
-                  <td className="px-4 py-3 font-bold text-white">{Number(r.avg_acs ?? 0).toFixed(0)}</td>
                   <td className="px-4 py-3 text-[#00D4A0]">{Number(r.avg_kills ?? 0).toFixed(1)}</td>
                   <td className="px-4 py-3 text-[#FF4655]">{Number(r.avg_deaths ?? 0).toFixed(1)}</td>
                   <td className="px-4 py-3 text-muted-foreground">{Number(r.avg_assists ?? 0).toFixed(1)}</td>
