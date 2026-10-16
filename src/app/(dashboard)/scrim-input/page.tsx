@@ -330,6 +330,11 @@ export default function ScrimInputPage() {
           map, match_type: matchType,
           team_score: Number(finalTeam),
           opponent_score: Number(finalOpp),
+          // サイド別ラウンド実績（勝率推移・AI分析で使用）
+          attack_rounds_won:     rounds.filter(r => r.side === 'attack'  && r.result === 'win').length,
+          attack_rounds_played:  rounds.filter(r => r.side === 'attack'  && r.result !== '').length,
+          defense_rounds_won:    rounds.filter(r => r.side === 'defense' && r.result === 'win').length,
+          defense_rounds_played: rounds.filter(r => r.side === 'defense' && r.result !== '').length,
           players: playersPayload,
         }),
       })

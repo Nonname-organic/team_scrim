@@ -55,6 +55,7 @@ export function FirstBloodImpact({ data: rawData }: { data: Record<string, unkno
       {impact !== null && impact > 30 && (
         <div className="text-xs text-[#FF8C42] bg-[#FF8C42]/10 rounded-lg p-3">
           <strong>{t('dashboard.fbAnalysisLabel')}</strong> {t('dashboard.fbHighImpact')}
+          <div className="text-muted-foreground mt-1.5">{t('dashboard.fbsrNote')}</div>
         </div>
       )}
     </div>

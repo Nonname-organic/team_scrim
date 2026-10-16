@@ -107,32 +107,50 @@ export async function getWinRateTrend(
   const params: unknown[] = [teamId, n]
   const filterClause = applyFilters(params, mapFilter, matchTypeFilter, '', dateFrom, dateTo)
 
-  const matches = await query<{
+  // サイド別は rounds から集計（matches の attack_rounds_* 列は入力経路により未設定＝0のため）。
+  // rounds 未入力の試合は matches 列にフォールバック
+  const rows = await query<{
     match_date: string
     result: string
-    attack_rounds_won: number
-    attack_rounds_played: number
-    defense_rounds_won: number
-    defense_rounds_played: number
+    m_aw: number; m_ap: number; m_dw: number; m_dp: number
+    r_aw: number; r_ap: number; r_dw: number; r_dp: number
   }>(
-    `SELECT match_date, result, attack_rounds_won, attack_rounds_played,
-            defense_rounds_won, defense_rounds_played
-     FROM matches WHERE team_id = $1${filterClause} ORDER BY match_date DESC LIMIT $2`,
+    `SELECT m.match_date, m.result,
+            m.attack_rounds_won AS m_aw, m.attack_rounds_played AS m_ap,
+            m.defense_rounds_won AS m_dw, m.defense_rounds_played AS m_dp,
+            SUM(CASE WHEN r.side = 'attack'  AND r.result = 'win' THEN 1 ELSE 0 END)::int AS r_aw,
+            SUM(CASE WHEN r.side = 'attack'  THEN 1 ELSE 0 END)::int AS r_ap,
+            SUM(CASE WHEN r.side = 'defense' AND r.result = 'win' THEN 1 ELSE 0 END)::int AS r_dw,
+            SUM(CASE WHEN r.side = 'defense' THEN 1 ELSE 0 END)::int AS r_dp
+     FROM matches m
+     LEFT JOIN rounds r ON r.match_id = m.id
+     WHERE m.team_id = $1${filterClause}
+     GROUP BY m.id
+     ORDER BY m.match_date DESC LIMIT $2`,
     params
   )
 
-  // Rolling 5-match window
+  const matches = rows.map(x => ({
+    match_date: x.match_date,
+    result: x.result,
+    attack_rounds_won:     x.r_ap > 0 ? x.r_aw : Number(x.m_aw ?? 0),
+    attack_rounds_played:  x.r_ap > 0 ? x.r_ap : Number(x.m_ap ?? 0),
+    defense_rounds_won:    x.r_dp > 0 ? x.r_dw : Number(x.m_dw ?? 0),
+    defense_rounds_played: x.r_dp > 0 ? x.r_dp : Number(x.m_dp ?? 0),
+  }))
+
+  // Rolling 5-match window（サイド別はラウンド実績のある試合のみで平均）
   return matches.reverse().map((m, i, arr) => {
     const window = arr.slice(Math.max(0, i - 4), i + 1)
     const winRate = window.filter(w => w.result === 'win').length / window.length
-    const attackWr = window.reduce(
-      (s, w) => s + (w.attack_rounds_played > 0 ? w.attack_rounds_won / w.attack_rounds_played : 0),
-      0
-    ) / window.length
-    const defenseWr = window.reduce(
-      (s, w) => s + (w.defense_rounds_played > 0 ? w.defense_rounds_won / w.defense_rounds_played : 0),
-      0
-    ) / window.length
+    const atkGames = window.filter(w => w.attack_rounds_played > 0)
+    const defGames = window.filter(w => w.defense_rounds_played > 0)
+    const attackWr = atkGames.length > 0
+      ? atkGames.reduce((s, w) => s + w.attack_rounds_won / w.attack_rounds_played, 0) / atkGames.length
+      : 0
+    const defenseWr = defGames.length > 0
+      ? defGames.reduce((s, w) => s + w.defense_rounds_won / w.defense_rounds_played, 0) / defGames.length
+      : 0
 
     return {
       date: new Date(m.match_date).toISOString().slice(0, 10),

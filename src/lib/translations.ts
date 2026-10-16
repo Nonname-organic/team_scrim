@@ -67,6 +67,7 @@ export const ja = {
     fdWhenGiven:       'FD発生時',
     fbAnalysisLabel:   '分析:',
     fbHighImpact:      'FB/FDの勝率差が非常に大きい。エントリー選手のFBSR改善が最優先課題。',
+    fbsrNote:          '※ FBSR = ファーストブラッド成功率。FB ÷ (FB + FD) で、開幕の撃ち合いに勝った割合。',
     noDataShort:       'データなし',
     // Site win rates
     postPlant:         'プラント後',
@@ -389,6 +390,7 @@ export const en: TranslationDict = {
     fdWhenGiven:       'When FD Given',
     fbAnalysisLabel:   'Analysis:',
     fbHighImpact:      'The FB/FD win rate gap is very large. Entry player FBSR improvement is the #1 priority.',
+    fbsrNote:          '* FBSR = First Blood Success Rate: FB ÷ (FB + FD), how often you win the opening duel.',
     noDataShort:       'No Data',
     // Site win rates
     postPlant:         'Post-Plant',
