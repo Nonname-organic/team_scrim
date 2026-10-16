@@ -8,7 +8,7 @@ import { SiteWinRates } from '@/components/dashboard/SiteWinRates'
 import { RecentMatches } from '@/components/dashboard/RecentMatches'
 import { RoundWinRates } from '@/components/dashboard/RoundWinRates'
 import { TimingWinRates } from '@/components/dashboard/TimingWinRates'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, FileDown } from 'lucide-react'
 import { MAPS } from '@/types'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
@@ -126,6 +126,21 @@ export default function DashboardPage() {
               {t('common.reset')}
             </button>
           )}
+
+          {/* PDF出力: 現在のフィルターを引き継いで印刷用レポートを別タブで開く */}
+          <a
+            href={`/export?${new URLSearchParams({
+              ...(mapFilter  && { map: mapFilter }),
+              ...(typeFilter && { match_type: typeFilter }),
+              ...(dateFrom   && { from: dateFrom }),
+              ...(dateTo     && { to: dateTo }),
+            })}`}
+            target="_blank"
+            className="ml-auto flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium border bg-muted border-border text-muted-foreground hover:text-white hover:border-white/30 transition-colors min-h-[40px]"
+          >
+            <FileDown className="w-3.5 h-3.5" />
+            {t('dashboard.exportPdf')}
+          </a>
         </div>
       </div>
 

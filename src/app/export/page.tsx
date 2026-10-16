@@ -15,7 +15,8 @@ export default function ExportPage() {
 
   useEffect(() => {
     // team_id はサーバー側で認証セッションから解決（自チームのみ出力）
-    fetch('/api/export/report')
+    // ダッシュボードのフィルター（map / match_type / from / to）をそのまま引き継ぐ
+    fetch(`/api/export/report${window.location.search}`)
       .then(async r => {
         if (r.status === 429) {
           setErrorMsg('出力回数の上限（10回/時）に達しました。しばらくしてからお試しください。')
@@ -47,6 +48,11 @@ export default function ExportPage() {
   const tim = (data.timing_win_rates as Record<string, unknown>[]) ?? []
   const sit = (data.site_win_rates   as Record<string, Entry>)    ?? {}
   const rec = (s.recent_matches      as Record<string, unknown>[]) ?? []
+  const fbi = (data.first_blood_impact as Record<string, unknown>[]) ?? []
+  const fbRow = fbi.find(r => r.fb_team === true)
+  const fdRow = fbi.find(r => r.fb_team === false)
+  const fbPct = fbRow ? Math.round(Number(fbRow.win_rate) * 100) : null
+  const fdPct = fdRow ? Math.round(Number(fdRow.win_rate) * 100) : null
 
   const team = s.team as Record<string, unknown> | undefined
   const teamName = String(team?.name ?? 'チーム')
@@ -128,6 +134,38 @@ export default function ExportPage() {
             ))}
           </div>
         </section>
+
+        {/* First blood impact */}
+        {fbPct !== null && fdPct !== null && (
+          <section className="mb-8">
+            <h2 className="section-title">ファーストブラッド影響</h2>
+            <table className="w-full mt-3 text-xs border-collapse">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="text-left px-3 py-2 border border-gray-200">状況</th>
+                  <th className="text-right px-3 py-2 border border-gray-200">勝率</th>
+                  <th className="text-right px-3 py-2 border border-gray-200">ラウンド数</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-b border-gray-100">
+                  <td className="px-3 py-1.5 border border-gray-200">FB取得時（開幕キルを取った）</td>
+                  <td className="px-3 py-1.5 border border-gray-200 text-right font-bold">{fbPct}%</td>
+                  <td className="px-3 py-1.5 border border-gray-200 text-right text-gray-500">{String(fbRow?.rounds)}R</td>
+                </tr>
+                <tr className="border-b border-gray-100">
+                  <td className="px-3 py-1.5 border border-gray-200">FD発生時（開幕デスされた）</td>
+                  <td className="px-3 py-1.5 border border-gray-200 text-right font-bold">{fdPct}%</td>
+                  <td className="px-3 py-1.5 border border-gray-200 text-right text-gray-500">{String(fdRow?.rounds)}R</td>
+                </tr>
+              </tbody>
+            </table>
+            <p className="text-xs text-gray-500 mt-2">
+              FB/FD 勝率差: <strong className="text-gray-900">{fbPct - fdPct > 0 ? '+' : ''}{fbPct - fdPct}%</strong>
+              （FBを取ったラウンドはFDされたラウンドより {Math.abs(fbPct - fdPct)}% 勝率が{fbPct - fdPct >= 0 ? '高い' : '低い'}）
+            </p>
+          </section>
+        )}
 
         {/* Economy */}
         {eco.length > 0 && (

@@ -60,17 +60,21 @@ export async function GET(req: NextRequest) {
   const sp = new URL(req.url).searchParams
   const map       = sp.get('map')        ?? undefined
   const matchType = sp.get('match_type') ?? undefined
+  // yyyy-mm-dd 以外は無視（ダッシュボードAPIと同仕様）
+  const asDate = (v: string | null) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined)
+  const from = asDate(sp.get('from'))
+  const to   = asDate(sp.get('to'))
 
   try {
     // team_id はクエリではなく必ず auth.teamId を使用（他チーム出力の禁止）
     const [summary, trend, economy, fbImpact, roundWinRates, siteStats, timingWinRates] = await Promise.all([
-      getDashboardSummary(auth.teamId, map, matchType),
-      getWinRateTrend(auth.teamId, 20, map, matchType),
-      getEconomyWinRates(auth.teamId, map, matchType),
-      getFirstBloodImpact(auth.teamId, map, matchType),
-      getRoundNumberWinRates(auth.teamId, map, matchType),
-      getRoundSiteStats(auth.teamId, map, matchType),
-      getTimingWinRates(auth.teamId, map, matchType),
+      getDashboardSummary(auth.teamId, map, matchType, from, to),
+      getWinRateTrend(auth.teamId, 20, map, matchType, from, to),
+      getEconomyWinRates(auth.teamId, map, matchType, from, to),
+      getFirstBloodImpact(auth.teamId, map, matchType, from, to),
+      getRoundNumberWinRates(auth.teamId, map, matchType, from, to),
+      getRoundSiteStats(auth.teamId, map, matchType, from, to),
+      getTimingWinRates(auth.teamId, map, matchType, from, to),
     ])
 
     const siteWinRates = buildSiteWinRates(siteStats as { by_site: SiteRow[]; post_plant: Entry | null })
