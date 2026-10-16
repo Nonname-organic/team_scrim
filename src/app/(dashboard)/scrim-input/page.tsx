@@ -184,10 +184,15 @@ export default function ScrimInputPage() {
         if (existing && existing.round_number === i + 1) {
           return { ...existing, side }
         }
+        // 各ハーフ最初の3ラウンドは定番の購入状況をデフォルト設定（変更可）
+        const defaultEco =
+          i === 0 || i === 12 ? 'pistol' :
+          i === 1 || i === 13 ? 'second' :
+          i === 2 || i === 14 ? 'third'  : ''
         return {
           round_number: i + 1,
           side,
-          economy: '',
+          economy: defaultEco,
           result: '' as '',
           plant: false,
           site: '',

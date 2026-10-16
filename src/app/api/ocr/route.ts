@@ -62,6 +62,10 @@ export async function POST(req: NextRequest) {
                   Clove→クローブ, Vyse→ヴァイス, Tejo→テホ,
                   Waylay→ウェイレイ, Mixes→ミクス
 
+              【スコア】画面上部の大きなスコア表記（例:「13 VICTORY 12」「2 DEFEAT 22」）の数字を
+              そのまま読み取ってください。左が自チーム(team_score)、右が相手チーム(opponent_score)です。
+              引き分け（12-12）も存在します。「どちらかが必ず13以上のはず」と推測で補正しないでください。
+
               【マップ名】画像内のマップ表記（例: 右上の「マップ - ロータス」/ "MAP - LOTUS"）を読み取り、
               map フィールドは必ず次の英語名のいずれかで返してください（日本語表記→英語名の対応）：
               アビス→Abyss, アセント→Ascent, バインド→Bind, ブリーズ→Breeze, フラクチャー→Fracture,
