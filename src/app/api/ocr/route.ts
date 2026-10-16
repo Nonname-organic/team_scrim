@@ -116,6 +116,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, ...parsed })
   } catch (err) {
     console.error('[OCR]', err)
-    return NextResponse.json({ success: false, error: 'OCR処理に失敗しました' }, { status: 500 })
+    // 原因特定のため失敗理由をそのまま返す（自チーム向けツールのため許容）
+    const details = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ success: false, error: `OCR処理に失敗しました: ${details}` }, { status: 500 })
   }
 }
