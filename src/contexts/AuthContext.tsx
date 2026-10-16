@@ -18,6 +18,10 @@ const AuthContext = createContext<AuthContextType>({
   logout: async () => {},
 })
 
+// 前回の認証結果キャッシュ（ID のみ）。リロード時に /api/auth/me の往復を待たず
+// データ取得を即開始するための楽観値で、裏で必ず再検証する
+const AUTH_CACHE_KEY = 'axelia-auth-me'
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [teamId, setTeamId] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
@@ -25,6 +29,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(AUTH_CACHE_KEY) ?? 'null')
+      if (cached?.teamId) {
+        setTeamId(cached.teamId)
+        setUserId(cached.userId ?? null)
+        setLoading(false)
+      }
+    } catch { /* sessionStorage 不可の環境では従来どおり待つ */ }
+
     fetch('/api/auth/me')
       .then(async r => {
         if (r.status === 401) return null
@@ -42,6 +55,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .then(data => {
         setTeamId(data?.teamId ?? null)
         setUserId(data?.userId ?? null)
+        try {
+          if (data?.teamId) {
+            sessionStorage.setItem(AUTH_CACHE_KEY, JSON.stringify({ teamId: data.teamId, userId: data.userId }))
+          } else {
+            sessionStorage.removeItem(AUTH_CACHE_KEY)
+          }
+        } catch { /* noop */ }
       })
       .catch(() => {})
       .finally(() => setLoading(false))
@@ -56,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // SIGNED_OUT = セッション削除（middleware が削除した場合も含む）
         setTeamId(null)
         setUserId(null)
+        try { sessionStorage.removeItem(AUTH_CACHE_KEY) } catch { /* noop */ }
       }
     })
     return () => subscription.unsubscribe()
@@ -66,6 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut()
     setTeamId(null)
     setUserId(null)
+    try { sessionStorage.removeItem(AUTH_CACHE_KEY) } catch { /* noop */ }
     router.push('/login')
   }, [router])
 
