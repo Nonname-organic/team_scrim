@@ -44,8 +44,10 @@ export function RoundWinRates({ data: rawData }: { data: Record<string, unknown>
             border: '1px solid hsl(var(--border))',
             borderRadius: 8,
             fontSize: 12,
-            color: '#fff',
           }}
+          // recharts は項目文字色を itemStyle で制御（contentStyle.color は効かない）
+          itemStyle={{ color: '#fff' }}
+          labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
         />
         <ReferenceLine y={0.5} stroke="hsl(var(--border))" strokeDasharray="4 4" />
         <Bar dataKey="win_rate" radius={[3, 3, 0, 0]}>
