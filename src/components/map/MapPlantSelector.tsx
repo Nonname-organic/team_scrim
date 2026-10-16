@@ -91,6 +91,8 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
         setSaving(false)
       }
     },
+    // screenToMap は polygons 由来で毎レンダー再生成されるため意図的に除外
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [editRoundId, saving, polygons, onSaved]
   )
 

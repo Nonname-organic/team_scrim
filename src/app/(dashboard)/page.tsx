@@ -52,6 +52,8 @@ export default function DashboardPage() {
         setError(String(e))
         setLoading(false)
       })
+    // t は毎レンダー再生成されるため deps に入れると無限フェッチになる
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapFilter, typeFilter, dateFrom, dateTo, teamId])
 
   if (loading) return <LoadingState />

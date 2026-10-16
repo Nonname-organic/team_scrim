@@ -160,6 +160,8 @@ export default function ScrimInputPage() {
         while (preFilledRows.length < 5) preFilledRows.push(EMPTY_ROW())
         setRows(preFilledRows)
       })
+    // 初回マウント時のみの事前埋め。teamId 変化での再実行は不要
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Auto-generate rounds:

@@ -1029,6 +1029,8 @@ function RoundDetailPanel({
       memoRef.current.focus()
       onMemoFocused?.()
     }
+    // onMemoFocused はフラグ消費のための通知のみ。focusMemo 変化時だけ実行する
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focusMemo])
 
   function handleBlurSave() {
