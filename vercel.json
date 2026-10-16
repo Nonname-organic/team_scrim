@@ -1,3 +1,4 @@
 {
-  "alias": ["axelia-analytics.vercel.app"]
+  "alias": ["axelia-analytics.vercel.app"],
+  "regions": ["hnd1"]
 }
