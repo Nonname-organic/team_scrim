@@ -25,6 +25,8 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [mapFilter, setMapFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('')
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
 
   useEffect(() => {
     if (!teamId) return
@@ -33,6 +35,8 @@ export default function DashboardPage() {
     const params = new URLSearchParams()
     if (mapFilter)  params.set('map', mapFilter)
     if (typeFilter) params.set('match_type', typeFilter)
+    if (dateFrom)   params.set('from', dateFrom)
+    if (dateTo)     params.set('to', dateTo)
 
     fetch(`/api/analysis/dashboard${params.size ? `?${params}` : ''}`)
       .then(r => {
@@ -48,7 +52,7 @@ export default function DashboardPage() {
         setError(String(e))
         setLoading(false)
       })
-  }, [mapFilter, typeFilter, teamId])
+  }, [mapFilter, typeFilter, dateFrom, dateTo, teamId])
 
   if (loading) return <LoadingState />
   if (error || !data) return <ErrorState message={error ?? 'No data'} dbSetup={!data && !!error} />
@@ -95,6 +99,31 @@ export default function DashboardPage() {
             </button>
           ))}
 
+          {/* 期間フィルター（カレンダー・キーボード入力両対応のネイティブ date input） */}
+          <span className="text-xs text-muted-foreground shrink-0">{t('common.period')}</span>
+          <input
+            type="date"
+            value={dateFrom}
+            max={dateTo || undefined}
+            onChange={e => setDateFrom(e.target.value)}
+            className="bg-muted border border-border rounded-lg px-3 py-2 text-sm text-white focus:border-[#FF4655] outline-none min-h-[40px] [color-scheme:dark]"
+          />
+          <span className="text-xs text-muted-foreground">〜</span>
+          <input
+            type="date"
+            value={dateTo}
+            min={dateFrom || undefined}
+            onChange={e => setDateTo(e.target.value)}
+            className="bg-muted border border-border rounded-lg px-3 py-2 text-sm text-white focus:border-[#FF4655] outline-none min-h-[40px] [color-scheme:dark]"
+          />
+          {(dateFrom || dateTo) && (
+            <button
+              onClick={() => { setDateFrom(''); setDateTo('') }}
+              className="px-3 py-2 rounded-lg text-xs font-medium border bg-muted border-border text-muted-foreground hover:text-white hover:border-white/30 transition-colors min-h-[40px]"
+            >
+              {t('common.reset')}
+            </button>
+          )}
         </div>
       </div>
 

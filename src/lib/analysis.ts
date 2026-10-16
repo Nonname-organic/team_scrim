@@ -16,12 +16,18 @@ function applyFilters(
   params: unknown[],
   map?: string,
   matchType?: string,
-  alias = ''
+  alias = '',
+  dateFrom?: string,
+  dateTo?: string
 ): string {
   const pre = alias ? `${alias}.` : ''
   let clause = ''
   if (map)       clause += ` AND ${pre}map = $${params.push(map)}`
   if (matchType) clause += ` AND ${pre}match_type = $${params.push(matchType)}`
+  // match_date は TIMESTAMPTZ のため終了日は翌日未満として丸ごと含める
+  // shortcut: 日付境界は DB サーバーのタイムゾーン基準、JST 深夜の試合が前後日にずれうる。問題が出たら AT TIME ZONE 'Asia/Tokyo' に
+  if (dateFrom)  clause += ` AND ${pre}match_date >= $${params.push(dateFrom)}::date`
+  if (dateTo)    clause += ` AND ${pre}match_date < $${params.push(dateTo)}::date + 1`
   return clause
 }
 
@@ -30,10 +36,10 @@ function applyFilters(
 // ============================================================
 
 export async function getDashboardSummary(
-  teamId: string, mapFilter?: string, matchTypeFilter?: string
+  teamId: string, mapFilter?: string, matchTypeFilter?: string, dateFrom?: string, dateTo?: string
 ): Promise<DashboardSummary> {
   const matchParams: unknown[] = [teamId]
-  const filterClause = applyFilters(matchParams, mapFilter, matchTypeFilter)
+  const filterClause = applyFilters(matchParams, mapFilter, matchTypeFilter, '', dateFrom, dateTo)
 
   // v_team_win_rates には match_type 列がないため mapFilter のみ適用
   const mapStatsParams: unknown[] = [teamId]
@@ -96,10 +102,10 @@ export async function getDashboardSummary(
 // ============================================================
 
 export async function getWinRateTrend(
-  teamId: string, n = 20, mapFilter?: string, matchTypeFilter?: string
+  teamId: string, n = 20, mapFilter?: string, matchTypeFilter?: string, dateFrom?: string, dateTo?: string
 ): Promise<WinRateTrend[]> {
   const params: unknown[] = [teamId, n]
-  const filterClause = applyFilters(params, mapFilter, matchTypeFilter)
+  const filterClause = applyFilters(params, mapFilter, matchTypeFilter, '', dateFrom, dateTo)
 
   const matches = await query<{
     match_date: string
@@ -142,9 +148,9 @@ export async function getWinRateTrend(
 // Economy Analysis
 // ============================================================
 
-export async function getEconomyWinRates(teamId: string, mapFilter?: string, matchTypeFilter?: string) {
+export async function getEconomyWinRates(teamId: string, mapFilter?: string, matchTypeFilter?: string, dateFrom?: string, dateTo?: string) {
   const params: unknown[] = [teamId]
-  const filterClause = applyFilters(params, mapFilter, matchTypeFilter, 'm')
+  const filterClause = applyFilters(params, mapFilter, matchTypeFilter, 'm', dateFrom, dateTo)
 
   const rows = await query<{
     economy_type: string
@@ -169,9 +175,9 @@ export async function getEconomyWinRates(teamId: string, mapFilter?: string, mat
 // First Blood Impact
 // ============================================================
 
-export async function getFirstBloodImpact(teamId: string, mapFilter?: string, matchTypeFilter?: string) {
+export async function getFirstBloodImpact(teamId: string, mapFilter?: string, matchTypeFilter?: string, dateFrom?: string, dateTo?: string) {
   const params: unknown[] = [teamId]
-  const filterClause = applyFilters(params, mapFilter, matchTypeFilter, 'm')
+  const filterClause = applyFilters(params, mapFilter, matchTypeFilter, 'm', dateFrom, dateTo)
 
   const rows = await query<{
     fb_team: boolean
@@ -233,9 +239,9 @@ export async function getSiteWinRates(teamId: string) {
 // Site & Post-plant analysis (from rounds table)
 // ============================================================
 
-export async function getRoundSiteStats(teamId: string, mapFilter?: string, matchTypeFilter?: string) {
+export async function getRoundSiteStats(teamId: string, mapFilter?: string, matchTypeFilter?: string, dateFrom?: string, dateTo?: string) {
   const params: unknown[] = [teamId]
-  const filterClause = applyFilters(params, mapFilter, matchTypeFilter, 'm')
+  const filterClause = applyFilters(params, mapFilter, matchTypeFilter, 'm', dateFrom, dateTo)
 
   // Post-plant overall
   const [postPlant, bySite, byMap] = await Promise.all([
@@ -286,9 +292,9 @@ export async function getRoundSiteStats(teamId: string, mapFilter?: string, matc
 // Timing Win Rates (early=ラッシュ / mid=デフォルト / late=スロウ)
 // ============================================================
 
-export async function getTimingWinRates(teamId: string, mapFilter?: string, matchTypeFilter?: string) {
+export async function getTimingWinRates(teamId: string, mapFilter?: string, matchTypeFilter?: string, dateFrom?: string, dateTo?: string) {
   const params: unknown[] = [teamId]
-  const filterClause = applyFilters(params, mapFilter, matchTypeFilter, 'm')
+  const filterClause = applyFilters(params, mapFilter, matchTypeFilter, 'm', dateFrom, dateTo)
 
   return query<{
     contact_timing: string
@@ -314,9 +320,9 @@ export async function getTimingWinRates(teamId: string, mapFilter?: string, matc
 // Round-by-round analysis (round 1, 2, 3...)
 // ============================================================
 
-export async function getRoundNumberWinRates(teamId: string, mapFilter?: string, matchTypeFilter?: string) {
+export async function getRoundNumberWinRates(teamId: string, mapFilter?: string, matchTypeFilter?: string, dateFrom?: string, dateTo?: string) {
   const params: unknown[] = [teamId]
-  const filterClause = applyFilters(params, mapFilter, matchTypeFilter, 'm')
+  const filterClause = applyFilters(params, mapFilter, matchTypeFilter, 'm', dateFrom, dateTo)
 
   return query<{ round_number: number; rounds: number; wins: number; win_rate: number }>(
     `SELECT r.round_number,
