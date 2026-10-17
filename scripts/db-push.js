@@ -10,7 +10,10 @@ const path = require('path')
 
 // .env.local を読み込む
 function loadEnv() {
-  const envPath = path.join(__dirname, '..', '.env.local')
+  // ENV_FILE=.env.development.local で開発用DBに適用できる（未指定は .env.local = 本番）
+  const envPath = process.env.ENV_FILE
+    ? path.resolve(process.env.ENV_FILE)
+    : path.join(__dirname, '..', '.env.local')
   const examplePath = path.join(__dirname, '..', '.env.example')
   const filePath = fs.existsSync(envPath) ? envPath : examplePath
 
@@ -40,18 +43,21 @@ async function main() {
     process.exit(1)
   }
 
-  const target = process.argv[2] || 'schema'
-  const sqlFile = path.join(__dirname, '..', 'sql', `${target}.sql`)
+  // 'all' = 新しい空のDB向け: schema.sql → migrations/*.sql を番号順に適用
+  const sqlDir = path.join(__dirname, '..', 'sql')
+  const targets = process.argv[2] === 'all'
+    ? ['schema', ...fs.readdirSync(path.join(sqlDir, 'migrations'))
+        .filter(f => f.endsWith('.sql')).sort().map(f => `migrations/${f.slice(0, -4)}`)]
+    : [process.argv[2] || 'schema']
 
-  if (!fs.existsSync(sqlFile)) {
-    console.error(`❌ ファイルが見つかりません: ${sqlFile}`)
-    process.exit(1)
+  for (const target of targets) {
+    if (!fs.existsSync(path.join(sqlDir, `${target}.sql`))) {
+      console.error(`❌ ファイルが見つかりません: sql/${target}.sql`)
+      process.exit(1)
+    }
   }
 
-  const sql = fs.readFileSync(sqlFile, 'utf8')
-
   console.log(`📦 接続中: ${dbUrl.replace(/:\/\/[^@]+@/, '://***@')}`)
-  console.log(`📄 適用: sql/${target}.sql`)
 
   const client = new Client({
     connectionString: dbUrl,
@@ -62,10 +68,10 @@ async function main() {
     await client.connect()
     console.log('✅ 接続成功')
 
-    // Split statements by semicolon (simple approach)
-    // Handle DO $$ blocks and CREATE FUNCTION blocks carefully
-    await client.query(sql)
-    console.log(`✅ ${target}.sql を適用しました`)
+    for (const target of targets) {
+      await client.query(fs.readFileSync(path.join(sqlDir, `${target}.sql`), 'utf8'))
+      console.log(`✅ ${target}.sql を適用しました`)
+    }
   } catch (err) {
     console.error('❌ エラー:', err.message)
     if (err.detail) console.error('   Detail:', err.detail)

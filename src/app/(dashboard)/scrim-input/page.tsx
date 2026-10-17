@@ -1,12 +1,13 @@
 'use client'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Upload, Save, RotateCcw, Loader2, Check, AlertCircle, ChevronDown, ChevronUp, Flag, Bookmark, MapPin } from 'lucide-react'
+import { Upload, Save, RotateCcw, Loader2, Check, AlertCircle, ChevronDown, ChevronUp, Flag, Bookmark, MapPin, SlidersHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { MAPS, AGENTS } from '@/types'
-import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
-import { detectSite } from '@/lib/geometry'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { MapPointPicker, PLANT_MARKER, ENGAGEMENT_MARKER } from '@/components/map/MapPointPicker'
+import { RoundDetailEditor, useLossTags } from '@/components/round/RoundDetailEditor'
+import { emptyDetail, hasDetail, type RoundDetailInput } from '@/lib/round-detail'
 
 // OCR: 英語エージェント名 → 日本語カタカナ正規化マップ
 const AGENT_EN_JA: Record<string, string> = {
@@ -68,7 +69,7 @@ interface PlayerRow {
   hs_pct: number | ''
 }
 
-interface RoundRow {
+interface RoundRow extends RoundDetailInput {
   round_number: number
   side: 'attack' | 'defense' | ''
   economy: string
@@ -126,6 +127,10 @@ export default function ScrimInputPage() {
   const [videoUrl, setVideoUrl] = useState('')
   const [memoOpenIdx, setMemoOpenIdx] = useState<Set<number>>(new Set())
   const [mapOpenIdx,  setMapOpenIdx]  = useState<Set<number>>(new Set())
+  const [detailOpenIdx, setDetailOpenIdx] = useState<Set<number>>(new Set())
+  const lossTags = useLossTags()
+  const toggleDetail = (i: number) =>
+    setDetailOpenIdx(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n })
   const [otSide, setOtSide] = useState<'attack' | 'defense' | ''>('')
 
   // UI state
@@ -203,6 +208,7 @@ export default function ScrimInputPage() {
           plant_y: null,
           notable: false,
           memo: '',
+          ...emptyDetail(),
         }
       })
     })
@@ -386,6 +392,13 @@ export default function ScrimInputPage() {
   }
   function updateRound(i: number, key: keyof RoundRow, val: unknown) {
     setRounds(prev => prev.map((r, idx) => idx === i ? { ...r, [key]: val } : r))
+  }
+  function patchRound(i: number, patch: Partial<RoundRow>) {
+    setRounds(prev => prev.map((r, idx) => idx === i ? { ...r, ...patch } : r))
+  }
+  // 設置サイトを外したらリテイク不可（防衛のリテイクは設置サイトに対するもの）
+  function setPlantSite(i: number, site: string) {
+    patchRound(i, site ? { site } : { site: '', retake: false })
   }
 
   return (
@@ -664,6 +677,11 @@ export default function ScrimInputPage() {
                           ))}
                         </div>
                         <div className="ml-auto flex gap-1">
+                          <button type="button" title={t('roundDetail.detail')} onClick={() => toggleDetail(i)}
+                            className={cn('p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg transition-colors',
+                              hasDetail(r) ? 'text-[#FFD700] bg-[#FFD700]/10' : detailOpenIdx.has(i) ? 'text-white bg-white/10' : 'text-muted-foreground')}>
+                            <SlidersHorizontal className="w-4 h-4" />
+                          </button>
                           <button type="button" onClick={() => updateRound(i, 'notable', !r.notable)}
                             className={cn('p-2 min-w-[40px] min-h-[40px] flex items-center justify-center rounded-lg transition-colors',
                               r.notable ? 'text-[#FF4655] bg-[#FF4655]/10' : 'text-muted-foreground')}>
@@ -702,43 +720,45 @@ export default function ScrimInputPage() {
                         </div>
                       </div>
 
-                      {/* Row 3: ATK plant/site OR DEF retake + FB */}
+                      {/* Row 3: ATK plant / 設置サイト / DEF retake + FB */}
                       <div className="flex items-center gap-3 flex-wrap">
                         {r.side === 'attack' && (
-                          <>
-                            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
-                              <input type="checkbox" className="accent-[#FF4655] w-4 h-4"
-                                checked={r.plant}
-                                onChange={e => {
-                                  updateRound(i, 'plant', e.target.checked)
-                                  if (!e.target.checked) {
-                                    updateRound(i, 'site', '')
-                                    setMapOpenIdx(prev => { const n = new Set(prev); n.delete(i); return n })
-                                  } else {
-                                    setMapOpenIdx(prev => new Set([...prev, i]))
-                                  }
-                                }} />
-                              プラント
-                            </label>
-                            <div className="flex gap-1">
-                              {['A','B','C'].map(s => (
-                                <button key={s} type="button" onClick={() => updateRound(i, 'site', r.site === s ? '' : s)}
-                                  className={cn(
-                                    'w-9 h-9 rounded text-xs font-bold border transition-colors',
-                                    r.site === s ? 'bg-[#6C63FF]/20 border-[#6C63FF]/40 text-[#6C63FF]' : 'bg-transparent border-border text-muted-foreground'
-                                  )}>
-                                  {s}
-                                </button>
-                              ))}
-                            </div>
-                          </>
-                        )}
-                        {r.side === 'defense' && (
                           <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                            <input type="checkbox" className="accent-[#FF4655] w-4 h-4"
+                              checked={r.plant}
+                              onChange={e => {
+                                updateRound(i, 'plant', e.target.checked)
+                                if (!e.target.checked) {
+                                  setPlantSite(i, '')
+                                  setMapOpenIdx(prev => { const n = new Set(prev); n.delete(i); return n })
+                                } else {
+                                  setMapOpenIdx(prev => new Set([...prev, i]))
+                                }
+                              }} />
+                            プラント
+                          </label>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] text-muted-foreground">{t('matchInput.site')}</span>
+                          {['A','B','C'].map(s => (
+                            <button key={s} type="button" onClick={() => setPlantSite(i, r.site === s ? '' : s)}
+                              className={cn(
+                                'w-9 h-9 rounded text-xs font-bold border transition-colors',
+                                r.site === s ? 'bg-[#6C63FF]/20 border-[#6C63FF]/40 text-[#6C63FF]' : 'bg-transparent border-border text-muted-foreground'
+                              )}>
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                        {r.side === 'defense' && (
+                          <label className={cn('flex items-center gap-1.5 text-xs text-muted-foreground select-none',
+                            r.site || r.retake ? 'cursor-pointer' : 'opacity-40')}
+                            title={t('roundDetail.retakeHint')}>
                             <input type="checkbox" className="accent-[#6C63FF] w-4 h-4"
                               checked={r.retake}
+                              disabled={!r.site && !r.retake}
                               onChange={e => updateRound(i, 'retake', e.target.checked)} />
-                            リテイク
+                            <span>リテイク<span className="block text-[9px] text-muted-foreground/60 leading-none">{t('roundDetail.retakeHint')}</span></span>
                           </label>
                         )}
                         <div className="ml-auto flex gap-1">
@@ -785,11 +805,21 @@ export default function ScrimInputPage() {
                               <ChevronUp className="w-4 h-4" />
                             </button>
                           </div>
-                          <InlineMapPin mapName={map} x={r.plant_x} y={r.plant_y} roundNumber={r.round_number}
-                            onPinSet={(x, y, site) => {
-                              updateRound(i, 'plant_x', x); updateRound(i, 'plant_y', y)
-                              if (site) updateRound(i, 'site', site)
-                            }} />
+                          <MapPointPicker mapName={map} x={r.plant_x} y={r.plant_y} roundNumber={r.round_number}
+                            {...PLANT_MARKER}
+                            title={`R${r.round_number} プラント位置`}
+                            hint="クリックしてプラント位置を設定"
+                            others={r.engagement_x !== null && r.engagement_y !== null ? [{ x: r.engagement_x, y: r.engagement_y, ...ENGAGEMENT_MARKER }] : []}
+                            onPick={(x, y, site) => patchRound(i, { plant_x: x, plant_y: y, ...(site ? { site } : {}) })} />
+                        </div>
+                      )}
+
+                      {detailOpenIdx.has(i) && (
+                        <div className="border-t border-border/60 pt-2.5">
+                          <RoundDetailEditor
+                            value={r} onChange={patch => patchRound(i, patch)}
+                            plantSite={r.site} plantX={r.plant_x} plantY={r.plant_y}
+                            mapName={map} roundNumber={r.round_number} tags={lossTags} />
                         </div>
                       )}
                     </div>
@@ -802,8 +832,12 @@ export default function ScrimInputPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="bg-muted/20 border-b border-border">
-                      {['#', t('matchInput.side'), t('matchInput.economy'), t('common.result'), t('matchInput.plant'), t('matchInput.site'), t('matchInput.retake'), t('matchInput.fb'), t('matchInput.timing'), t('matchInput.notable'), 'メモ'].map(h => (
-                        <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium whitespace-nowrap">{h}</th>
+                      {['#', t('matchInput.side'), t('matchInput.economy'), t('common.result'), t('matchInput.plant'), t('matchInput.site'), t('matchInput.retake'), t('matchInput.fb'), t('matchInput.timing'), t('matchInput.notable'), 'メモ', t('roundDetail.detail')].map(h => (
+                        <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium whitespace-nowrap"
+                          title={h === t('matchInput.retake') ? t('roundDetail.retakeHint') : undefined}>
+                          {h}
+                          {h === t('matchInput.retake') && <span className="block text-[9px] font-normal text-muted-foreground/60">{t('roundDetail.retakeHint')}</span>}
+                        </th>
                       ))}
                     </tr>
                   </thead>
@@ -813,7 +847,7 @@ export default function ScrimInputPage() {
                       {/* OT セパレーター */}
                       {i === 24 && (
                         <tr className="border-b border-[#FFD700]/30 bg-[#FFD700]/5">
-                          <td colSpan={11} className="px-3 py-2">
+                          <td colSpan={12} className="px-3 py-2">
                             <div className="flex items-center gap-3">
                               <span className="text-[10px] font-black text-[#FFD700] uppercase tracking-wider">OT R25〜</span>
                               <span className="text-[10px] text-muted-foreground">
@@ -893,7 +927,7 @@ export default function ScrimInputPage() {
                               onChange={e => {
                                 updateRound(i, 'plant', e.target.checked)
                                 if (!e.target.checked) {
-                                  updateRound(i, 'site', '')
+                                  setPlantSite(i, '')
                                   setMapOpenIdx(prev => { const n = new Set(prev); n.delete(i); return n })
                                 } else {
                                   setMapOpenIdx(prev => new Set([...prev, i]))
@@ -921,7 +955,7 @@ export default function ScrimInputPage() {
                           <div className="flex gap-1">
                             {['A','B','C'].map(s => (
                               <button key={s} type="button"
-                                onClick={() => updateRound(i, 'site', r.site === s ? '' : s)}
+                                onClick={() => setPlantSite(i, r.site === s ? '' : s)}
                                 className={cn(
                                   'px-2 py-0.5 rounded text-[10px] font-bold border transition-colors',
                                   r.site === s
@@ -933,10 +967,11 @@ export default function ScrimInputPage() {
                           </div>
                         </td>
                         <td className="px-3 py-1.5">
-                          {/* ATK: retake disabled / DEF: retake enabled */}
+                          {/* DEF のみ。設置サイト未選択ならリテイク不可 */}
                           <input type="checkbox" className="accent-[#6C63FF]"
                             checked={r.retake}
-                            disabled={r.side !== 'defense'}
+                            disabled={r.side !== 'defense' || (!r.site && !r.retake)}
+                            title={t('roundDetail.retakeHint')}
                             onChange={e => {
                               updateRound(i, 'retake', e.target.checked)
                             }} />
@@ -1021,7 +1056,27 @@ export default function ScrimInputPage() {
                             <Bookmark className="w-3.5 h-3.5" fill={r.memo ? 'currentColor' : 'none'} />
                           </button>
                         </td>
+                        {/* 詳細トグル */}
+                        <td className="px-2 py-1">
+                          <button type="button" title={t('roundDetail.detail')} onClick={() => toggleDetail(i)}
+                            className={cn('p-1 rounded transition-colors',
+                              hasDetail(r) ? 'text-[#FFD700] bg-[#FFD700]/10'
+                                : detailOpenIdx.has(i) ? 'text-white bg-white/10' : 'text-muted-foreground hover:text-white')}>
+                            <SlidersHorizontal className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
                       </tr>
+                      {/* 詳細展開行 */}
+                      {detailOpenIdx.has(i) && (
+                        <tr className="border-b border-border">
+                          <td colSpan={12} className="px-3 py-3 bg-[#FFD700]/[0.03]">
+                            <RoundDetailEditor
+                              value={r} onChange={patch => patchRound(i, patch)}
+                              plantSite={r.site} plantX={r.plant_x} plantY={r.plant_y}
+                              mapName={map} roundNumber={r.round_number} tags={lossTags} />
+                          </td>
+                        </tr>
+                      )}
                       {/* メモ展開行 */}
                       {memoOpenIdx.has(i) && (
                         <tr className="border-b border-border">
@@ -1056,16 +1111,16 @@ export default function ScrimInputPage() {
                                 <ChevronUp className="w-4 h-4" />
                               </button>
                             </div>
-                            <InlineMapPin
+                            <MapPointPicker
                               mapName={map}
                               x={r.plant_x}
                               y={r.plant_y}
                               roundNumber={r.round_number}
-                              onPinSet={(x, y, site) => {
-                                updateRound(i, 'plant_x', x)
-                                updateRound(i, 'plant_y', y)
-                                if (site) updateRound(i, 'site', site)
-                              }}
+                              {...PLANT_MARKER}
+                              title={`R${r.round_number} プラント位置`}
+                              hint="クリックしてプラント位置を設定"
+                              others={r.engagement_x !== null && r.engagement_y !== null ? [{ x: r.engagement_x, y: r.engagement_y, ...ENGAGEMENT_MARKER }] : []}
+                              onPick={(x, y, site) => patchRound(i, { plant_x: x, plant_y: y, ...(site ? { site } : {}) })}
                             />
                           </td>
                         </tr>
@@ -1114,120 +1169,4 @@ export default function ScrimInputPage() {
 const cls = 'w-full bg-muted border border-border rounded-lg px-3 py-2 text-sm text-white focus:border-[#FF4655] outline-none'
 function Label({ children }: { children: React.ReactNode }) {
   return <div className="text-xs text-muted-foreground mb-1">{children}</div>
-}
-
-function InlineMapPin({ mapName, x, y, roundNumber, onPinSet }: {
-  mapName: string
-  x: number | null
-  y: number | null
-  roundNumber: number
-  onPinSet: (x: number, y: number, site: string | null) => void
-}) {
-  const outerRef = useRef<HTMLDivElement>(null)
-  const [imgError, setImgError] = useState(false)
-  const [hoverScreen, setHoverScreen] = useState<{ x: number; y: number } | null>(null)
-
-  const mapKey   = normalizeMapKey(mapName)
-  const imageUrl = MAP_IMAGES[mapKey] ? `/api/map-image?key=${mapKey}` : null
-  const polygons = MAP_POLYGONS[mapKey] ?? {}
-  const rotation = MAP_ROTATION[mapKey] ?? 0
-
-  // 画面座標 → マップ座標（クリック時に使用）
-  function screenToMap(sx: number, sy: number) {
-    if (!rotation) return { x: sx, y: sy }
-    const θ = rotation * Math.PI / 180
-    const cx = sx - 0.5, cy = sy - 0.5
-    return {
-      x: Math.min(1, Math.max(0, cx * Math.cos(θ) + cy * Math.sin(θ) + 0.5)),
-      y: Math.min(1, Math.max(0, -cx * Math.sin(θ) + cy * Math.cos(θ) + 0.5)),
-    }
-  }
-
-  // マップ座標 → 画面座標（ピン表示用: 回転の逆変換）
-  function toScreenPos(mx: number, my: number) {
-    if (!rotation) return { x: mx, y: my }
-    const θ = rotation * Math.PI / 180
-    const cx = mx - 0.5, cy = my - 0.5
-    return {
-      x: cx * Math.cos(θ) - cy * Math.sin(θ) + 0.5,
-      y: cx * Math.sin(θ) + cy * Math.cos(θ) + 0.5,
-    }
-  }
-
-  function getScreenCoords(e: React.MouseEvent<HTMLDivElement>) {
-    const rect = outerRef.current?.getBoundingClientRect()
-    if (!rect) return null
-    return {
-      x: Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width)),
-      y: Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height)),
-    }
-  }
-
-  const pinScreen = x !== null && y !== null ? toScreenPos(x, y) : null
-
-  return (
-    <div className="flex items-start gap-4 flex-wrap">
-      <div
-        ref={outerRef}
-        onClick={e => {
-          const sc = getScreenCoords(e)
-          if (!sc) return
-          const mp = screenToMap(sc.x, sc.y)
-          onPinSet(mp.x, mp.y, detectSite(mp.x, mp.y, polygons))
-        }}
-        onMouseMove={e => setHoverScreen(getScreenCoords(e))}
-        onMouseLeave={() => setHoverScreen(null)}
-        className="relative rounded-xl overflow-hidden border border-[#FF4655]/50 cursor-crosshair bg-muted w-full max-w-[320px] aspect-square"
-      >
-        {/* 回転 div: 画像のみ */}
-        <div
-          className="absolute inset-0"
-          style={rotation ? { transform: `rotate(${rotation}deg)`, transformOrigin: 'center center' } : undefined}
-        >
-          {imageUrl && !imgError ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={imageUrl} alt={mapName}
-              className="w-full h-full object-cover select-none"
-              draggable={false}
-              onError={() => setImgError(true)} />
-          ) : (
-            <div className="w-full h-full bg-muted flex items-center justify-center">
-              <span className="text-xs text-muted-foreground">{mapName || 'マップ未選択'}</span>
-            </div>
-          )}
-        </div>
-
-        {/* SVG は回転 div の外 — ピンと十字線が回転しない */}
-        <svg className="absolute inset-0 w-full h-full pointer-events-none">
-          {hoverScreen && (
-            <circle cx={`${hoverScreen.x * 100}%`} cy={`${hoverScreen.y * 100}%`}
-              r={3} fill="#FF4655" fillOpacity={0.9} stroke="white" strokeWidth={0.8} />
-          )}
-          {pinScreen && (
-            <g>
-              <circle cx={`${pinScreen.x * 100}%`} cy={`${pinScreen.y * 100}%`} r={7}
-                fill="#FF4655" fillOpacity={0.95} stroke="white" strokeWidth={1.5} />
-              <text x={`${pinScreen.x * 100}%`} y={`${pinScreen.y * 100}%`} dy="0.35em"
-                textAnchor="middle" fill="white" fontSize={7} fontWeight="bold"
-                style={{ userSelect: 'none' }}>
-                {roundNumber}
-              </text>
-            </g>
-          )}
-        </svg>
-
-        <div className="absolute bottom-1.5 left-1.5 right-1.5 bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1 text-center pointer-events-none">
-          <span className="text-[10px] text-white">クリックしてプラント位置を設定</span>
-        </div>
-      </div>
-      <div className="text-xs space-y-1.5 pt-1 min-w-[80px]">
-        <p className="text-white font-semibold">R{roundNumber} プラント位置</p>
-        {x !== null && y !== null ? (
-          <p className="text-[#00D4A0] font-medium">✓ 設定済み</p>
-        ) : (
-          <p className="text-muted-foreground/60">未設定</p>
-        )}
-      </div>
-    </div>
-  )
 }

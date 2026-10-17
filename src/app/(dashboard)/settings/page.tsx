@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { createClient } from '@/lib/supabase/client'
 import { useLanguage } from '@/contexts/LanguageContext'
 import { useRouter } from 'next/navigation'
+import { LossTagSettings } from '@/components/round/LossTagSettings'
 
 const ROLES = ['duelist', 'sub_duelist', 'initiator', 'controller', 'sentinel', 'flex', 'igl'] as const
 type Role = typeof ROLES[number]
@@ -358,6 +359,9 @@ export default function SettingsPage() {
           </div>
         )}
       </section>
+
+      {/* ── Loss tags ── */}
+      <LossTagSettings />
 
       {/* ── Password ── */}
       <section className="bg-card border border-border rounded-xl p-6 space-y-4">

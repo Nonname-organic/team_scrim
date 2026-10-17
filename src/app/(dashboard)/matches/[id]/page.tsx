@@ -1,13 +1,15 @@
 'use client'
 import { useEffect, useState, Fragment } from 'react'
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Shield, Crosshair, Pencil, Save, X, Plus, Trash2, MapPin, Flag, Bookmark, Calendar, Check } from 'lucide-react'
+import { ArrowLeft, Shield, Crosshair, Pencil, Save, X, Plus, Trash2, MapPin, Flag, Bookmark, Calendar, Check, SlidersHorizontal } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { AGENTS, MAPS } from '@/types'
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
 import { detectSite } from '@/lib/geometry'
 import { MapPlantSelector, type PlantRound } from '@/components/map/MapPlantSelector'
 import { useLanguage } from '@/contexts/LanguageContext'
+import { RoundDetailEditor, useLossTags } from '@/components/round/RoundDetailEditor'
+import { DETAIL_KEYS, detailFromRow, emptyDetail, hasDetail, type RoundDetailInput } from '@/lib/round-detail'
 
 const RESULT_COLOR = { win: '#00D4A0', loss: '#FF4655', draw: '#9B9BA4' } as const
 const ECO_OPTIONS = ['pistol', 'second', 'third', 'eco', 'anti_eco', 'semi_eco', 'semi_buy', 'full_buy', 'oper'] as const
@@ -35,7 +37,7 @@ type PEdit = {
   first_deaths: number
 }
 
-type REdit = {
+type REdit = RoundDetailInput & {
   round_number: number
   side: string
   result: string
@@ -74,6 +76,8 @@ export default function MatchDetailPage() {
   const [roundSaveError, setRoundSaveError] = useState<string | null>(null)
   const [plantEditIdx, setPlantEditIdx] = useState<number | null>(null)
   const [memoOpenIdx, setMemoOpenIdx]   = useState<Set<number>>(new Set())
+  const [detailOpenIdx, setDetailOpenIdx] = useState<Set<number>>(new Set())
+  const lossTags = useLossTags()
 
   useEffect(() => {
     fetch(`/api/matches/${id}`)
@@ -176,8 +180,10 @@ export default function MatchDetailPage() {
         contact_timing: r.contact_timing == null ? '' : String(r.contact_timing),
         notable: Boolean(r.notable),
         memo: r.memo != null ? String(r.memo) : '',
+        ...detailFromRow(r),
       }
     }))
+    setDetailOpenIdx(new Set())
     setEditRoundMode(true)
   }
 
@@ -198,6 +204,7 @@ export default function MatchDetailPage() {
         contact_timing: '',
         notable: false,
         memo: '',
+        ...emptyDetail(),
       }]
     })
   }
@@ -216,6 +223,15 @@ export default function MatchDetailPage() {
       if (field === 'round_number') return { ...r, round_number: Number(value) }
       return { ...r, [field]: value }
     }))
+  }
+
+  function patchRound(i: number, patch: Partial<REdit>) {
+    setEditRounds(prev => prev.map((r, idx) => idx === i ? { ...r, ...patch } : r))
+  }
+
+  // 設置サイトを外したらリテイク不可（防衛のリテイクは設置サイトに対するもの）
+  function setPlantSite(i: number, site: string) {
+    patchRound(i, site ? { plant_site: site } : { plant_site: '', retake: false })
   }
 
   function updateRoundCoords(i: number, x: number | null, y: number | null, site: string | null) {
@@ -292,6 +308,7 @@ export default function MatchDetailPage() {
             contact_timing: r.contact_timing || null,
             notable: r.notable,
             memo: r.memo || null,
+            ...Object.fromEntries(DETAIL_KEYS.map(k => [k, r[k]])),
           })),
         }),
       }).then(r => r.json())
@@ -664,7 +681,13 @@ export default function MatchDetailPage() {
                   {/* Plant heatmap + site win rates */}
                   {(() => {
                     const planted = rounds.filter(r => Boolean(r.planted))
-                    if (planted.length === 0) return null
+                    const engagementPoints = rounds
+                      .filter(r => r.engagement_x != null && r.engagement_y != null)
+                      .map(r => ({
+                        id: String(r.id ?? r.round_number), round_number: Number(r.round_number),
+                        x: Number(r.engagement_x), y: Number(r.engagement_y), result: String(r.result ?? ''),
+                      }))
+                    if (planted.length === 0 && engagementPoints.length === 0) return null
                     const plantRounds: PlantRound[] = planted.map(r => ({
                       id: String(r.id ?? r.round_number),
                       round_number: Number(r.round_number),
@@ -691,6 +714,7 @@ export default function MatchDetailPage() {
                           editRoundId={null}
                           onSaved={() => {}}
                           onCancelEdit={() => {}}
+                          engagementPoints={engagementPoints}
                         />
                         {siteStats.length > 0 && (
                           <div className="space-y-3">
@@ -744,9 +768,11 @@ export default function MatchDetailPage() {
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border bg-muted/20">
-                      {['#', t('matches.headerSide'), t('matches.headerEconomy'), t('matches.headerResult'), t('matches.headerPlant'), t('matches.headerSite'), t('matches.headerRetake'), 'FB', t('matches.headerTiming'), t('matches.headerNotable'), 'メモ', ''].map(h => (
-                        <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium">
+                      {['#', t('matches.headerSide'), t('matches.headerEconomy'), t('matches.headerResult'), t('matches.headerPlant'), t('matches.headerSite'), t('matches.headerRetake'), 'FB', t('matches.headerTiming'), t('matches.headerNotable'), 'メモ', t('roundDetail.detail'), ''].map(h => (
+                        <th key={h} className="px-3 py-2 text-left text-muted-foreground font-medium"
+                          title={h === t('matches.headerRetake') ? t('roundDetail.retakeHint') : undefined}>
                           {h}
+                          {h === t('matches.headerRetake') && <span className="block text-[9px] font-normal text-muted-foreground/60">{t('roundDetail.retakeHint')}</span>}
                         </th>
                       ))}
                     </tr>
@@ -773,9 +799,9 @@ export default function MatchDetailPage() {
                             value={r.side}
                             onChange={e => {
                               updateRound(i, 'side', e.target.value)
-                              // サイドが変わったらプラント/リテイクをリセット
+                              // サイドが変わったらプラント/リテイクをリセット（設置サイトは両サイドで使うので残す）
                               if (e.target.value === 'attack') updateRound(i, 'retake', false)
-                              if (e.target.value === 'defense') { updateRound(i, 'planted', false); updateRound(i, 'plant_site', '') }
+                              if (e.target.value === 'defense') updateRound(i, 'planted', false)
                             }}
                             className={cn(
                               'border rounded px-2 py-1 text-xs font-semibold focus:border-[#FF4655] outline-none',
@@ -830,7 +856,7 @@ export default function MatchDetailPage() {
                               onChange={e => {
                                 updateRound(i, 'planted', e.target.checked)
                                 if (!e.target.checked) {
-                                  updateRound(i, 'plant_site', '')
+                                  setPlantSite(i, '')
                                   updateRoundCoords(i, null, null, null)
                                   if (plantEditIdx === i) setPlantEditIdx(null)
                                 }
@@ -857,7 +883,7 @@ export default function MatchDetailPage() {
                           <div className="flex gap-1">
                             {['A', 'B', 'C'].map(s => (
                               <button key={s} type="button"
-                                onClick={() => updateRound(i, 'plant_site', r.plant_site === s ? '' : s)}
+                                onClick={() => setPlantSite(i, r.plant_site === s ? '' : s)}
                                 className={cn(
                                   'px-2 py-0.5 rounded text-[10px] font-bold border transition-colors',
                                   r.plant_site === s
@@ -873,7 +899,9 @@ export default function MatchDetailPage() {
                           <input
                             type="checkbox"
                             checked={r.retake}
-                            disabled={r.side !== 'defense'}
+                            // 設置サイト未選択ならリテイク不可（既存データでチェック済みのものは外せるよう残す）
+                            disabled={r.side !== 'defense' || (!r.plant_site && !r.retake)}
+                            title={t('roundDetail.retakeHint')}
                             onChange={e => {
                               updateRound(i, 'retake', e.target.checked)
                             }}
@@ -954,6 +982,16 @@ export default function MatchDetailPage() {
                             <Bookmark className="w-3.5 h-3.5" fill={r.memo ? 'currentColor' : 'none'} />
                           </button>
                         </td>
+                        {/* 詳細 toggle */}
+                        <td className="px-2 py-1.5">
+                          <button type="button" title={t('roundDetail.detail')}
+                            onClick={() => setDetailOpenIdx(prev => { const n = new Set(prev); n.has(i) ? n.delete(i) : n.add(i); return n })}
+                            className={cn('p-1 rounded transition-colors',
+                              hasDetail(r) ? 'text-[#FFD700] bg-[#FFD700]/10'
+                                : detailOpenIdx.has(i) ? 'text-white bg-white/10' : 'text-muted-foreground hover:text-white')}>
+                            <SlidersHorizontal className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
                         {/* 削除 */}
                         <td className="px-2 py-1.5">
                           <button
@@ -965,6 +1003,17 @@ export default function MatchDetailPage() {
                           </button>
                         </td>
                       </tr>
+                      {/* 詳細展開行 */}
+                      {detailOpenIdx.has(i) && (
+                        <tr className="border-b border-border">
+                          <td colSpan={13} className="px-3 py-3 bg-[#FFD700]/[0.03]">
+                            <RoundDetailEditor
+                              value={r} onChange={patch => patchRound(i, patch)}
+                              plantSite={r.plant_site} plantX={r.plant_x} plantY={r.plant_y}
+                              mapName={String(match.map ?? '')} roundNumber={r.round_number} tags={lossTags} />
+                          </td>
+                        </tr>
+                      )}
                       {/* メモ展開行 */}
                       {memoOpenIdx.has(i) && (
                         <tr className="border-b border-border">

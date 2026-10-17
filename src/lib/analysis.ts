@@ -7,6 +7,7 @@ import type {
   Round,
   TeamStats,
 } from '@/types'
+import { computeRoundDetailStats, type DetailRow, type LossTag } from './round-detail'
 
 // ============================================================
 // Filter clause helper — appends map/matchType conditions and returns $N references
@@ -304,6 +305,41 @@ export async function getRoundSiteStats(teamId: string, mapFilter?: string, matc
   ])
 
   return { post_plant: postPlant[0] ?? null, by_site: bySite, by_map: byMap }
+}
+
+// ============================================================
+// Round detail panels (交戦サイト・決着局面・人数状況・ローテ・敗因タグ)
+// 集計ロジックは lib/round-detail.ts（ユニットテスト対象）。ここは取得のみ
+// ============================================================
+
+export async function getRoundDetailStats(teamId: string, mapFilter?: string, matchTypeFilter?: string, dateFrom?: string, dateTo?: string) {
+  const params: unknown[] = [teamId]
+  const filterClause = applyFilters(params, mapFilter, matchTypeFilter, 'm', dateFrom, dateTo)
+
+  const [rows, tags] = await Promise.all([
+    query<DetailRow>(
+      `SELECT r.match_id, r.round_number, r.side, r.result, r.plant_site,
+              r.engagement_site, r.engagement_site_source, r.decided_phase,
+              r.players_after_engagement_us, r.players_after_engagement_them,
+              r.players_at_plant_us, r.players_at_plant_them,
+              r.loss_tags::text[] AS loss_tags,
+              m.map, m.match_date, m.opponent_name
+       FROM rounds r JOIN matches m ON m.id = r.match_id
+       WHERE m.team_id = $1${filterClause}
+       ORDER BY m.match_date DESC, r.round_number`,
+      params
+    ),
+    query<LossTag>('SELECT id, name, preset_key, sort_order, active FROM loss_tags WHERE team_id = $1', [teamId]),
+  ])
+
+  const stats = computeRoundDetailStats(rows)
+  const byId = new Map(tags.map(t => [t.id, t]))
+  return {
+    ...stats,
+    loss_tags: stats.loss_tags.map(t => ({
+      ...t, name: byId.get(t.id)?.name ?? null, preset_key: byId.get(t.id)?.preset_key ?? null,
+    })),
+  }
 }
 
 // ============================================================

@@ -2,6 +2,9 @@
 // VALORANT Scrim Analyzer - TypeScript Type Definitions
 // ============================================================
 
+import type { EngagementSite, DecidedPhase } from '@/lib/round-detail'
+export type { EngagementSite, DecidedPhase, LossTag } from '@/lib/round-detail'
+
 export type Role = 'duelist' | 'sub_duelist' | 'initiator' | 'controller' | 'sentinel' | 'flex' | 'igl'
 export type Side = 'attack' | 'defense'
 export type RoundResult = 'win' | 'loss'
@@ -77,6 +80,18 @@ export interface Round {
   opp_kills: number
   first_blood_team?: boolean
   contact_timing?: ContactTiming
+  retake?: boolean
+  // ラウンド詳細（すべて任意）— 意味と導出値は lib/round-detail.ts
+  engagement_site?: EngagementSite | null
+  engagement_site_source?: 'input' | 'inferred' | null
+  decided_phase?: DecidedPhase | null
+  players_after_engagement_us?: number | null
+  players_after_engagement_them?: number | null
+  players_at_plant_us?: number | null
+  players_at_plant_them?: number | null
+  engagement_x?: number | null
+  engagement_y?: number | null
+  loss_tags?: string[]
   created_at: string
 }
 

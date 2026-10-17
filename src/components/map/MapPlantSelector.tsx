@@ -15,6 +15,14 @@ export interface PlantRound {
   side: string
 }
 
+export interface EngagementPoint {
+  id: string
+  round_number: number
+  x: number
+  y: number
+  result: string
+}
+
 interface Props {
   mapName: string
   rounds: PlantRound[]
@@ -22,6 +30,8 @@ interface Props {
   editRoundId: string | null
   onSaved: (roundId: string, x: number, y: number, site: string | null) => void
   onCancelEdit: () => void
+  /** 渡すと「設置位置 / 交戦位置」の切替を表示（閲覧時のみ）。交戦位置はひし形で描く */
+  engagementPoints?: EngagementPoint[]
 }
 
 /** マップ座標 (map space) → スクリーン座標 (container space) への変換 */
@@ -35,12 +45,15 @@ function toScreenPos(x: number, y: number, rotation: number): { sx: number; sy: 
   }
 }
 
-export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCancelEdit }: Props) {
+export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCancelEdit, engagementPoints = [] }: Props) {
   const { t } = useLanguage()
   const containerRef = useRef<HTMLDivElement>(null)
   const [saving, setSaving] = useState(false)
   const [imgError, setImgError] = useState(false)
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null)
+  const [mode, setMode] = useState<'plant' | 'engagement'>('plant')
+  const showToggle = !editRoundId && engagementPoints.length > 0
+  const engagementMode = showToggle && mode === 'engagement'
 
   const mapKey = normalizeMapKey(mapName)
   const imageUrl = MAP_IMAGES[mapKey] ? `/api/map-image?key=${mapKey}` : null
@@ -96,16 +109,32 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
     [editRoundId, saving, polygons, onSaved]
   )
 
-  const placedRounds = rounds.filter(r => r.plant_x !== null && r.plant_y !== null)
+  const placedRounds = engagementMode
+    ? engagementPoints.map(p => ({ id: p.id, round_number: p.round_number, plant_x: p.x, plant_y: p.y, result: p.result }))
+    : rounds.filter(r => r.plant_x !== null && r.plant_y !== null)
   const editingRound = editRoundId ? rounds.find(r => r.id === editRoundId) : null
 
   return (
     <div className="space-y-2">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-          {t('map.heatmap')}
-        </span>
+        {showToggle ? (
+          <div className="flex gap-1">
+            {(['plant', 'engagement'] as const).map(m => (
+              <button key={m} type="button" onClick={() => setMode(m)}
+                className={[
+                  'text-[10px] font-bold px-2 py-0.5 rounded border transition-colors',
+                  mode === m ? 'bg-white/10 border-white/30 text-white' : 'border-border text-muted-foreground hover:text-white',
+                ].join(' ')}>
+                {m === 'plant' ? `● ${t('roundDetail.heatmapPlant')}` : `◆ ${t('roundDetail.heatmapEngagement')}`}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+            {t('map.heatmap')}
+          </span>
+        )}
         {editingRound && (
           <div className="flex items-center gap-2">
             <span className="text-xs text-[#FF4655]">
@@ -179,7 +208,13 @@ export function MapPlantSelector({ mapName, rounds, editRoundId, onSaved, onCanc
                 {isEditing && (
                   <circle cx={`${sx * 100}%`} cy={`${sy * 100}%`} r={8} fill="none" stroke={color} strokeWidth={1} strokeDasharray="3 2" opacity={0.8} />
                 )}
-                <circle cx={`${sx * 100}%`} cy={`${sy * 100}%`} r={radius} fill={color} fillOpacity={0.9} stroke="rgba(0,0,0,0.4)" strokeWidth={0.8} />
+                {engagementMode ? (
+                  <svg x={`${sx * 100}%`} y={`${sy * 100}%`} overflow="visible">
+                    <rect x={-4} y={-4} width={8} height={8} transform="rotate(45)" fill={color} fillOpacity={0.9} stroke="rgba(0,0,0,0.4)" strokeWidth={0.8} />
+                  </svg>
+                ) : (
+                  <circle cx={`${sx * 100}%`} cy={`${sy * 100}%`} r={radius} fill={color} fillOpacity={0.9} stroke="rgba(0,0,0,0.4)" strokeWidth={0.8} />
+                )}
               </g>
             )
           })}

@@ -1,12 +1,14 @@
 'use client'
 
-import { useEffect, useState, useMemo, useRef, useCallback } from 'react'
+import { useEffect, useState, useMemo, useRef, useCallback, type ReactNode } from 'react'
 import dynamic from 'next/dynamic'
 import { cn } from '@/lib/utils'
 import {
   ChevronDown, ChevronUp, Search, X, ArrowLeft, Settings2,
-  Play, Shield, Crosshair, Zap, Flag, Bookmark, Trash2, Link2, Check, Pencil, Loader2, MapPin,
+  Play, Shield, Crosshair, Zap, Flag, Bookmark, Trash2, Link2, Check, Pencil, Loader2, MapPin, AlertTriangle,
 } from 'lucide-react'
+import { useLossTags, tagLabel } from '@/components/round/RoundDetailEditor'
+import { isAdvantageLoss, isRotation, playerStateLabel, type LossTag } from '@/lib/round-detail'
 import type { PlantRound } from '@/components/map/MapPlantSelector'
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
 import { detectSite } from '@/lib/geometry'
@@ -48,6 +50,16 @@ interface Round {
   contact_timing: 'early' | 'mid' | 'late' | null
   memo: string | null
   vod_start_sec: number | null
+  engagement_site: string | null
+  engagement_site_source: string | null
+  decided_phase: string | null
+  players_after_engagement_us: number | null
+  players_after_engagement_them: number | null
+  players_at_plant_us: number | null
+  players_at_plant_them: number | null
+  engagement_x: number | null
+  engagement_y: number | null
+  loss_tags: string[] | null
 }
 
 // YouTube IFrame API
@@ -139,15 +151,31 @@ export default function RoundAnalysisPage() {
   const [focusMemoId, setFocusMemoId] = useState<string | null>(null)
   const getVideoTimeRef = useRef<() => number>(() => 0)
 
+  const lossTags = useLossTags()
+
   useEffect(() => {
     if (!teamId) return
     fetch('/api/matches?limit=100')
       .then(r => r.json())
-      .then(j => { setMatches(j.data ?? []); setLoadingMatches(false) })
+      .then(j => {
+        const list: Match[] = j.data ?? []
+        setMatches(list)
+        setLoadingMatches(false)
+        // ダッシュボードからのリンク: ?match=<id>&round=<n> でそのラウンドを開く
+        const sp = new URLSearchParams(window.location.search)
+        const linkId = sp.get('match')
+        if (!linkId) return
+        const found = list.find(m => m.id === linkId)
+        const open = (m: Match) => enterAnalysis(m, Number(sp.get('round')) || undefined)
+        if (found) open(found)
+        else fetch(`/api/matches/${linkId}`).then(r => r.json()).then(d => { if (d.data?.match) open(d.data.match) })
+      })
       .catch(() => setLoadingMatches(false))
+    // enterAnalysis は state setter のみ使うため deps 不要
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teamId])
 
-  async function enterAnalysis(m: Match) {
+  async function enterAnalysis(m: Match, openRound?: number) {
     setAnalysisMatch(m)
     setActiveRound(null)
     setRoundTimestamps({})
@@ -169,6 +197,8 @@ export default function RoundAnalysisPage() {
       })
       setNotes(savedNotes)
       setRoundTimestamps(savedTs)
+      const target = openRound ? rds.find(r => r.round_number === openRound) : undefined
+      if (target) { setActiveRound(target); setMobileTab('details') }
     } finally {
       setLoadingRounds(false)
     }
@@ -426,6 +456,12 @@ export default function RoundAnalysisPage() {
                             )}
                           </div>
                           <div className="flex items-center gap-1 mt-0.5">
+                            {isAdvantageLoss(r) && (
+                              <span className="flex items-center gap-0.5 text-[8px] font-bold text-[#FF8C42] bg-[#FF8C42]/15 px-1 rounded"
+                                title={t('roundDetail.advLoss')}>
+                                <AlertTriangle className="w-2.5 h-2.5" />{playerStateLabel(r)}
+                              </span>
+                            )}
                             {r.retake && <span className="text-[8px] text-[#6C63FF] bg-[#6C63FF]/10 px-1 rounded">リテイク</span>}
                             {r.first_blood_team === true  && <span className="text-[8px] text-[#FFD700] bg-[#FFD700]/10 px-1 rounded">FB取</span>}
                             {r.first_blood_team === false && <span className="text-[8px] text-[#FF4655] bg-[#FF4655]/10 px-1 rounded">FB負</span>}
@@ -554,6 +590,7 @@ export default function RoundAnalysisPage() {
                     setActiveRound(prev => prev ? { ...prev, contact_timing: timing } : prev)
                   }}
                   mapName={analysisMatch.map}
+                  lossTags={lossTags}
                   onPlantUpdate={async (px, py, site) => {
                     await fetch(`/api/rounds/${activeRound.id}`, {
                       method: 'PATCH',
@@ -987,6 +1024,7 @@ function RoundDetailPanel({
   onTimingChange,
   mapName,
   onPlantUpdate,
+  lossTags,
 }: {
   round: Round
   note: string
@@ -1000,6 +1038,7 @@ function RoundDetailPanel({
   onTimingChange: (t: 'early' | 'mid' | 'late' | null) => void
   mapName?: string
   onPlantUpdate?: (plant_x: number, plant_y: number, plant_site: string | null) => void
+  lossTags: LossTag[]
 }) {
   const { t } = useLanguage()
   const isWin = r.result === 'win'
@@ -1103,6 +1142,47 @@ function RoundDetailPanel({
           </span>
         )}
       </div>
+
+      {/* ラウンド詳細（主交戦サイト・人数状況・決着局面・ローテ・敗因タグ） */}
+      {(() => {
+        const state = playerStateLabel(r)
+        const plantState = r.players_at_plant_us != null && r.players_at_plant_them != null
+          ? `${r.players_at_plant_us}v${r.players_at_plant_them}` : null
+        const afterState = r.players_after_engagement_us != null && r.players_after_engagement_them != null
+          ? `${r.players_after_engagement_us}v${r.players_after_engagement_them}` : null
+        const tagNames = (r.loss_tags ?? [])
+          .map(id => lossTags.find(tag => tag.id === id))
+          .filter((tag): tag is LossTag => !!tag)
+          .map(tag => tagLabel(tag, t))
+        const rows: { label: string; value: ReactNode }[] = []
+        if (r.engagement_site) rows.push({ label: t('roundDetail.engagementSite'), value: <>
+          {t(`roundDetail.site_${r.engagement_site}`)}
+          {r.engagement_site_source === 'inferred' && <span className="ml-1 text-[9px] px-1 rounded bg-muted text-muted-foreground">{t('roundDetail.inferred')}</span>}
+        </> })
+        if (state) rows.push({ label: t('roundDetail.playerState'), value: <>
+          {afterState && <span>{t('roundDetail.playersAfterEngagement')} <b className="text-white">{afterState}</b></span>}
+          {afterState && plantState && <span className="text-muted-foreground/50"> / </span>}
+          {plantState && <span>{t('roundDetail.playersAtPlant')} <b className="text-white">{plantState}</b></span>}
+          {isAdvantageLoss(r) && <span className="ml-1 text-[#FF8C42] font-bold">⚠ {t('roundDetail.advLossMarker')}</span>}
+        </> })
+        if (r.decided_phase) rows.push({ label: t('roundDetail.decidedPhase'), value: t(`roundDetail.phase_${r.decided_phase}`) })
+        if (r.engagement_site && r.plant_site) rows.push({ label: t('roundDetail.rotation'), value:
+          isRotation(r) ? `${t('roundDetail.rotationYes')}（${r.engagement_site} → ${r.plant_site}）` : t('roundDetail.rotationNo') })
+        if (tagNames.length) rows.push({ label: t('roundDetail.lossTags'), value: <span className="flex flex-wrap gap-1">
+          {tagNames.map(n => <span key={n} className="text-[10px] px-1.5 rounded-full border border-[#FF4655]/40 text-[#FF4655] bg-[#FF4655]/10">{n}</span>)}
+        </span> })
+        if (!rows.length) return null
+        return (
+          <div className="bg-muted/20 border border-border/60 rounded-xl p-3 space-y-1.5">
+            {rows.map(({ label, value }) => (
+              <div key={label} className="flex items-start gap-2 text-[11px]">
+                <span className="text-muted-foreground w-[84px] shrink-0">{label}</span>
+                <span className="text-white/90 min-w-0">{value}</span>
+              </div>
+            ))}
+          </div>
+        )
+      })()}
 
       {/* プラント位置編集 */}
       {r.planted && r.side === 'attack' && onPlantUpdate && mapName && (
@@ -1281,6 +1361,9 @@ function MatchStatsPanel({ rounds, map }: { rounds: Round[]; map: string }) {
     plant_x: r.plant_x, plant_y: r.plant_y, plant_site: r.plant_site,
     result: r.result, side: r.side,
   }))
+  const engagementPoints = rounds
+    .filter(r => r.engagement_x != null && r.engagement_y != null)
+    .map(r => ({ id: r.id, round_number: r.round_number, x: r.engagement_x!, y: r.engagement_y!, result: r.result }))
 
   if (rounds.length === 0) return (
     <div className="flex-1 flex items-center justify-center p-4">
@@ -1339,7 +1422,7 @@ function MatchStatsPanel({ rounds, map }: { rounds: Round[]; map: string }) {
       )}
 
       {/* Map heatmap */}
-      {plantRounds.length > 0 && (
+      {(plantRounds.length > 0 || engagementPoints.length > 0) && (
         <div>
           <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-2">{t('analysis.plantPositions')}</div>
           <MapPlantSelector
@@ -1348,6 +1431,7 @@ function MatchStatsPanel({ rounds, map }: { rounds: Round[]; map: string }) {
             editRoundId={null}
             onSaved={() => {}}
             onCancelEdit={() => {}}
+            engagementPoints={engagementPoints}
           />
         </div>
       )}

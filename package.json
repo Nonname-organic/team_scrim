@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest run src",
     "db:push": "node scripts/db-push.js schema",
     "db:seed": "node scripts/db-push.js seed",
     "db:policy": "node scripts/policy-push.js"
@@ -42,6 +43,7 @@
     "eslint-config-next": "^15.0.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^3.2.4"
   }
 }

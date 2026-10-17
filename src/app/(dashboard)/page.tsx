@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { WinRateCard } from '@/components/dashboard/WinRateCard'
 import { WinRateTrendChart } from '@/components/charts/WinRateTrendChart'
 import { EconomyWinRates } from '@/components/dashboard/EconomyWinRates'
@@ -8,6 +8,10 @@ import { SiteWinRates } from '@/components/dashboard/SiteWinRates'
 import { RecentMatches } from '@/components/dashboard/RecentMatches'
 import { RoundWinRates } from '@/components/dashboard/RoundWinRates'
 import { TimingWinRates } from '@/components/dashboard/TimingWinRates'
+import {
+  EngagementSiteWinRates, DecidedPhaseStats, PlayerStateStats, RotationStats, LossTagStats,
+  type RoundDetailData,
+} from '@/components/dashboard/RoundDetailPanels'
 import { AlertTriangle, FileDown } from 'lucide-react'
 import { MAPS } from '@/types'
 import { useAuth } from '@/contexts/AuthContext'
@@ -59,9 +63,10 @@ export default function DashboardPage() {
   if (loading) return <LoadingState />
   if (error || !data) return <ErrorState message={error ?? 'No data'} dbSetup={!data && !!error} />
 
-  const { summary, trend, economy, first_blood_impact, site_win_rates, round_win_rates, timing_win_rates } =
+  const { summary, trend, economy, first_blood_impact, site_win_rates, round_win_rates, timing_win_rates, round_detail } =
     data as Record<string, unknown>
   const s = summary as Record<string, unknown>
+  const rd = (round_detail ?? {}) as Partial<RoundDetailData> as RoundDetailData
 
   return (
     <div className="space-y-6">
@@ -195,12 +200,32 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Site Win Rates */}
-      <div className="bg-card rounded-xl p-5 border border-border">
-        <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">
-          {t('dashboard.siteWinRate')}
-        </h2>
-        <SiteWinRates data={site_win_rates as Record<string, unknown>} />
+      {/* Site Win Rates: 交戦サイト別 / 設置サイト別（ポストプラント・リテイク） */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Panel title={t('roundDetail.engagementWinRate')}>
+          <EngagementSiteWinRates data={rd.engagement} />
+        </Panel>
+        <Panel title={t('dashboard.siteWinRate')}>
+          <SiteWinRates data={site_win_rates as Record<string, unknown>} />
+        </Panel>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Panel title={t('roundDetail.phaseTitle')}>
+          <DecidedPhaseStats data={rd.decided_phase} />
+        </Panel>
+        <Panel title={t('roundDetail.playerStateTitle')}>
+          <PlayerStateStats data={rd.player_state} />
+        </Panel>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Panel title={t('roundDetail.rotationTitle')}>
+          <RotationStats data={rd.rotation} />
+        </Panel>
+        <Panel title={t('roundDetail.lossTagTitle')}>
+          <LossTagStats data={rd.loss_tags} />
+        </Panel>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -226,6 +251,15 @@ export default function DashboardPage() {
         </h2>
         <RecentMatches matches={s.recent_matches as Record<string, unknown>[]} />
       </div>
+    </div>
+  )
+}
+
+function Panel({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div className="bg-card rounded-xl p-5 border border-border">
+      <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-4">{title}</h2>
+      {children}
     </div>
   )
 }

@@ -353,7 +353,7 @@ function getContent(locale: string) {
           title: 'Record Plant (Bomb Planted)',
           why:   "Post-plant win rate is a critical tactical metric. If you're planting but still losing, there's a problem with positioning or info sharing after the plant.",
           atkOnly: 'ATK Only',
-          atkOnlySub: 'When checked, also select the site (A/B/C)',
+          atkOnlySub: 'When checked, also select the plant site (A/B/C). On defense, pick the plant site, then check Retake',
           sites: ['A', 'B', 'C'],
           siteLabel: (s: string) => `${s} Site`,
         },
@@ -393,7 +393,7 @@ function getContent(locale: string) {
           title: 'プラント（爆弾設置）を記録',
           why:   '「爆弾を置いた後の勝率（ポストプラント勝率）」は重要な戦術指標です。爆弾を置けているのに勝てない場合、ポジション取りや情報共有に問題があります。',
           atkOnly: 'ATKのみ選択可能',
-          atkOnlySub: 'チェックを入れたらサイト（A/B/C）も選択',
+          atkOnlySub: 'チェックを入れたら設置サイト（A/B/C）も選択。防衛側は設置サイトを選んでからリテイクにチェック',
           sites: ['A', 'B', 'C'],
           siteLabel: (s: string) => `${s}サイト`,
         },
@@ -798,6 +798,20 @@ export default function GuidePage() {
                 )}
               </StepCard>
             ))}
+          </div>
+
+          {/* ラウンド詳細（任意入力） */}
+          <div className="space-y-2">
+            <TipBox type="good">
+              {locale === 'en'
+                ? 'Round details (the slider icon on each row) are optional. Only fill them in for rounds that matter — e.g. a lost 5v2, a failed retake, or a round decided by a rotation. Rounds without details are simply left out of those panels; every other stat stays the same.'
+                : 'ラウンド詳細（各行のスライダーアイコン）は任意です。詳細入力は気になったラウンドだけでOK —「5v2から負けた」「リテイクに失敗した」「ローテで決まった」など。詳細が無いラウンドはそのパネルの集計から外れるだけで、他の数値は変わりません。'}
+            </TipBox>
+            <TipBox type="info">
+              {locale === 'en'
+                ? 'Main fight site = where the decisive fight happened. Plant site = where the spike was planted. Example: you win the fight on B (5v2), the remaining two rotate and plant A, and you lose the retake → main fight site B, plant site A, retake checked. This counts as a B defense loss, a failed A retake, and a rotation.'
+                : '主交戦サイト＝決定的な撃ち合いが起きた場所、設置サイト＝スパイクが置かれた場所です。例：Bで撃ち勝って5v2になったが、残り2人がAに回って設置し、リテイクに失敗 → 主交戦サイトB・設置サイトA・リテイクあり。「B防衛の敗北」「Aリテイク失敗」「ローテートあり」として集計されます。'}
+            </TipBox>
           </div>
         </div>
       </GuideSection>
