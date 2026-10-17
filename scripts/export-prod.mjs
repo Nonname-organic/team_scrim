@@ -19,8 +19,13 @@ const TABLES = [
   'user_teams',
 ]
 
+// 接続文字列はコードに書かない（公開リポジトリのため）。例: DATABASE_URL=... node scripts/export-prod.mjs
+if (!process.env.DATABASE_URL) {
+  console.error('DATABASE_URL を環境変数で指定してください')
+  process.exit(1)
+}
 const client = new Client({
-  connectionString: 'postgresql://postgres:5Xn.7G63Qh6VM$2@db.fcuybaimhfeaokatsxwc.supabase.co:5432/postgres',
+  connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
 })
 

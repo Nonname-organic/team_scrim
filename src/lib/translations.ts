@@ -273,6 +273,8 @@ export const ja = {
   roundDetail: {
     detail:                 '詳細',
     detailHint:             '詳細入力は気になったラウンドだけでOK',
+    editDetail:             '詳細を編集',
+    noDetailYet:            'このラウンドの詳細はまだ入力されていません',
     engagementSite:         '主交戦サイト',
     engagementSiteHint:     'どこで撃ち合ったか（設置サイトとは別）',
     site_A:                 'A',
@@ -673,6 +675,8 @@ export const en: TranslationDict = {
   roundDetail: {
     detail:                 'Details',
     detailHint:             'Only fill in details for rounds that matter',
+    editDetail:             'Edit details',
+    noDetailYet:            'No details for this round yet',
     engagementSite:         'Main Fight Site',
     engagementSiteHint:     'Where the decisive fight happened (separate from plant site)',
     site_A:                 'A',

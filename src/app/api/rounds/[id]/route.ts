@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query, queryOne } from '@/lib/db'
 import { getAuthContext, unauthorizedResponse } from '@/lib/server-auth'
 import { serverError, notFoundError } from '@/lib/api-error'
+import { DETAIL_KEYS, sanitizeRoundDetail } from '@/lib/round-detail'
 
 export async function PATCH(
   req: NextRequest,
@@ -14,8 +15,8 @@ export async function PATCH(
     const { id } = await params
 
     // Verify round belongs to team via match
-    const roundCheck = await queryOne(
-      `SELECT r.id FROM rounds r
+    const roundCheck = await queryOne<{ id: string; plant_site: string | null }>(
+      `SELECT r.id, r.plant_site FROM rounds r
        JOIN matches m ON m.id = r.match_id
        WHERE r.id = $1 AND m.team_id = $2`,
       [id, auth.teamId]
@@ -35,11 +36,20 @@ export async function PATCH(
     if ('memo'           in body) { vals.push(memo ?? null);           setClauses.push(`memo = $${vals.length}`) }
     if ('vod_start_sec'  in body) { vals.push(vod_start_sec ?? null);  setClauses.push(`vod_start_sec = $${vals.length}`) }
 
+    // ラウンド詳細（主交戦サイト・人数・決着局面・交戦位置・敗因タグ）
+    if (DETAIL_KEYS.some(k => k in body)) {
+      const tags = await query<{ id: string }>('SELECT id FROM loss_tags WHERE team_id = $1', [auth.teamId])
+      const detail = sanitizeRoundDetail(
+        body, 'plant_site' in body ? plant_site : roundCheck.plant_site, new Set(tags.map(t => t.id))
+      )
+      for (const [col, v] of Object.entries(detail)) { vals.push(v); setClauses.push(`${col} = $${vals.length}`) }
+    }
+
     if (setClauses.length === 0) return NextResponse.json({ ok: true })
 
     vals.push(id)
-    await query(`UPDATE rounds SET ${setClauses.join(', ')} WHERE id = $${vals.length}`, vals)
-    return NextResponse.json({ ok: true })
+    const updated = await queryOne(`UPDATE rounds SET ${setClauses.join(', ')} WHERE id = $${vals.length} RETURNING *`, vals)
+    return NextResponse.json({ ok: true, data: updated })
   } catch (err) {
     return serverError('rounds/[id] PATCH', err)
   }

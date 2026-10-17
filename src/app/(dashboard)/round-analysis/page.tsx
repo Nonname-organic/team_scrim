@@ -6,9 +6,13 @@ import { cn } from '@/lib/utils'
 import {
   ChevronDown, ChevronUp, Search, X, ArrowLeft, Settings2,
   Play, Shield, Crosshair, Zap, Flag, Bookmark, Trash2, Link2, Check, Pencil, Loader2, MapPin, AlertTriangle,
+  SlidersHorizontal,
 } from 'lucide-react'
-import { useLossTags, tagLabel } from '@/components/round/RoundDetailEditor'
-import { isAdvantageLoss, isRotation, playerStateLabel, type LossTag } from '@/lib/round-detail'
+import { useLossTags, tagLabel, RoundDetailEditor } from '@/components/round/RoundDetailEditor'
+import {
+  DETAIL_KEYS, detailFromRow, isAdvantageLoss, isRotation, playerStateLabel,
+  type LossTag, type RoundDetailInput,
+} from '@/lib/round-detail'
 import type { PlantRound } from '@/components/map/MapPlantSelector'
 import { MAP_IMAGES, MAP_POLYGONS, MAP_ROTATION, normalizeMapKey } from '@/lib/mapPolygons'
 import { detectSite } from '@/lib/geometry'
@@ -591,6 +595,19 @@ export default function RoundAnalysisPage() {
                   }}
                   mapName={analysisMatch.map}
                   lossTags={lossTags}
+                  onDetailSave={async (detail) => {
+                    const res = await fetch(`/api/rounds/${activeRound.id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(detail),
+                    })
+                    const j = await res.json()
+                    if (!res.ok || !j.data) throw new Error(j.error ?? `HTTP ${res.status}`)
+                    // サーバーで検証・正規化された値で画面を更新
+                    const patch = Object.fromEntries(DETAIL_KEYS.map(k => [k, j.data[k]])) as Partial<Round>
+                    setRounds(prev => prev.map(r => r.id === activeRound.id ? { ...r, ...patch } : r))
+                    setActiveRound(prev => prev ? { ...prev, ...patch } : prev)
+                  }}
                   onPlantUpdate={async (px, py, site) => {
                     await fetch(`/api/rounds/${activeRound.id}`, {
                       method: 'PATCH',
@@ -1025,6 +1042,7 @@ function RoundDetailPanel({
   mapName,
   onPlantUpdate,
   lossTags,
+  onDetailSave,
 }: {
   round: Round
   note: string
@@ -1039,9 +1057,15 @@ function RoundDetailPanel({
   mapName?: string
   onPlantUpdate?: (plant_x: number, plant_y: number, plant_site: string | null) => void
   lossTags: LossTag[]
+  onDetailSave?: (detail: RoundDetailInput) => Promise<void>
 }) {
   const { t } = useLanguage()
   const isWin = r.result === 'win'
+  const [detailDraft, setDetailDraft] = useState<RoundDetailInput | null>(null)
+  const [detailSaving, setDetailSaving] = useState(false)
+  const [detailError, setDetailError] = useState<string | null>(null)
+  // 別のラウンドを選んだら編集中の詳細は破棄
+  useEffect(() => { setDetailDraft(null); setDetailError(null) }, [r.id])
   const [localNote, setLocalNote] = useState(note)
   const [saved, setSaved] = useState(false)
   const [showPlantMap, setShowPlantMap] = useState(false)
@@ -1171,15 +1195,56 @@ function RoundDetailPanel({
         if (tagNames.length) rows.push({ label: t('roundDetail.lossTags'), value: <span className="flex flex-wrap gap-1">
           {tagNames.map(n => <span key={n} className="text-[10px] px-1.5 rounded-full border border-[#FF4655]/40 text-[#FF4655] bg-[#FF4655]/10">{n}</span>)}
         </span> })
-        if (!rows.length) return null
+        if (!rows.length && !onDetailSave) return null
         return (
-          <div className="bg-muted/20 border border-border/60 rounded-xl p-3 space-y-1.5">
-            {rows.map(({ label, value }) => (
-              <div key={label} className="flex items-start gap-2 text-[11px]">
-                <span className="text-muted-foreground w-[84px] shrink-0">{label}</span>
-                <span className="text-white/90 min-w-0">{value}</span>
+          <div className="bg-muted/20 border border-border/60 rounded-xl p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="text-[10px] text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                <SlidersHorizontal className="w-3 h-3" /> {t('roundDetail.detail')}
               </div>
-            ))}
+              {onDetailSave && !detailDraft && (
+                <button type="button" onClick={() => { setDetailError(null); setDetailDraft(detailFromRow(r as unknown as Record<string, unknown>)) }}
+                  className="text-[10px] px-2 py-0.5 rounded border border-border text-muted-foreground hover:text-white hover:border-white/30 transition-colors">
+                  {t('roundDetail.editDetail')}
+                </button>
+              )}
+            </div>
+
+            {detailDraft ? (
+              <>
+                <RoundDetailEditor
+                  value={detailDraft} onChange={patch => setDetailDraft(d => d && { ...d, ...patch })}
+                  plantSite={r.plant_site ?? ''} plantX={r.plant_x} plantY={r.plant_y}
+                  mapName={mapName ?? ''} roundNumber={r.round_number} tags={lossTags} />
+                <div className="flex items-center justify-end gap-2">
+                  {detailError && <span className="text-[10px] text-[#FF4655] mr-auto">{detailError}</span>}
+                  <button type="button" disabled={detailSaving} onClick={() => setDetailDraft(null)}
+                    className="text-xs px-3 py-1 rounded-lg border border-border text-muted-foreground hover:text-white">
+                    {t('common.cancel')}
+                  </button>
+                  <button type="button" disabled={detailSaving}
+                    onClick={async () => {
+                      setDetailSaving(true)
+                      setDetailError(null)
+                      try { await onDetailSave!(detailDraft); setDetailDraft(null) }
+                      catch (e) { setDetailError(String(e)) }
+                      finally { setDetailSaving(false) }
+                    }}
+                    className="text-xs px-3 py-1 rounded-lg bg-[#FF4655] hover:bg-[#FF4655]/80 text-white disabled:opacity-50">
+                    {detailSaving ? t('common.saving') : t('common.save')}
+                  </button>
+                </div>
+              </>
+            ) : rows.length ? (
+              rows.map(({ label, value }) => (
+                <div key={label} className="flex items-start gap-2 text-[11px]">
+                  <span className="text-muted-foreground w-[84px] shrink-0">{label}</span>
+                  <span className="text-white/90 min-w-0">{value}</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-[11px] text-muted-foreground/60">{t('roundDetail.noDetailYet')}</p>
+            )}
           </div>
         )
       })()}
