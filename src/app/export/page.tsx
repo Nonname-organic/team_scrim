@@ -1,9 +1,13 @@
 'use client'
 import { useEffect, useState, type ReactNode } from 'react'
+import { Noto_Sans_JP } from 'next/font/google'
 import { ja } from '@/lib/translations'
 import { tagLabel } from '@/components/round/RoundDetailEditor'
 import type { RoundDetailData } from '@/components/dashboard/RoundDetailPanels'
 import type { WL } from '@/lib/round-detail'
+
+// CSP が外部フォントを許可しないため next/font でビルド時に取り込み、自サイトから配信する
+const noto = Noto_Sans_JP({ weight: ['400', '700', '900'], preload: false, display: 'swap' })
 
 const ECO_LABELS: Record<string, string> = {
   pistol: 'ピストル', eco: 'エコ', anti_eco: 'アンチエコ', semi_eco: 'セミエコ',
@@ -27,21 +31,33 @@ function pct(e: Record<string, unknown> | undefined) {
   return `${Math.round(Number(e.win_rate) * 100)}% (${e.wins}W/${e.total}R)`
 }
 
+/** ラウンド番号別の色分け: 50%超=緑 / 30%未満=赤 */
+const rateColor = (p: number) => (p > 50 ? 'text-[#16a34a]' : p < 30 ? 'text-[#ef4444]' : 'text-gray-900')
+
+function Title({ children }: { children: ReactNode }) {
+  return (
+    <h2 className="flex items-center gap-2.5 text-[17px] font-bold text-gray-900 mb-3">
+      <span className="inline-block w-[5px] h-[22px] rounded-sm bg-[#FF4655]" />
+      {children}
+    </h2>
+  )
+}
+
 /** 見出し＋表。行が無ければ「データなし」の注記を出す（ダッシュボードの空パネルと同じ扱い） */
 function Section({ title, head, rows, empty, children }: {
   title: string; head?: string[]; rows?: ReactNode[][]; empty?: string; children?: ReactNode
 }) {
   return (
-    <section className="mb-8 avoid-break">
-      <h2 className="section-title">{title}</h2>
+    <section className="mb-7 avoid-break">
+      <Title>{title}</Title>
       {head && rows && (rows.length === 0 ? (
-        <p className="text-xs text-gray-400 mt-3">{empty ?? 'データなし'}</p>
+        <p className="text-[13px] text-gray-400">{empty ?? 'データなし'}</p>
       ) : (
-        <table className="w-full mt-3 text-xs border-collapse">
+        <table className="w-full text-[13.5px] border-collapse">
           <thead>
             <tr className="bg-gray-100">
               {head.map((h, i) => (
-                <th key={h} className={`${i === 0 ? 'text-left' : 'text-right'} px-3 py-2 border border-gray-200`}>{h}</th>
+                <th key={h} className={`${i === 0 ? 'text-left' : 'text-right'} font-bold px-4 py-2 border border-gray-200`}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -49,7 +65,7 @@ function Section({ title, head, rows, empty, children }: {
             {rows.map((row, ri) => (
               <tr key={ri}>
                 {row.map((cell, ci) => (
-                  <td key={ci} className={`${ci === 0 ? 'font-medium' : 'text-right'} px-3 py-1.5 border border-gray-200`}>{cell}</td>
+                  <td key={ci} className={`${ci === 0 ? 'font-bold' : 'text-right'} px-4 py-2 border border-gray-200`}>{cell}</td>
                 ))}
               </tr>
             ))}
@@ -60,6 +76,10 @@ function Section({ title, head, rows, empty, children }: {
     </section>
   )
 }
+
+const Note = ({ children }: { children: ReactNode }) => (
+  <p className="text-[12.5px] text-gray-500 mt-2 leading-relaxed">{children}</p>
+)
 
 export default function ExportPage() {
   const [data, setData] = useState<Record<string, unknown> | null>(null)
@@ -122,11 +142,7 @@ export default function ExportPage() {
     { label: '直近5試合', value: recent5.length ? Math.round(recent5.filter(m => m.result === 'win').length / recent5.length * 100) : 0 },
   ]
 
-  const timingCfg: Record<string, { label: string; sub: string }> = {
-    early: { label: 'Early', sub: 'ラッシュ' },
-    mid:   { label: 'Mid',   sub: 'デフォルト' },
-    late:  { label: 'Late',  sub: 'スロウ' },
-  }
+  const timingCfg: Record<string, string> = { early: 'Early　ラッシュ', mid: 'Mid　デフォルト', late: 'Late　スロウ' }
   const timingRows = (['early', 'mid', 'late'] as const).map(k => ({
     k,
     atk: tim.find(r => r.contact_timing === k && r.side === 'attack'),
@@ -142,9 +158,14 @@ export default function ExportPage() {
   const noDetail = R('noDetailData')
   const substituted = rd?.engagement.reduce((n, e) => n + e.substituted, 0) ?? 0
   const ps = rd?.player_state
+  const hasPlayerState = !!ps && (ps.adv_losses.length > 0 || ps.disadv_wins > 0 || ps.at_plant.length > 0)
+
+  // 印刷時の各ページ上部（チーム名・日付・ページ番号）。CSS の文字列に入れるため記号を除去
+  const cssText = (v: string) => v.replace(/[\\"'<>\n\r]/g, '')
+  const pageHeader = `${cssText(teamName)}　スクリムデータ分析レポート`
 
   return (
-    <div className="min-h-screen bg-white text-gray-900">
+    <div className={`${noto.className} min-h-screen bg-white text-gray-900`}>
       {/* Print button — hidden when printing */}
       <div className="print:hidden fixed top-4 right-4 z-50 flex gap-2">
         <button
@@ -162,32 +183,28 @@ export default function ExportPage() {
       </div>
 
       {/* Report body */}
-      <div className="report-body max-w-3xl mx-auto px-8 py-10 text-gray-900 font-sans text-sm leading-relaxed">
+      <div className="report-body max-w-[820px] mx-auto px-10 py-10">
 
         {/* Header */}
-        <div className="border-b-2 border-gray-900 pb-4 mb-6">
-          <div className="flex items-end justify-between">
-            <div>
-              <h1 className="text-2xl font-black tracking-tight">{teamName}</h1>
-              <p className="text-gray-500 text-xs mt-0.5">スクリムデータ分析レポート</p>
-            </div>
-            <div className="text-right text-xs text-gray-400">
-              <div>出力日: {today}</div>
-            </div>
+        <header className="flex items-end justify-between pb-4 mb-9 border-b-[3px] border-[#FF4655]">
+          <div>
+            <h1 className="text-[40px] font-black tracking-tight leading-none">{teamName}</h1>
+            <p className="text-gray-500 text-[16px] mt-3">スクリムデータ分析レポート</p>
           </div>
-        </div>
+          <div className="text-gray-500 text-[14px]">出力日: {today}</div>
+        </header>
 
-        {/* KPI */}
-        <Section title="総合成績">
-          <div className="grid grid-cols-4 gap-3 mt-3">
+        <section className="mb-7 avoid-break">
+          <Title>総合成績</Title>
+          <div className="grid grid-cols-4 gap-4">
             {kpis.map(c => (
-              <div key={c.label} className="border border-gray-200 rounded-lg p-3 text-center">
-                <div className="text-2xl font-black">{c.value}%</div>
-                <div className="text-xs text-gray-500 mt-1">{c.label}</div>
+              <div key={c.label} className="border border-gray-200 rounded-xl py-5 text-center">
+                <div className="text-[38px] font-black leading-none">{c.value}%</div>
+                <div className="text-[13px] text-gray-500 mt-3">{c.label}</div>
               </div>
             ))}
           </div>
-        </Section>
+        </section>
 
         <Section title="勝率推移（直近20試合・5試合移動平均）"
           head={['日付', '総合', '攻め', '守り']}
@@ -208,20 +225,18 @@ export default function ExportPage() {
             ['FD発生時（開幕デスされた）', <b key="p">{fdPct}%</b>, `${fdRow?.rounds}R`],
           ] : []}>
           {fbPct !== null && fdPct !== null && (
-            <p className="text-xs text-gray-500 mt-2">
-              FB/FD 勝率差: <strong className="text-gray-900">{fbPct - fdPct > 0 ? '+' : ''}{fbPct - fdPct}%</strong>
+            <Note>
+              FB/FD 勝率差: <b className="text-gray-900">{fbPct - fdPct > 0 ? '+' : ''}{fbPct - fdPct}%</b>
               （FBを取ったラウンドはFDされたラウンドより {Math.abs(fbPct - fdPct)}% 勝率が{fbPct - fdPct >= 0 ? '高い' : '低い'}）<br />
               {t('dashboard.fbsrNote')}
-            </p>
+            </Note>
           )}
         </Section>
 
         <Section title={R('engagementWinRate')} empty={noDetail}
           head={['主交戦サイト', '攻撃', '防衛']}
           rows={(rd?.engagement ?? []).map(e => [R(`site_${e.site}`), wl(e.attack), wl(e.defense)])}>
-          {substituted > 0 && (
-            <p className="text-xs text-gray-500 mt-2">※ {R('substitutedPre')}{substituted}{R('substitutedPost')}</p>
-          )}
+          {substituted > 0 && <Note>※ {R('substitutedPre')}{substituted}{R('substitutedPost')}</Note>}
         </Section>
 
         <Section title={t('dashboard.siteWinRate')}
@@ -236,37 +251,36 @@ export default function ExportPage() {
           head={[R('decidedPhase'), '攻撃', '防衛']}
           rows={(rd?.decided_phase ?? []).map(p => [R(`phase_${p.phase}`), wl(p.attack), wl(p.defense)])} />
 
-        <Section title={R('playerStateTitle')}>
-          {!ps || (!ps.adv_losses.length && !ps.disadv_wins && !ps.at_plant.length) ? (
-            <p className="text-xs text-gray-400 mt-3">{noDetail}</p>
-          ) : (
-            <>
-              <table className="w-full mt-3 text-xs border-collapse">
-                <tbody>
-                  <tr><td className="px-3 py-1.5 border border-gray-200">{R('advLoss')}</td>
-                    <td className="px-3 py-1.5 border border-gray-200 text-right font-bold">{ps.adv_losses.length}</td></tr>
-                  <tr><td className="px-3 py-1.5 border border-gray-200">{R('disadvWin')}</td>
-                    <td className="px-3 py-1.5 border border-gray-200 text-right font-bold">{ps.disadv_wins}</td></tr>
-                </tbody>
-              </table>
-              <div className="mt-5" />
-              {ps.adv_losses.length > 0 && (
-                <Section title={`${R('advLoss')}（ラウンド一覧）`}
-                  head={['日付', '対戦相手', 'マップ', 'ラウンド', '人数状況']}
-                  rows={ps.adv_losses.map(r => [
-                    r.match_date ? new Date(r.match_date).toLocaleDateString('ja-JP') : '--',
-                    r.opponent_name ?? '--', r.map ?? '--', `R${r.round_number}`, r.state ?? '--',
-                  ])} />
-              )}
-              <div className="mt-1" />
-              {ps.at_plant.length > 0 && (
-                <Section title={`${R('atPlantWR')}（味方v敵）`}
-                  head={['人数状況', '勝率']}
-                  rows={ps.at_plant.map(a => [a.state, wl(a)])} />
-              )}
-            </>
+        <section className="mb-7 avoid-break">
+          <Title>{R('playerStateTitle')}</Title>
+          {!hasPlayerState ? <p className="text-[13px] text-gray-400">{noDetail}</p> : (
+            <table className="w-full text-[13.5px] border-collapse">
+              <tbody>
+                {[[R('advLoss'), ps!.adv_losses.length], [R('disadvWin'), ps!.disadv_wins]].map(([label, n]) => (
+                  <tr key={String(label)}>
+                    <td className="font-bold px-4 py-3 border border-gray-200">{label}</td>
+                    <td className="w-24 text-right text-[17px] font-black px-4 py-3 border border-gray-200">{n}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
-        </Section>
+        </section>
+
+        {hasPlayerState && ps!.adv_losses.length > 0 && (
+          <Section title={`${R('advLoss')}（ラウンド一覧）`}
+            head={['日付', '対戦相手', 'マップ', 'ラウンド', '人数状況']}
+            rows={ps!.adv_losses.map(r => [
+              r.match_date ? new Date(r.match_date).toLocaleDateString('ja-JP') : '--',
+              r.opponent_name ?? '--', r.map ?? '--', `R${r.round_number}`, r.state ?? '--',
+            ])} />
+        )}
+
+        {hasPlayerState && ps!.at_plant.length > 0 && (
+          <Section title={`${R('atPlantWR')}（味方 v 敵）`}
+            head={['人数状況', '勝率']}
+            rows={ps!.at_plant.map(a => [a.state, wl(a)])} />
+        )}
 
         <Section title={R('rotationTitle')} empty={noDetail}
           head={['状況', '勝率']}
@@ -278,48 +292,49 @@ export default function ExportPage() {
         <Section title={R('lossTagTitle')} empty={noDetail}
           head={['タグ', '件数']}
           rows={(rd?.loss_tags ?? []).filter(x => x.name).map(x => [
-            tagLabel({ name: x.name!, preset_key: x.preset_key }, t), String(x.count),
+            tagLabel({ name: x.name!, preset_key: x.preset_key }, t), <b key="n">{x.count}</b>,
           ])} />
 
-        <Section title="ラウンド番号別勝率">
-          {rnd.length === 0 ? <p className="text-xs text-gray-400 mt-3">データなし</p> : (
-            <div className="grid grid-cols-8 gap-1 mt-3 text-[10px]">
-              {rnd.map(r => (
-                <div key={String(r.round_number)} className="border border-gray-200 rounded px-1 py-1 text-center">
-                  <div className="text-gray-500">R{String(r.round_number)}</div>
-                  <div className="font-bold text-xs">{Math.round(Number(r.win_rate) * 100)}%</div>
-                  <div className="text-gray-400">{String(r.wins)}/{String(r.rounds)}</div>
-                </div>
-              ))}
+        <section className="mb-7 avoid-break">
+          <Title>ラウンド番号別勝率</Title>
+          {rnd.length === 0 ? <p className="text-[13px] text-gray-400">データなし</p> : (
+            <div className="grid grid-cols-8 gap-2">
+              {rnd.map(r => {
+                const p = Math.round(Number(r.win_rate) * 100)
+                return (
+                  <div key={String(r.round_number)} className="border border-gray-200 rounded-lg py-2.5 text-center">
+                    <div className="text-[11px] text-gray-500">R{String(r.round_number)}</div>
+                    <div className={`text-[20px] font-black leading-tight ${rateColor(p)}`}>{p}%</div>
+                    <div className="text-[11px] text-gray-500">{String(r.wins)}/{String(r.rounds)}</div>
+                  </div>
+                )
+              })}
             </div>
           )}
-        </Section>
+        </section>
 
         <Section title="タイミング別勝率"
           head={['タイミング', 'ATK 勝率', 'DEF 勝率']}
-          rows={timingRows.map(({ k, atk, def }) => [
-            <span key="l">{timingCfg[k].label}<span className="ml-2 text-gray-400 font-normal">{timingCfg[k].sub}</span></span>,
-            pct(atk), pct(def),
-          ])} />
+          rows={timingRows.map(({ k, atk, def }) => [timingCfg[k], pct(atk), pct(def)])} />
 
-        <div className="text-center text-xs text-gray-300 mt-12 border-t border-gray-100 pt-4">
+        <div className="text-center text-[13px] text-gray-500 mt-12 border-t border-gray-200 pt-5">
           Generated by スクリムデータ解析 · {today}
         </div>
       </div>
 
       <style>{`
-        .section-title {
-          font-size: 0.75rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-          color: #6b7280;
-          border-bottom: 1px solid #e5e7eb;
-          padding-bottom: 0.5rem;
-        }
         @media print {
-          @page { margin: 15mm 12mm; size: A4; }
-          body { background: white !important; }
+          @page {
+            size: A4;
+            margin: 16mm 12mm 14mm;
+            @top-left  { content: "${pageHeader}"; font-size: 9pt; font-weight: 700; color: #374151; }
+            @top-right { content: "${cssText(today)}　" counter(page) "/" counter(pages); font-size: 9pt; color: #6b7280; }
+          }
+          @page :first {
+            @top-left  { content: none; }
+            @top-right { content: counter(page) "/" counter(pages); font-size: 9pt; color: #6b7280; }
+          }
+          body { background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .report-body { max-width: 100% !important; padding: 0 !important; }
           .avoid-break { break-inside: avoid; }
         }
