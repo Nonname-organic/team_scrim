@@ -7,6 +7,7 @@ import {
   getRoundNumberWinRates,
   getRoundSiteStats,
   getTimingWinRates,
+  getRoundDetailStats,
 } from '@/lib/analysis'
 import { getAuthContext, unauthorizedResponse } from '@/lib/server-auth'
 import { serverError } from '@/lib/api-error'
@@ -67,7 +68,7 @@ export async function GET(req: NextRequest) {
 
   try {
     // team_id はクエリではなく必ず auth.teamId を使用（他チーム出力の禁止）
-    const [summary, trend, economy, fbImpact, roundWinRates, siteStats, timingWinRates] = await Promise.all([
+    const [summary, trend, economy, fbImpact, roundWinRates, siteStats, timingWinRates, roundDetail] = await Promise.all([
       getDashboardSummary(auth.teamId, map, matchType, from, to),
       getWinRateTrend(auth.teamId, 20, map, matchType, from, to),
       getEconomyWinRates(auth.teamId, map, matchType, from, to),
@@ -75,6 +76,7 @@ export async function GET(req: NextRequest) {
       getRoundNumberWinRates(auth.teamId, map, matchType, from, to),
       getRoundSiteStats(auth.teamId, map, matchType, from, to),
       getTimingWinRates(auth.teamId, map, matchType, from, to),
+      getRoundDetailStats(auth.teamId, map, matchType, from, to),
     ])
 
     const siteWinRates = buildSiteWinRates(siteStats as { by_site: SiteRow[]; post_plant: Entry | null })
@@ -101,6 +103,7 @@ export async function GET(req: NextRequest) {
         site_win_rates: siteWinRates,
         round_win_rates: roundWinRates,
         timing_win_rates: timingWinRates,
+        round_detail: roundDetail,
       },
     })
   } catch (err) {

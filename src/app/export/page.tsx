@@ -1,12 +1,65 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import { ja } from '@/lib/translations'
+import { tagLabel } from '@/components/round/RoundDetailEditor'
+import type { RoundDetailData } from '@/components/dashboard/RoundDetailPanels'
+import type { WL } from '@/lib/round-detail'
 
 const ECO_LABELS: Record<string, string> = {
   pistol: 'ピストル', eco: 'エコ', anti_eco: 'アンチエコ', semi_eco: 'セミエコ',
   semi_buy: 'セミバイ', full_buy: 'フルバイ', oper: 'オペ', second: 'セカンド', third: 'サード',
 }
 
+// レポートは日本語固定（言語切替の Provider 外のページのため ja 辞書を直接引く）
+const t = (key: string): string => {
+  const v = key.split('.').reduce<unknown>((o, k) => (o as Record<string, unknown> | undefined)?.[k], ja)
+  return typeof v === 'string' ? v : key
+}
+const R = (key: string) => t(`roundDetail.${key}`)
+
 interface Entry { wins: number; total: number; win_rate: number }
+
+const wl = (e: WL | undefined) =>
+  e && e.total ? `${Math.round(e.wins / e.total * 100)}% (${e.wins}W/${e.total - e.wins}L)` : '--'
+
+function pct(e: Record<string, unknown> | undefined) {
+  if (!e) return '--'
+  return `${Math.round(Number(e.win_rate) * 100)}% (${e.wins}W/${e.total}R)`
+}
+
+/** 見出し＋表。行が無ければ「データなし」の注記を出す（ダッシュボードの空パネルと同じ扱い） */
+function Section({ title, head, rows, empty, children }: {
+  title: string; head?: string[]; rows?: ReactNode[][]; empty?: string; children?: ReactNode
+}) {
+  return (
+    <section className="mb-8 avoid-break">
+      <h2 className="section-title">{title}</h2>
+      {head && rows && (rows.length === 0 ? (
+        <p className="text-xs text-gray-400 mt-3">{empty ?? 'データなし'}</p>
+      ) : (
+        <table className="w-full mt-3 text-xs border-collapse">
+          <thead>
+            <tr className="bg-gray-100">
+              {head.map((h, i) => (
+                <th key={h} className={`${i === 0 ? 'text-left' : 'text-right'} px-3 py-2 border border-gray-200`}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, ri) => (
+              <tr key={ri}>
+                {row.map((cell, ci) => (
+                  <td key={ci} className={`${ci === 0 ? 'font-medium' : 'text-right'} px-3 py-1.5 border border-gray-200`}>{cell}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      ))}
+      {children}
+    </section>
+  )
+}
 
 export default function ExportPage() {
   const [data, setData] = useState<Record<string, unknown> | null>(null)
@@ -43,12 +96,14 @@ export default function ExportPage() {
     <div className="flex items-center justify-center h-screen text-gray-500 text-sm">データなし</div>
   )
 
-  const s   = data.summary           as Record<string, unknown>
-  const eco = (data.economy          as Record<string, unknown>[]) ?? []
-  const tim = (data.timing_win_rates as Record<string, unknown>[]) ?? []
-  const sit = (data.site_win_rates   as Record<string, Entry>)    ?? {}
-  const rec = (s.recent_matches      as Record<string, unknown>[]) ?? []
-  const fbi = (data.first_blood_impact as Record<string, unknown>[]) ?? []
+  const s     = data.summary            as Record<string, unknown>
+  const trend = (data.trend             as Record<string, unknown>[]) ?? []
+  const eco   = (data.economy           as Record<string, unknown>[]) ?? []
+  const tim   = (data.timing_win_rates  as Record<string, unknown>[]) ?? []
+  const sit   = (data.site_win_rates    as Record<string, Entry>)    ?? {}
+  const rnd   = (data.round_win_rates   as Record<string, unknown>[]) ?? []
+  const rd    = (data.round_detail      as RoundDetailData | undefined)
+  const fbi   = (data.first_blood_impact as Record<string, unknown>[]) ?? []
   const fbRow = fbi.find(r => r.fb_team === true)
   const fdRow = fbi.find(r => r.fb_team === false)
   const fbPct = fbRow ? Math.round(Number(fbRow.win_rate) * 100) : null
@@ -56,33 +111,37 @@ export default function ExportPage() {
 
   const team = s.team as Record<string, unknown> | undefined
   const teamName = String(team?.name ?? 'チーム')
-  const atkWR  = Math.round(Number(s.attack_win_rate)  * 100)
-  const defWR  = Math.round(Number(s.defense_win_rate) * 100)
-  const allWR  = Math.round(Number(s.overall_win_rate) * 100)
+  const recent5 = ((s.recent_matches as Record<string, unknown>[]) ?? []).slice(0, 5)
   const today  = new Date().toLocaleDateString('ja-JP')
+
+  // ダッシュボードと同じ並び・同じ値（直近試合の一覧は除く）
+  const kpis = [
+    { label: '総合勝率',   value: Math.round(Number(s.overall_win_rate) * 100) },
+    { label: 'ATK 勝率',  value: Math.round(Number(s.attack_win_rate)  * 100) },
+    { label: 'DEF 勝率',  value: Math.round(Number(s.defense_win_rate) * 100) },
+    { label: '直近5試合', value: recent5.length ? Math.round(recent5.filter(m => m.result === 'win').length / recent5.length * 100) : 0 },
+  ]
 
   const timingCfg: Record<string, { label: string; sub: string }> = {
     early: { label: 'Early', sub: 'ラッシュ' },
     mid:   { label: 'Mid',   sub: 'デフォルト' },
     late:  { label: 'Late',  sub: 'スロウ' },
   }
-
-  const timingRows = (['early', 'mid', 'late'] as const).map(t => {
-    const atk = tim.find(r => r.contact_timing === t && r.side === 'attack')
-    const def = tim.find(r => r.contact_timing === t && r.side === 'defense')
-    return { timing: t, atk, def }
-  }).filter(r => r.atk || r.def)
+  const timingRows = (['early', 'mid', 'late'] as const).map(k => ({
+    k,
+    atk: tim.find(r => r.contact_timing === k && r.side === 'attack'),
+    def: tim.find(r => r.contact_timing === k && r.side === 'defense'),
+  })).filter(r => r.atk || r.def)
 
   const siteKeys = [
     { atk: 'a_attack', def: 'a_retake', label: 'A サイト' },
     { atk: 'b_attack', def: 'b_retake', label: 'B サイト' },
     { atk: 'c_attack', def: 'c_retake', label: 'C サイト' },
-  ].filter(s => sit[s.atk] || sit[s.def])
+  ].filter(x => sit[x.atk] || sit[x.def])
 
-  function pct(e: Record<string, unknown> | undefined) {
-    if (!e) return '--'
-    return `${Math.round(Number(e.win_rate) * 100)}% (${e.wins}W/${e.total}R)`
-  }
+  const noDetail = R('noDetailData')
+  const substituted = rd?.engagement.reduce((n, e) => n + e.substituted, 0) ?? 0
+  const ps = rd?.player_state
 
   return (
     <div className="min-h-screen bg-white text-gray-900">
@@ -118,177 +177,130 @@ export default function ExportPage() {
           </div>
         </div>
 
-        {/* Overall KPIs */}
-        <section className="mb-8">
-          <h2 className="section-title">総合成績</h2>
-          <div className="grid grid-cols-3 gap-4 mt-3">
-            {[
-              { label: '総合勝率',   value: allWR },
-              { label: 'ATK 勝率',  value: atkWR },
-              { label: 'DEF 勝率',  value: defWR },
-            ].map(c => (
-              <div key={c.label} className="border border-gray-200 rounded-lg p-4 text-center">
-                <div className="text-3xl font-black">{c.value}%</div>
+        {/* KPI */}
+        <Section title="総合成績">
+          <div className="grid grid-cols-4 gap-3 mt-3">
+            {kpis.map(c => (
+              <div key={c.label} className="border border-gray-200 rounded-lg p-3 text-center">
+                <div className="text-2xl font-black">{c.value}%</div>
                 <div className="text-xs text-gray-500 mt-1">{c.label}</div>
               </div>
             ))}
           </div>
-        </section>
+        </Section>
 
-        {/* First blood impact */}
-        {fbPct !== null && fdPct !== null && (
-          <section className="mb-8">
-            <h2 className="section-title">ファーストブラッド影響</h2>
-            <table className="w-full mt-3 text-xs border-collapse">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="text-left px-3 py-2 border border-gray-200">状況</th>
-                  <th className="text-right px-3 py-2 border border-gray-200">勝率</th>
-                  <th className="text-right px-3 py-2 border border-gray-200">ラウンド数</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-gray-100">
-                  <td className="px-3 py-1.5 border border-gray-200">FB取得時（開幕キルを取った）</td>
-                  <td className="px-3 py-1.5 border border-gray-200 text-right font-bold">{fbPct}%</td>
-                  <td className="px-3 py-1.5 border border-gray-200 text-right text-gray-500">{String(fbRow?.rounds)}R</td>
-                </tr>
-                <tr className="border-b border-gray-100">
-                  <td className="px-3 py-1.5 border border-gray-200">FD発生時（開幕デスされた）</td>
-                  <td className="px-3 py-1.5 border border-gray-200 text-right font-bold">{fdPct}%</td>
-                  <td className="px-3 py-1.5 border border-gray-200 text-right text-gray-500">{String(fdRow?.rounds)}R</td>
-                </tr>
-              </tbody>
-            </table>
+        <Section title="勝率推移（直近20試合・5試合移動平均）"
+          head={['日付', '総合', '攻め', '守り']}
+          rows={trend.map(r => [String(r.date), `${r.win_rate}%`, `${r.attack_wr}%`, `${r.defense_wr}%`])} />
+
+        <Section title="購入状況別勝率"
+          head={['購入状況', '勝率', '勝/ラウンド']}
+          rows={eco.map(r => [
+            ECO_LABELS[String(r.economy_type)] ?? String(r.economy_type),
+            <b key="p">{Math.round(Number(r.win_rate) * 100)}%</b>,
+            `${r.wins}W / ${r.rounds}R`,
+          ])} />
+
+        <Section title="ファーストブラッド影響"
+          head={['状況', '勝率', 'ラウンド数']}
+          rows={fbPct !== null && fdPct !== null ? [
+            ['FB取得時（開幕キルを取った）', <b key="p">{fbPct}%</b>, `${fbRow?.rounds}R`],
+            ['FD発生時（開幕デスされた）', <b key="p">{fdPct}%</b>, `${fdRow?.rounds}R`],
+          ] : []}>
+          {fbPct !== null && fdPct !== null && (
             <p className="text-xs text-gray-500 mt-2">
               FB/FD 勝率差: <strong className="text-gray-900">{fbPct - fdPct > 0 ? '+' : ''}{fbPct - fdPct}%</strong>
-              （FBを取ったラウンドはFDされたラウンドより {Math.abs(fbPct - fdPct)}% 勝率が{fbPct - fdPct >= 0 ? '高い' : '低い'}）
+              （FBを取ったラウンドはFDされたラウンドより {Math.abs(fbPct - fdPct)}% 勝率が{fbPct - fdPct >= 0 ? '高い' : '低い'}）<br />
+              {t('dashboard.fbsrNote')}
             </p>
-          </section>
-        )}
+          )}
+        </Section>
 
-        {/* Economy */}
-        {eco.length > 0 && (
-          <section className="mb-8">
-            <h2 className="section-title">購入状況別勝率</h2>
-            <table className="w-full mt-3 text-xs border-collapse">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="text-left px-3 py-2 border border-gray-200">購入状況</th>
-                  <th className="text-right px-3 py-2 border border-gray-200">勝率</th>
-                  <th className="text-right px-3 py-2 border border-gray-200">勝/ラウンド</th>
-                </tr>
-              </thead>
-              <tbody>
-                {eco.map((row: Record<string, unknown>) => {
-                  const p = Math.round(Number(row.win_rate) * 100)
-                  return (
-                    <tr key={String(row.economy_type)} className="border-b border-gray-100">
-                      <td className="px-3 py-1.5 border border-gray-200">
-                        {ECO_LABELS[String(row.economy_type)] ?? String(row.economy_type)}
-                      </td>
-                      <td className="px-3 py-1.5 border border-gray-200 text-right font-bold">
-                        {p}%
-                      </td>
-                      <td className="px-3 py-1.5 border border-gray-200 text-right text-gray-500">
-                        {String(row.wins)}W / {String(row.rounds)}R
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </section>
-        )}
+        <Section title={R('engagementWinRate')} empty={noDetail}
+          head={['主交戦サイト', '攻撃', '防衛']}
+          rows={(rd?.engagement ?? []).map(e => [R(`site_${e.site}`), wl(e.attack), wl(e.defense)])}>
+          {substituted > 0 && (
+            <p className="text-xs text-gray-500 mt-2">※ {R('substitutedPre')}{substituted}{R('substitutedPost')}</p>
+          )}
+        </Section>
 
-        {/* Timing */}
-        {timingRows.length > 0 && (
-          <section className="mb-8">
-            <h2 className="section-title">タイミング別勝率</h2>
-            <table className="w-full mt-3 text-xs border-collapse">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="text-left px-3 py-2 border border-gray-200">タイミング</th>
-                  <th className="text-right px-3 py-2 border border-gray-200">ATK 勝率</th>
-                  <th className="text-right px-3 py-2 border border-gray-200">DEF 勝率</th>
-                </tr>
-              </thead>
-              <tbody>
-                {timingRows.map(({ timing, atk, def }) => (
-                  <tr key={timing} className="border-b border-gray-100">
-                    <td className="px-3 py-1.5 border border-gray-200 font-medium">
-                      {timingCfg[timing].label}
-                      <span className="ml-2 text-gray-400 font-normal">{timingCfg[timing].sub}</span>
-                    </td>
-                    <td className="px-3 py-1.5 border border-gray-200 text-right">{pct(atk)}</td>
-                    <td className="px-3 py-1.5 border border-gray-200 text-right">{pct(def)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-        )}
+        <Section title={t('dashboard.siteWinRate')}
+          head={['設置サイト', 'ポストプラント（ATK）', 'リテイク（DEF）']}
+          rows={siteKeys.map(({ atk, def, label }) => [
+            label,
+            pct(sit[atk] as unknown as Record<string, unknown>),
+            pct(sit[def] as unknown as Record<string, unknown>),
+          ])} />
 
-        {/* Site */}
-        {siteKeys.length > 0 && (
-          <section className="mb-8">
-            <h2 className="section-title">サイト別勝率</h2>
-            <table className="w-full mt-3 text-xs border-collapse">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="text-left px-3 py-2 border border-gray-200">サイト</th>
-                  <th className="text-right px-3 py-2 border border-gray-200">プラント後 (ATK)</th>
-                  <th className="text-right px-3 py-2 border border-gray-200">リテイク (DEF)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {siteKeys.map(({ atk, def, label }) => (
-                  <tr key={label} className="border-b border-gray-100">
-                    <td className="px-3 py-1.5 border border-gray-200 font-medium">{label}</td>
-                    <td className="px-3 py-1.5 border border-gray-200 text-right">{pct(sit[atk] as unknown as Record<string, unknown>)}</td>
-                    <td className="px-3 py-1.5 border border-gray-200 text-right">{pct(sit[def] as unknown as Record<string, unknown>)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-        )}
+        <Section title={R('phaseTitle')} empty={noDetail}
+          head={[R('decidedPhase'), '攻撃', '防衛']}
+          rows={(rd?.decided_phase ?? []).map(p => [R(`phase_${p.phase}`), wl(p.attack), wl(p.defense)])} />
 
-        {/* Recent matches */}
-        {rec.length > 0 && (
-          <section className="mb-8">
-            <h2 className="section-title">直近試合</h2>
-            <table className="w-full mt-3 text-xs border-collapse">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="text-left px-3 py-2 border border-gray-200">日付</th>
-                  <th className="text-left px-3 py-2 border border-gray-200">対戦相手</th>
-                  <th className="text-left px-3 py-2 border border-gray-200">マップ</th>
-                  <th className="text-center px-3 py-2 border border-gray-200">スコア</th>
-                  <th className="text-center px-3 py-2 border border-gray-200">結果</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rec.map((m: Record<string, unknown>, i: number) => (
-                  <tr key={i} className="border-b border-gray-100">
-                    <td className="px-3 py-1.5 border border-gray-200 text-gray-500">
-                      {new Date(String(m.match_date)).toLocaleDateString('ja-JP')}
-                    </td>
-                    <td className="px-3 py-1.5 border border-gray-200">{String(m.opponent_name)}</td>
-                    <td className="px-3 py-1.5 border border-gray-200">{String(m.map)}</td>
-                    <td className="px-3 py-1.5 border border-gray-200 text-center">
-                      {String(m.team_score)} - {String(m.opponent_score)}
-                    </td>
-                    <td className="px-3 py-1.5 border border-gray-200 text-center font-bold"
-                      style={{ color: m.result === 'win' ? '#16a34a' : m.result === 'loss' ? '#dc2626' : '#6b7280' }}>
-                      {m.result === 'win' ? '勝' : m.result === 'loss' ? '負' : '分'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
-        )}
+        <Section title={R('playerStateTitle')}>
+          {!ps || (!ps.adv_losses.length && !ps.disadv_wins && !ps.at_plant.length) ? (
+            <p className="text-xs text-gray-400 mt-3">{noDetail}</p>
+          ) : (
+            <>
+              <table className="w-full mt-3 text-xs border-collapse">
+                <tbody>
+                  <tr><td className="px-3 py-1.5 border border-gray-200">{R('advLoss')}</td>
+                    <td className="px-3 py-1.5 border border-gray-200 text-right font-bold">{ps.adv_losses.length}</td></tr>
+                  <tr><td className="px-3 py-1.5 border border-gray-200">{R('disadvWin')}</td>
+                    <td className="px-3 py-1.5 border border-gray-200 text-right font-bold">{ps.disadv_wins}</td></tr>
+                </tbody>
+              </table>
+              <div className="mt-5" />
+              {ps.adv_losses.length > 0 && (
+                <Section title={`${R('advLoss')}（ラウンド一覧）`}
+                  head={['日付', '対戦相手', 'マップ', 'ラウンド', '人数状況']}
+                  rows={ps.adv_losses.map(r => [
+                    r.match_date ? new Date(r.match_date).toLocaleDateString('ja-JP') : '--',
+                    r.opponent_name ?? '--', r.map ?? '--', `R${r.round_number}`, r.state ?? '--',
+                  ])} />
+              )}
+              <div className="mt-1" />
+              {ps.at_plant.length > 0 && (
+                <Section title={`${R('atPlantWR')}（味方v敵）`}
+                  head={['人数状況', '勝率']}
+                  rows={ps.at_plant.map(a => [a.state, wl(a)])} />
+              )}
+            </>
+          )}
+        </Section>
+
+        <Section title={R('rotationTitle')} empty={noDetail}
+          head={['状況', '勝率']}
+          rows={rd && (rd.rotation.attack.total || rd.rotation.defense.total) ? [
+            [R('rotationDef'), wl(rd.rotation.defense)],
+            [R('rotationAtk'), wl(rd.rotation.attack)],
+          ] : []} />
+
+        <Section title={R('lossTagTitle')} empty={noDetail}
+          head={['タグ', '件数']}
+          rows={(rd?.loss_tags ?? []).filter(x => x.name).map(x => [
+            tagLabel({ name: x.name!, preset_key: x.preset_key }, t), String(x.count),
+          ])} />
+
+        <Section title="ラウンド番号別勝率">
+          {rnd.length === 0 ? <p className="text-xs text-gray-400 mt-3">データなし</p> : (
+            <div className="grid grid-cols-8 gap-1 mt-3 text-[10px]">
+              {rnd.map(r => (
+                <div key={String(r.round_number)} className="border border-gray-200 rounded px-1 py-1 text-center">
+                  <div className="text-gray-500">R{String(r.round_number)}</div>
+                  <div className="font-bold text-xs">{Math.round(Number(r.win_rate) * 100)}%</div>
+                  <div className="text-gray-400">{String(r.wins)}/{String(r.rounds)}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Section>
+
+        <Section title="タイミング別勝率"
+          head={['タイミング', 'ATK 勝率', 'DEF 勝率']}
+          rows={timingRows.map(({ k, atk, def }) => [
+            <span key="l">{timingCfg[k].label}<span className="ml-2 text-gray-400 font-normal">{timingCfg[k].sub}</span></span>,
+            pct(atk), pct(def),
+          ])} />
 
         <div className="text-center text-xs text-gray-300 mt-12 border-t border-gray-100 pt-4">
           Generated by スクリムデータ解析 · {today}
@@ -309,6 +321,7 @@ export default function ExportPage() {
           @page { margin: 15mm 12mm; size: A4; }
           body { background: white !important; }
           .report-body { max-width: 100% !important; padding: 0 !important; }
+          .avoid-break { break-inside: avoid; }
         }
       `}</style>
     </div>
