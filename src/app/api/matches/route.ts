@@ -29,14 +29,9 @@ export async function GET(req: NextRequest) {
 
     const [matches, totalRow] = await Promise.all([
       query(
-        `SELECT m.*,
-                COUNT(r.id)  AS round_count,
-                COUNT(ps.id) AS player_stat_count
+        `SELECT m.*
          FROM matches m
-         LEFT JOIN rounds r      ON r.match_id  = m.id
-         LEFT JOIN player_stats ps ON ps.match_id = m.id
          WHERE ${whereClause}
-         GROUP BY m.id
          ORDER BY m.match_date DESC
          LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
         [...params, limit, offset]

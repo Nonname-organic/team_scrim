@@ -17,20 +17,24 @@ function createPool(): Pool {
     host.includes('supabase') || host.includes('railway') || host.includes('rlwy')
   const ssl = isRemote ? { rejectUnauthorized: false } : false
 
-  // サーバーレス（Vercel）では接続を使い捨てにするため小さいプールサイズ。
-  // Supabase Transaction Pooler（port 6543）を使う場合も max:2 で十分。
+  // 本番は Supabase Transaction Pooler（port 6543）経由なので、クライアント側の同時接続を増やしても
+  // DB 本体の接続数は増えない。ダッシュボードは約16クエリを並列に投げるため、2本だと8回の順番待ちになる。
   const isServerless = process.env.VERCEL === '1'
-  const max = isServerless ? 2 : 10
+  const max = isServerless ? 8 : 10
   const connectionTimeoutMillis = isServerless ? 5000 : 10000
+  // 画面間の移動（数分以内）で接続を張り直さない（新規接続は TLS + 認証で約0.15秒かかる）
+  const idleTimeoutMillis = 120_000
 
   if (url) {
-    return new Pool({ connectionString: url, ssl, max, idleTimeoutMillis: 30000, connectionTimeoutMillis })
+    return new Pool({ connectionString: url, ssl, max, idleTimeoutMillis, connectionTimeoutMillis })
   }
-  return new Pool({ ssl, max, idleTimeoutMillis: 30000, connectionTimeoutMillis })
+  return new Pool({ ssl, max, idleTimeoutMillis, connectionTimeoutMillis })
 }
 
 // Singleton in dev (hot reload safe)
 const pool = globalThis.pgPool ?? createPool()
+// 待機中の接続がサーバー側で切られた時の 'error' を握り、プロセスを落とさない（pg が該当接続を破棄する）
+if (pool.listenerCount('error') === 0) pool.on('error', err => console.error('[DB] idle client error', err.message))
 if (process.env.NODE_ENV !== 'production') globalThis.pgPool = pool
 
 // ============================================================
