@@ -15,7 +15,10 @@ const TEAM_CACHE_TTL = 60_000
 export async function getAuthContext(): Promise<AuthContext | null> {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    // 署名鍵が非対称（ECC P-256）なので getClaims はJWTをローカル検証し、認証サーバーへの往復が不要。
+    // 失効済みセッションは最長でアクセストークンの期限（1時間）まで通るが、user_teams 照会で所属は毎回確認される
+    const { data } = await supabase.auth.getClaims()
+    const user = data?.claims?.sub ? { id: data.claims.sub } : null
     if (!user) return null
 
     const cached = teamCache.get(user.id)

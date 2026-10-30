@@ -4,7 +4,8 @@ import { queryOne } from '@/lib/db'
 
 export async function GET() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { data } = await supabase.auth.getClaims()
+  const user = data?.claims?.sub ? { id: data.claims.sub } : null
 
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 

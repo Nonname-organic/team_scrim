@@ -36,7 +36,9 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
+  // getClaims: JWTをローカル検証（認証サーバーへの往復なし）。期限切れなら内部でセッション更新してクッキーを書き戻す
+  const { data: claimsData, error: authError } = await supabase.auth.getClaims()
+  const user = claimsData?.claims?.sub ? { id: claimsData.claims.sub } : null
 
   // 壊れたリフレッシュトークンの検知:
   // auth クッキーが存在する状態で 400 が返る = 無効なトークン → クリアしてログインへ
