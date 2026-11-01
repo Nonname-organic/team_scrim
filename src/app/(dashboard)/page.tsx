@@ -34,6 +34,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!teamId) return
+    // フィルターを続けて変えた時、古いリクエストの応答で新しい結果を上書きしない
+    let stale = false
     setLoading(true)
     setError(null)
     const params = new URLSearchParams()
@@ -48,20 +50,23 @@ export default function DashboardPage() {
         return r.json()
       })
       .then(json => {
+        if (stale) return
         setData(json.data ?? null)
         if (!json.data) setError(t('dashboard.noData'))
         setLoading(false)
       })
       .catch(e => {
+        if (stale) return
         setError(String(e))
         setLoading(false)
       })
+    return () => { stale = true }
     // t は毎レンダー再生成されるため deps に入れると無限フェッチになる
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mapFilter, typeFilter, dateFrom, dateTo, teamId])
 
-  if (loading) return <LoadingState />
-  if (error || !data) return <ErrorState message={error ?? 'No data'} dbSetup={!data && !!error} />
+  // 画面全体の差し替えは初回だけ。再取得中も画面（フィルター）を残さないと、開いているカレンダーが閉じる
+  if (!data) return loading ? <LoadingState /> : <ErrorState message={error ?? 'No data'} dbSetup={!!error} />
 
   const { summary, trend, economy, first_blood_impact, site_win_rates, round_win_rates, timing_win_rates, round_detail } =
     data as Record<string, unknown>
@@ -131,6 +136,14 @@ export default function DashboardPage() {
               {t('common.reset')}
             </button>
           )}
+
+          {loading && (
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground" role="status">
+              <span className="w-3 h-3 rounded-full border-2 border-[#FF4655] border-t-transparent animate-spin" />
+              {t('common.loading')}
+            </span>
+          )}
+          {error && !loading && <span className="text-xs text-[#FF4655]">{error}</span>}
 
           {/* PDF出力: 現在のフィルターを引き継いで印刷用レポートを別タブで開く */}
           <a
